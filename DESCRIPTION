@@ -1,0 +1,40 @@
+Package: IRTsimrel
+Title: Reliability-Targeted Simulation for Item Response Data
+Version: 0.1.0
+Authors@R: 
+    person("JoonHo", "Lee", 
+           email = "jlee296@ua.edu", 
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0006-4019-8703"))
+Description: Provides tools for reliability-targeted simulation studies in 
+    Item Response Theory (IRT). Implements two calibration algorithms: 
+    Empirical Quadrature Calibration (EQC) for fast deterministic calibration, 
+    and Stochastic Approximation Calibration (SPC/SAC) for validation and 
+    complex data-generating processes. Functions are provided for generating 
+    latent ability distributions with various shapes (normal, bimodal, skewed, 
+    heavy-tailed, etc.), simulating realistic item parameters using the Item 
+    Response Warehouse (IRW), and validating calibration results using the 
+    TAM package.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 4.0.0)
+Imports:
+    stats
+Suggests:
+    ggplot2 (>= 3.4.0),
+    patchwork,
+    TAM,
+    irw,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Remotes:
+    itemresponsewarehouse/Rpkg
+VignetteBuilder: knitr
+URL: https://github.com/joonho112/IRTsimrel
+BugReports: https://github.com/joonho112/IRTsimrel/issues
+Config/testthat/edition: 3

@@ -1,0 +1,34 @@
+# RStudio project files
+^IRTsimrel\.Rproj$
+^\.Rproj\.user$
+
+# License and README source
+^LICENSE\.md$
+^README\.Rmd$
+
+# Git and GitHub
+^\.git$
+^\.gitignore$
+^\.github$
+
+# Development files
+^\.lintr$
+^\.editorconfig$
+^codecov\.yml$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
+
+# pkgdown
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+
+# Dev tools
+^revdep$
+^\.Rhistory$
+^.*\.Rproj$
+
+# Misc
+^data-raw$
+^vignettes/.*_cache$
+^vignettes/.*_files$
