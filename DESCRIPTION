@@ -35,6 +35,6 @@ Suggests:
 Remotes:
     itemresponsewarehouse/Rpkg
 VignetteBuilder: knitr
-URL: https://github.com/joonho112/IRTsimrel
+URL: https://github.com/joonho112/IRTsimrel, https://joonho112.github.io/IRTsimrel/
 BugReports: https://github.com/joonho112/IRTsimrel/issues
 Config/testthat/edition: 3

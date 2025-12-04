@@ -1,0 +1,119 @@
+url: https://joonho112.github.io/IRTsimrel/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#0054AD"
+    border-radius: 0.5rem
+    btn-border-radius: 0.25rem
+
+home:
+  title: IRTsimrel
+  description: Reliability-Targeted Simulation for Item Response Data
+
+authors:
+  JoonHo Lee:
+    href: https://github.com/joonho112
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: articles/introduction_to_irtsimrel.html
+    articles:
+      text: Articles
+      menu:
+        - text: "Getting Started"
+        - text: Introduction to IRTsimrel
+          href: articles/introduction_to_irtsimrel.html
+        - text: "---"
+        - text: "Core Functions"
+        - text: Working with Latent Distributions
+          href: articles/latent_distributions.html
+        - text: Generating Realistic Item Parameters
+          href: articles/item_parameters.html
+        - text: "---"
+        - text: "Calibration Algorithms"
+        - text: "Algorithm 1: EQC"
+          href: articles/eqc_algorithm.html
+        - text: "Algorithm 2: SPC"
+          href: articles/spc_algorithm.html
+        - text: "---"
+        - text: "Validation"
+        - text: Validating Calibration Results
+          href: articles/validation.html
+
+reference:
+  - title: "Package Overview"
+    contents:
+      - IRTsimrel-package
+
+  - title: "Calibration Algorithms"
+    desc: >
+      Core functions for reliability-targeted calibration
+    contents:
+      - eqc_calibrate
+      - spc_calibrate
+      - sac_calibrate
+
+  - title: "Simulation Functions"
+    desc: >
+      Generate latent abilities and item parameters
+    contents:
+      - sim_latentG
+      - sim_item_params
+      - simulate_response_data
+
+  - title: "Reliability Utilities"
+    desc: >
+      Compute reliability metrics
+    contents:
+      - compute_rho_bar
+      - compute_rho_tilde
+      - compute_apc_init
+      - compute_reliability_tam
+
+  - title: "Comparison & Visualization"
+    desc: >
+      Compare distributions and calibration results
+    contents:
+      - compare_shapes
+      - compare_eqc_spc
+
+  - title: "S3 Methods"
+    desc: >
+      Print, plot, and summary methods
+    contents:
+      - starts_with("print.")
+      - starts_with("plot.")
+      - starts_with("summary.")
+      - starts_with("as.")
+
+articles:
+  - title: Getting Started
+    navbar: ~
+    contents:
+      - introduction_to_irtsimrel
+
+  - title: Core Functions
+    contents:
+      - latent_distributions
+      - item_parameters
+
+  - title: Calibration Algorithms
+    contents:
+      - eqc_algorithm
+      - spc_algorithm
+
+  - title: Validation
+    contents:
+      - validation
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with
