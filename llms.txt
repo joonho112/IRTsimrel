@@ -1,0 +1,326 @@
+# IRTsimrel ![](reference/figures/logo.png)
+
+**IRTsimrel** provides a principled framework for *reliability-targeted
+simulation* of Item Response Theory (IRT) data. Instead of treating
+reliability as an implicit outcome of simulation design choices,
+IRTsimrel allows researchers to specify a **target reliability level**
+as an explicit input parameter.
+
+## The Problem
+
+In Monte Carlo simulation studies for IRT, researchers routinely vary
+sample size, test length, and item parameters—but **marginal
+reliability** is almost never directly controlled. This creates:
+
+- **Ecological validity threats**: Real assessments often have
+  reliabilities of 0.5–0.7, but simulations may implicitly assume higher
+  values
+- **Confounded comparisons**: Conclusions about model superiority may
+  only hold within certain reliability regimes
+- **Limited replicability**: Without knowing implied reliability, exact
+  replication is impossible
+
+## The Solution: Think Like Multilevel Modelers
+
+In multilevel modeling, the **intraclass correlation (ICC)** is always a
+primary design factor. ICC determines the signal-to-noise ratio—the
+proportion of variance at the cluster level versus residual level.
+
+**Marginal reliability in IRT serves the same role as ICC in multilevel
+models.**
+
+IRTsimrel brings IRT simulation methodology into alignment with this
+best practice.
+
+## Installation
+
+You can install the development version of IRTsimrel from
+[GitHub](https://github.com/joonho112/IRTsimrel) with:
+
+``` r
+# install.packages("pak")
+pak::pak("joonho112/IRTsimrel")
+```
+
+## Quick Start
+
+Suppose you want to simulate Rasch model data with:
+
+- 25 items
+- Target reliability of 0.80
+- Normal latent trait distribution
+
+### Step 1: Calibrate
+
+``` r
+library(IRTsimrel)
+
+# Calibrate to achieve target reliability
+eqc_result <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
+  latent_shape = "normal",
+  item_source = "parametric",
+  M = 10000,
+  seed = 42
+)
+
+eqc_result
+#> 
+#> =======================================================
+#>   Empirical Quadrature Calibration (EQC) Results
+#> =======================================================
+#> 
+#> Calibration Summary:
+#>   Model                        : RASCH
+#>   Target reliability (rho*)    : 0.8000
+#>   Achieved reliability         : 0.8000
+#>   Absolute error               : 3.77e-06
+#>   Scaling factor (c*)          : 0.9277
+#> 
+#> Design Parameters:
+#>   Number of items (I)          : 25
+#>   Quadrature points (M)        : 10000
+#>   Reliability metric           : MSEM-based (bar/w)
+#>   Latent variance              : 1.0123
+#> 
+#> Convergence:
+#>   Root status                  : uniroot_success
+#>   Search bracket               : [0.300, 3.000]
+#>   Bracket reliabilities        : [0.3538, 0.9020]
+#> 
+#> Parameter Summaries:
+#>   theta:        mean = -0.011, sd = 1.006
+#>   beta:         mean = -0.000, sd = 0.909, range = [-1.60, 1.73]
+#>   lambda_base:  mean = 1.000, sd = 0.000
+#>   lambda_scaled: mean = 0.928, sd = 0.000
+```
+
+### Step 2: Generate Data
+
+``` r
+# Generate response data with calibrated parameters
+sim_data <- simulate_response_data(
+  eqc_result = eqc_result,
+  n_persons = 1000,
+  latent_shape = "normal",
+  seed = 123
+)
+
+# Response matrix ready for analysis
+dim(sim_data$response_matrix)
+#> [1] 1000   25
+```
+
+### Step 3: Validate (Optional)
+
+``` r
+# Validate with TAM package
+tam_rel <- compute_reliability_tam(
+  resp = sim_data$response_matrix,
+  model = "rasch"
+)
+
+cat(sprintf("Target:  %.3f\n", 0.80))
+cat(sprintf("WLE:     %.3f\n", tam_rel$rel_wle))
+cat(sprintf("EAP:     %.3f\n", tam_rel$rel_eap))
+```
+
+## Key Features
+
+### Two Calibration Algorithms
+
+| Algorithm | Function | Best For |
+|----|----|----|
+| **EQC** (Empirical Quadrature Calibration) | [`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md) | Routine use, fast & accurate |
+| **SPC** (Stochastic Approximation Calibration) | [`spc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md) | Validation, complex DGPs |
+
+### Flexible Latent Distributions
+
+``` r
+compare_shapes(
+  n = 3000,
+  shapes = c("normal", "bimodal", "skew_pos", "heavy_tail"),
+  seed = 42
+)
+```
+
+![](reference/figures/README-latent-shapes-1.png)
+
+12 built-in shapes including normal, bimodal, trimodal, skewed,
+heavy-tailed, uniform, and floor/ceiling effects—all
+**pre-standardized** to mean 0 and variance 1.
+
+### Realistic Item Parameters
+
+Generate item parameters with empirically-grounded characteristics:
+
+``` r
+# IRW-based difficulties with copula-correlated discriminations
+items <- sim_item_params(
+  n_items = 30,
+  model = "2pl",
+  source = "irw",
+  method = "copula",
+  discrimination_params = list(rho = -0.3)  # Empirical correlation
+)
+```
+
+## The Core Principle: Separation of Structure and Scale
+
+IRTsimrel implements a fundamental principle:
+
+- **Structure**: Realistic item characteristics and flexible latent
+  distributions come from empirically-grounded generators
+- **Scale**: A global discrimination scaling factor $`c^*`$ is
+  calibrated to achieve target reliability
+
+``` math
+\lambda_i^* = c^* \cdot \lambda_{i,0}
+```
+
+This allows researchers to study the effect of reliability on estimation
+while maintaining realistic data structures.
+
+## Two Reliability Metrics
+
+| Metric | Formula | Used By |
+|----|----|----|
+| MSEM-based ($`\bar{\rho}`$) | $`\frac{\sigma^2_\theta}{\sigma^2_\theta + E[1/\mathcal{J}(\theta)]}`$ | SPC (theoretically exact) |
+| Average-information ($`\tilde{\rho}`$) | $`\frac{\sigma^2_\theta \bar{\mathcal{J}}}{\sigma^2_\theta \bar{\mathcal{J}} + 1}`$ | EQC (faster) |
+
+By Jensen’s inequality: $`\tilde{\rho} \geq \bar{\rho}`$ always holds.
+
+## Vignettes
+
+For detailed guidance, see the package vignettes:
+
+- [`vignette("introduction_to_irtsimrel")`](https://joonho112.github.io/IRTsimrel/articles/introduction_to_irtsimrel.md)
+  — Package overview and workflow
+- [`vignette("latent_distributions")`](https://joonho112.github.io/IRTsimrel/articles/latent_distributions.md)
+  — Working with 12 latent shapes
+- [`vignette("item_parameters")`](https://joonho112.github.io/IRTsimrel/articles/item_parameters.md)
+  — Generating realistic item parameters
+- [`vignette("eqc_algorithm")`](https://joonho112.github.io/IRTsimrel/articles/eqc_algorithm.md)
+  — Algorithm 1: EQC details
+- [`vignette("spc_algorithm")`](https://joonho112.github.io/IRTsimrel/articles/spc_algorithm.md)
+  — Algorithm 2: SPC details
+- [`vignette("validation")`](https://joonho112.github.io/IRTsimrel/articles/validation.md)
+  — Validating calibration results
+
+## Citation
+
+If you use IRTsimrel in your research, please cite:
+
+``` R
+Lee, J.-H. (2025). Reliability-targeted simulation for item response data.
+arXiv preprint. arXiv:XXXX.XXXXX
+```
+
+## Related Work
+
+- [TAM](https://CRAN.R-project.org/package=TAM) — Test Analysis Modules
+  for IRT
+- [mirt](https://CRAN.R-project.org/package=mirt) — Multidimensional
+  Item Response Theory
+- [irw](https://github.com/ben-domingue/irw) — Item Response Warehouse
+
+## License
+
+MIT © JoonHo Lee
+
+# Package index
+
+## Package Overview
+
+- [`IRTsimrel-package`](https://joonho112.github.io/IRTsimrel/reference/IRTsimrel-package.md)
+  [`IRTsimrel`](https://joonho112.github.io/IRTsimrel/reference/IRTsimrel-package.md)
+  : IRTsimrel: Reliability-Targeted Simulation for Item Response Data
+
+## Calibration Algorithms
+
+Core functions for reliability-targeted calibration
+
+- [`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
+  : Empirical Quadrature Calibration (Algorithm 1: EQC/SQC)
+- [`spc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md)
+  [`sac_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md)
+  : Stochastic Approximation Calibration (Algorithm 2: SPC/SAC)
+
+## Simulation Functions
+
+Generate latent abilities and item parameters
+
+- [`sim_latentG()`](https://joonho112.github.io/IRTsimrel/reference/sim_latentG.md)
+  : Simulate Latent Ability Distribution for IRT Studies (G-family)
+- [`sim_item_params()`](https://joonho112.github.io/IRTsimrel/reference/sim_item_params.md)
+  : Simulate Item Parameters for IRT Studies
+- [`simulate_response_data()`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md)
+  : Simulate Item Response Data from EQC Results
+
+## Reliability Utilities
+
+Compute reliability metrics
+
+- [`compute_rho_bar()`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_bar.md)
+  [`compute_rho_tilde()`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_bar.md)
+  : Compute Marginal Reliability from Simulated Test Information
+- [`compute_apc_init()`](https://joonho112.github.io/IRTsimrel/reference/compute_apc_init.md)
+  : Analytic Pre-Calibration (APC) Initialization
+- [`compute_reliability_tam()`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md)
+  : Compute WLE and EAP Reliability Using TAM
+
+## Comparison & Visualization
+
+Compare distributions and calibration results
+
+- [`compare_shapes()`](https://joonho112.github.io/IRTsimrel/reference/compare_shapes.md)
+  : Compare Multiple Distribution Shapes
+- [`compare_eqc_spc()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_spc.md)
+  : Compare EQC and SPC Calibration Results
+
+## S3 Methods
+
+Print, plot, and summary methods
+
+- [`print(`*`<latent_G>`*`)`](https://joonho112.github.io/IRTsimrel/reference/print.latent_G.md)
+  : Print Method for latent_G Objects
+- [`plot(`*`<item_params>`*`)`](https://joonho112.github.io/IRTsimrel/reference/plot.item_params.md)
+  : Plot method for item_params objects
+- [`plot(`*`<latent_G>`*`)`](https://joonho112.github.io/IRTsimrel/reference/plot.latent_G.md)
+  : Plot Method for latent_G Objects
+- [`plot(`*`<spc_result>`*`)`](https://joonho112.github.io/IRTsimrel/reference/plot.spc_result.md)
+  : Plot SPC Convergence Trajectory
+- [`summary(`*`<latent_G>`*`)`](https://joonho112.github.io/IRTsimrel/reference/summary.latent_G.md)
+  : Summary Method for latent_G Objects
+- [`as.data.frame(`*`<item_params>`*`)`](https://joonho112.github.io/IRTsimrel/reference/as.data.frame.item_params.md)
+  : Extract item parameters as data frame
+- [`as.numeric(`*`<latent_G>`*`)`](https://joonho112.github.io/IRTsimrel/reference/as.numeric.latent_G.md)
+  : Extract theta values from latent_G object
+
+# Articles
+
+### Getting Started
+
+- [Introduction to
+  IRTsimrel](https://joonho112.github.io/IRTsimrel/articles/introduction_to_irtsimrel.md):
+
+### Core Functions
+
+- [Working with Latent
+  Distributions](https://joonho112.github.io/IRTsimrel/articles/latent_distributions.md):
+- [Generating Realistic Item
+  Parameters](https://joonho112.github.io/IRTsimrel/articles/item_parameters.md):
+
+### Calibration Algorithms
+
+- [Algorithm 1: Empirical Quadrature Calibration
+  (EQC)](https://joonho112.github.io/IRTsimrel/articles/eqc_algorithm.md):
+- [Algorithm 2: Stochastic Approximation Calibration
+  (SPC)](https://joonho112.github.io/IRTsimrel/articles/spc_algorithm.md):
+
+### Validation
+
+- [Validating Calibration
+  Results](https://joonho112.github.io/IRTsimrel/articles/validation.md):
