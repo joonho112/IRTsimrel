@@ -36,7 +36,7 @@ Suggests:
     knitr,
     rmarkdown
 Remotes:
-    ben-domingue/irw
+    itemresponsewarehouse/Rpkg
 VignetteBuilder: knitr
 URL: https://github.com/joonho112/IRTsimrel, https://joonho112.github.io/IRTsimrel/
 BugReports: https://github.com/joonho112/IRTsimrel/issues
