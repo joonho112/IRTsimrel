@@ -7,7 +7,7 @@ These functions implement the same reliability definitions used inside
 both
 [`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
 and
-[`spc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md):
+[`sac_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md):
 
 - `compute_rho_bar()`: MSEM-based marginal reliability \\\bar{w}(c) =
   \sigma\_\theta^2 / (\sigma\_\theta^2 + E\[1/\mathcal{J}(\theta;c)\])\\
@@ -96,7 +96,7 @@ compute_rho_bar(1, theta, beta, lambda0)
 compute_rho_tilde(1, theta, beta, lambda0)
 #> [1] 0.7870079
 
-# With pre-calculated theta variance (recommended for SPC)
+# With pre-calculated theta variance (recommended for SAC)
 theta_var_fixed <- var(rnorm(10000))  # Pre-calculate from large sample
 compute_rho_bar(1, theta, beta, lambda0, theta_var = theta_var_fixed)
 #> [1] 0.7684109

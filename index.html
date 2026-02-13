@@ -6,6 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>IRTsimrel • IRTsimrel</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" sizes="any" href="favicon.ico">
+<link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -13,6 +18,7 @@
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="IRTsimrel">
 <meta name="description" content="Reliability-Targeted Simulation for Item Response Data">
 <meta property="og:description" content="Reliability-Targeted Simulation for Item Response Data">
+<meta property="og:image" content="https://joonho112.github.io/IRTsimrel/logo.svg">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">IRTsimrel</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,26 +37,31 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="articles/introduction_to_irtsimrel.html">Get Started</a></li>
+<li class="nav-item"><a class="nav-link" href="articles/introduction.html">Get Started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><h6 class="dropdown-header" data-toc-skip>Getting Started</h6></li>
-    <li><a class="dropdown-item" href="articles/introduction_to_irtsimrel.html">Introduction to IRTsimrel</a></li>
+    <li><a class="dropdown-item" href="articles/introduction.html">Introduction</a></li>
+    <li><a class="dropdown-item" href="articles/quick-start.html">Quick Start</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core Functions</h6></li>
-    <li><a class="dropdown-item" href="articles/latent_distributions.html">Working with Latent Distributions</a></li>
-    <li><a class="dropdown-item" href="articles/item_parameters.html">Generating Realistic Item Parameters</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Applied Researchers Track</h6></li>
+    <li><a class="dropdown-item" href="articles/applied-guide.html">Applied Guide</a></li>
+    <li><a class="dropdown-item" href="articles/latent-distributions.html">Latent Distributions</a></li>
+    <li><a class="dropdown-item" href="articles/item-parameters.html">Item Parameters</a></li>
+    <li><a class="dropdown-item" href="articles/simulation-design.html">Simulation Design</a></li>
+    <li><a class="dropdown-item" href="articles/case-studies.html">Case Studies</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration Algorithms</h6></li>
-    <li><a class="dropdown-item" href="articles/eqc_algorithm.html">Algorithm 1: EQC</a></li>
-    <li><a class="dropdown-item" href="articles/spc_algorithm.html">Algorithm 2: SPC</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Validation</h6></li>
-    <li><a class="dropdown-item" href="articles/validation.html">Validating Calibration Results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Methodological Researchers Track</h6></li>
+    <li><a class="dropdown-item" href="articles/theory-reliability.html">Reliability Theory</a></li>
+    <li><a class="dropdown-item" href="articles/algorithm-eqc.html">Algorithm 1: EQC</a></li>
+    <li><a class="dropdown-item" href="articles/algorithm-sac.html">Algorithm 2: SAC</a></li>
+    <li><a class="dropdown-item" href="articles/validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="articles/api-reference.html">API Reference</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -65,66 +76,71 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="irtsimrel-">IRTsimrel <img src="reference/figures/logo.png" align="right" height="139" alt=""><a class="anchor" aria-label="anchor" href="#irtsimrel-"></a>
-</h1></div>
+<div class="page-header">
+<img src="logo.svg" class="logo" alt=""><h1 id="irtsimrel-">IRTsimrel <a class="anchor" aria-label="anchor" href="#irtsimrel-"></a>
+</h1>
+</div>
 <!-- badges: start -->
 
-<p><strong>IRTsimrel</strong> provides a principled framework for <em>reliability-targeted simulation</em> of Item Response Theory (IRT) data. Instead of treating reliability as an implicit outcome of simulation design choices, IRTsimrel allows researchers to specify a <strong>target reliability level</strong> as an explicit input parameter.</p>
+<p><strong>IRTsimrel</strong> is an R package for <strong>reliability-targeted simulation</strong> of Item Response Theory (IRT) data. Rather than treating reliability as an afterthought, IRTsimrel lets you specify a <strong>target marginal reliability</strong> as an explicit input—and calibrates the data-generating process to achieve it exactly.</p>
+<blockquote>
+<p><em>Marginal reliability in IRT serves the same role as ICC in multilevel modeling.</em></p>
+</blockquote>
 <div class="section level2">
-<h2 id="the-problem">The Problem<a class="anchor" aria-label="anchor" href="#the-problem"></a>
+<h2 id="why-this-matters">Why This Matters<a class="anchor" aria-label="anchor" href="#why-this-matters"></a>
 </h2>
-<p>In Monte Carlo simulation studies for IRT, researchers routinely vary sample size, test length, and item parameters—but <strong>marginal reliability</strong> is almost never directly controlled. This creates:</p>
-<ul>
-<li>
-<strong>Ecological validity threats</strong>: Real assessments often have reliabilities of 0.5–0.7, but simulations may implicitly assume higher values</li>
-<li>
-<strong>Confounded comparisons</strong>: Conclusions about model superiority may only hold within certain reliability regimes</li>
-<li>
-<strong>Limited replicability</strong>: Without knowing implied reliability, exact replication is impossible</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="the-solution-think-like-multilevel-modelers">The Solution: Think Like Multilevel Modelers<a class="anchor" aria-label="anchor" href="#the-solution-think-like-multilevel-modelers"></a>
-</h2>
-<p>In multilevel modeling, the <strong>intraclass correlation (ICC)</strong> is always a primary design factor. ICC determines the signal-to-noise ratio—the proportion of variance at the cluster level versus residual level.</p>
-<p><strong>Marginal reliability in IRT serves the same role as ICC in multilevel models.</strong></p>
-<p>IRTsimrel brings IRT simulation methodology into alignment with this best practice.</p>
+<p>In Monte Carlo IRT studies, researchers routinely vary sample size, test length, and item parameters—but <strong>marginal reliability is almost never directly controlled</strong>. This leads to three problems:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Problem</th>
+<th>Consequence</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><strong>Ecological validity</strong></td>
+<td>Real assessments often have <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">\rho = 0.5</annotation></semantics></math>–<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.7</mn><annotation encoding="application/x-tex">0.7</annotation></semantics></math>, yet simulations may implicitly generate <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mo>&gt;</mo><mn>0.90</mn></mrow><annotation encoding="application/x-tex">\rho &gt; 0.90</annotation></semantics></math>
+</td>
+</tr>
+<tr class="even">
+<td><strong>Confounded comparisons</strong></td>
+<td>Conclusions about estimator superiority may only hold within a narrow reliability regime</td>
+</tr>
+<tr class="odd">
+<td><strong>Limited replicability</strong></td>
+<td>Without reporting implied reliability, exact replication is impossible</td>
+</tr>
+</tbody>
+</table>
+<p>Just as multilevel modelers always specify the ICC, IRT simulators should always specify the target reliability. IRTsimrel makes this easy.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of IRTsimrel from <a href="https://github.com/joonho112/IRTsimrel" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"joonho112/IRTsimrel"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"joonho112/IRTsimrel"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p>Suppose you want to simulate Rasch model data with:</p>
-<ul>
-<li>25 items</li>
-<li>Target reliability of 0.80</li>
-<li>Normal latent trait distribution</li>
-</ul>
-<div class="section level3">
-<h3 id="step-1-calibrate">Step 1: Calibrate<a class="anchor" aria-label="anchor" href="#step-1-calibrate"></a>
-</h3>
+<p>Calibrate a 25-item Rasch simulation to achieve <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mo>=</mo><mn>0.80</mn></mrow><annotation encoding="application/x-tex">\rho = 0.80</annotation></semantics></math>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joonho112/IRTsimrel" class="external-link">IRTsimrel</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Calibrate to achieve target reliability</span></span>
-<span><span class="va">eqc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho  <span class="op">=</span> <span class="fl">0.80</span>,</span>
+<span>  n_items     <span class="op">=</span> <span class="fl">25</span>,</span>
+<span>  model       <span class="op">=</span> <span class="st">"rasch"</span>,</span>
 <span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>,</span>
-<span>  M <span class="op">=</span> <span class="fl">10000</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
+<span>  M           <span class="op">=</span> <span class="fl">10000</span>,</span>
+<span>  seed        <span class="op">=</span> <span class="fl">42</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">eqc_result</span></span>
+<span><span class="va">result</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; =======================================================</span></span>
 <span><span class="co">#&gt;   Empirical Quadrature Calibration (EQC) Results</span></span>
@@ -134,184 +150,182 @@
 <span><span class="co">#&gt;   Model                        : RASCH</span></span>
 <span><span class="co">#&gt;   Target reliability (rho*)    : 0.8000</span></span>
 <span><span class="co">#&gt;   Achieved reliability         : 0.8000</span></span>
-<span><span class="co">#&gt;   Absolute error               : 3.77e-06</span></span>
-<span><span class="co">#&gt;   Scaling factor (c*)          : 0.9277</span></span>
+<span><span class="co">#&gt;   Absolute error               : 1.42e-07</span></span>
+<span><span class="co">#&gt;   Scaling factor (c*)          : 0.9059</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Design Parameters:</span></span>
 <span><span class="co">#&gt;   Number of items (I)          : 25</span></span>
 <span><span class="co">#&gt;   Quadrature points (M)        : 10000</span></span>
-<span><span class="co">#&gt;   Reliability metric           : MSEM-based (bar/w)</span></span>
+<span><span class="co">#&gt;   Reliability metric           : Average-information (tilde)</span></span>
 <span><span class="co">#&gt;   Latent variance              : 1.0123</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Convergence:</span></span>
 <span><span class="co">#&gt;   Root status                  : uniroot_success</span></span>
 <span><span class="co">#&gt;   Search bracket               : [0.300, 3.000]</span></span>
-<span><span class="co">#&gt;   Bracket reliabilities        : [0.3538, 0.9020]</span></span>
+<span><span class="co">#&gt;   Bracket reliabilities        : [0.3540, 0.9532]</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Parameter Summaries:</span></span>
 <span><span class="co">#&gt;   theta:        mean = -0.011, sd = 1.006</span></span>
 <span><span class="co">#&gt;   beta:         mean = -0.000, sd = 0.909, range = [-1.60, 1.73]</span></span>
 <span><span class="co">#&gt;   lambda_base:  mean = 1.000, sd = 0.000</span></span>
-<span><span class="co">#&gt;   lambda_scaled: mean = 0.928, sd = 0.000</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="step-2-generate-data">Step 2: Generate Data<a class="anchor" aria-label="anchor" href="#step-2-generate-data"></a>
-</h3>
+<span><span class="co">#&gt;   lambda_scaled: mean = 0.906, sd = 0.000</span></span></code></pre></div>
+<p>Generate a response matrix and you’re ready for analysis:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Generate response data with calibrated parameters</span></span>
-<span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
-<span>  eqc_result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
-<span>  n_persons <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Response matrix ready for analysis</span></span>
+<code class="sourceCode R"><span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">result</span>, n_persons <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1000   25</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="step-3-validate-optional">Step 3: Validate (Optional)<a class="anchor" aria-label="anchor" href="#step-3-validate-optional"></a>
-</h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Validate with TAM package</span></span>
-<span><span class="va">tam_rel</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span></span>
-<span>  resp <span class="op">=</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"rasch"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target:  %.3f\n"</span>, <span class="fl">0.80</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"WLE:     %.3f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EAP:     %.3f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-</div>
+<p>See <code><a href="articles/quick-start.html">vignette("quick-start")</a></code> for a 5-minute walkthrough, or <code><a href="articles/applied-guide.html">vignette("applied-guide")</a></code> for the full 6-step workflow.</p>
 </div>
 <div class="section level2">
-<h2 id="key-features">Key Features<a class="anchor" aria-label="anchor" href="#key-features"></a>
+<h2 id="how-it-works">How It Works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
 </h2>
+<p>IRTsimrel separates <strong>structure</strong> from <strong>scale</strong>:</p>
+<ul>
+<li>
+<strong>Structure</strong> — Realistic item difficulties, discriminations, and latent distributions are drawn from empirically-grounded generators.</li>
+<li>
+<strong>Scale</strong> — A single global scaling factor <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math> is calibrated so that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>λ</mi><mi>i</mi><mo>*</mo></msubsup><mo>=</mo><msup><mi>c</mi><mo>*</mo></msup><mo>⋅</mo><msub><mi>λ</mi><mrow><mi>i</mi><mo>,</mo><mn>0</mn></mrow></msub></mrow><annotation encoding="application/x-tex">\lambda_i^* = c^* \cdot \lambda_{i,0}</annotation></semantics></math> yields the target reliability.</li>
+</ul>
+<p>This means you can vary reliability independently of all other design features—just like varying ICC in a multilevel simulation.</p>
 <div class="section level3">
 <h3 id="two-calibration-algorithms">Two Calibration Algorithms<a class="anchor" aria-label="anchor" href="#two-calibration-algorithms"></a>
 </h3>
 <table class="table">
 <colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Algorithm</th>
 <th>Function</th>
-<th>Best For</th>
+<th>Method</th>
+<th>Recommended For</th>
 </tr></thead>
 <tbody>
-<tr>
-<td>
-<strong>EQC</strong> (Empirical Quadrature Calibration)</td>
+<tr class="odd">
+<td><strong>EQC</strong></td>
 <td><code><a href="reference/eqc_calibrate.html">eqc_calibrate()</a></code></td>
-<td>Routine use, fast &amp; accurate</td>
+<td>Deterministic root-finding (Brent’s method)</td>
+<td>Default: fast, exact, no tuning</td>
 </tr>
-<tr>
-<td>
-<strong>SPC</strong> (Stochastic Approximation Calibration)</td>
-<td><code><a href="reference/spc_calibrate.html">spc_calibrate()</a></code></td>
-<td>Validation, complex DGPs</td>
+<tr class="even">
+<td><strong>SAC</strong></td>
+<td><code><a href="reference/sac_calibrate.html">sac_calibrate()</a></code></td>
+<td>Stochastic approximation (Robbins–Monro)</td>
+<td>Cross-validation, complex DGPs</td>
 </tr>
 </tbody>
 </table>
+<p>When both algorithms converge to the same <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math>, calibration is highly trustworthy.</p>
 </div>
 <div class="section level3">
-<h3 id="flexible-latent-distributions">Flexible Latent Distributions<a class="anchor" aria-label="anchor" href="#flexible-latent-distributions"></a>
+<h3 id="id_12-pre-standardized-latent-distributions">12 Pre-Standardized Latent Distributions<a class="anchor" aria-label="anchor" href="#id_12-pre-standardized-latent-distributions"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/compare_shapes.html">compare_shapes</a></span><span class="op">(</span></span>
 <span>  n <span class="op">=</span> <span class="fl">3000</span>,</span>
 <span>  shapes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal"</span>, <span class="st">"bimodal"</span>, <span class="st">"skew_pos"</span>, <span class="st">"heavy_tail"</span><span class="op">)</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">42</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-latent-shapes-1.png" width="100%"></p>
-<p>12 built-in shapes including normal, bimodal, trimodal, skewed, heavy-tailed, uniform, and floor/ceiling effects—all <strong>pre-standardized</strong> to mean 0 and variance 1.</p>
+<p>All 12 built-in shapes (normal, bimodal, trimodal, skewed, heavy-tailed, uniform, floor/ceiling effects) are <strong>pre-standardized</strong> to mean 0 and variance 1. This ensures that distributional shape is cleanly separated from scale—enabling rigorous factorial manipulation.</p>
 </div>
 <div class="section level3">
-<h3 id="realistic-item-parameters">Realistic Item Parameters<a class="anchor" aria-label="anchor" href="#realistic-item-parameters"></a>
+<h3 id="empirically-realistic-item-parameters">Empirically Realistic Item Parameters<a class="anchor" aria-label="anchor" href="#empirically-realistic-item-parameters"></a>
 </h3>
-<p>Generate item parameters with empirically-grounded characteristics:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># IRW-based difficulties with copula-correlated discriminations</span></span>
-<span><span class="va">items</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/sim_item_params.html">sim_item_params</a></span><span class="op">(</span></span>
-<span>  n_items <span class="op">=</span> <span class="fl">30</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"2pl"</span>,</span>
-<span>  source <span class="op">=</span> <span class="st">"irw"</span>,</span>
-<span>  method <span class="op">=</span> <span class="st">"copula"</span>,</span>
-<span>  discrimination_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rho <span class="op">=</span> <span class="op">-</span><span class="fl">0.3</span><span class="op">)</span>  <span class="co"># Empirical correlation</span></span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">items</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/sim_item_params.html">sim_item_params</a></span><span class="op">(</span></span>
+<span>  n_items <span class="op">=</span> <span class="fl">30</span>, model <span class="op">=</span> <span class="st">"2pl"</span>,</span>
+<span>  source <span class="op">=</span> <span class="st">"irw"</span>, method <span class="op">=</span> <span class="st">"copula"</span>,</span>
+<span>  discrimination_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rho <span class="op">=</span> <span class="op">-</span><span class="fl">0.3</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Generate item parameters from <strong>four sources</strong> (parametric, IRW, hierarchical, custom) with empirically-observed difficulty–discrimination correlation (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mo>≈</mo><mo>−</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">\rho \approx -0.3</annotation></semantics></math>) preserved via copula methods.</p>
 </div>
+<div class="section level3">
+<h3 id="feasibility-screening">Feasibility Screening<a class="anchor" aria-label="anchor" href="#feasibility-screening"></a>
+</h3>
+<p>Before calibrating, verify that your target reliability is achievable and visualize the reliability–scaling curve:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/check_feasibility.html">check_feasibility</a></span><span class="op">(</span>n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>, seed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/rho_curve.html">rho_curve</a></span><span class="op">(</span>n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>, seed <span class="op">=</span> <span class="fl">42</span>, plot <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="the-core-principle-separation-of-structure-and-scale">The Core Principle: Separation of Structure and Scale<a class="anchor" aria-label="anchor" href="#the-core-principle-separation-of-structure-and-scale"></a>
-</h2>
-<p>IRTsimrel implements a fundamental principle:</p>
-<ul>
-<li>
-<strong>Structure</strong>: Realistic item characteristics and flexible latent distributions come from empirically-grounded generators</li>
-<li>
-<strong>Scale</strong>: A global discrimination scaling factor <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math> is calibrated to achieve target reliability</li>
-</ul>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>λ</mi><mi>i</mi><mo>*</mo></msubsup><mo>=</mo><msup><mi>c</mi><mo>*</mo></msup><mo>⋅</mo><msub><mi>λ</mi><mrow><mi>i</mi><mo>,</mo><mn>0</mn></mrow></msub></mrow><annotation encoding="application/x-tex">\lambda_i^* = c^* \cdot \lambda_{i,0}</annotation></semantics></math></p>
-<p>This allows researchers to study the effect of reliability on estimation while maintaining realistic data structures.</p>
-</div>
-<div class="section level2">
-<h2 id="two-reliability-metrics">Two Reliability Metrics<a class="anchor" aria-label="anchor" href="#two-reliability-metrics"></a>
-</h2>
+<div class="section level3">
+<h3 id="three-level-validation">Three-Level Validation<a class="anchor" aria-label="anchor" href="#three-level-validation"></a>
+</h3>
 <table class="table">
 <colgroup>
 <col width="33%">
 <col width="33%">
 <col width="33%">
 </colgroup>
-<thead><tr>
-<th>Metric</th>
-<th>Formula</th>
-<th>Used By</th>
+<thead><tr class="header">
+<th>Level</th>
+<th>Tool</th>
+<th>What It Checks</th>
 </tr></thead>
 <tbody>
-<tr>
-<td>MSEM-based (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>ρ</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\rho}</annotation></semantics></math>)</td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mo>+</mo><mi>E</mi><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mi>/</mi><mi>𝒥</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow></mrow></mfrac><annotation encoding="application/x-tex">\frac{\sigma^2_\theta}{\sigma^2_\theta + E[1/\mathcal{J}(\theta)]}</annotation></semantics></math></td>
-<td>SPC (theoretically exact)</td>
+<tr class="odd">
+<td><strong>Internal</strong></td>
+<td>
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, <code><a href="reference/compute_rho_both.html">compute_rho_both()</a></code>
+</td>
+<td>Consistency of calibrated reliability; Jensen’s gap between <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{\rho}</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>w</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{w}</annotation></semantics></math>
+</td>
 </tr>
-<tr>
-<td>Average-information (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{\rho}</annotation></semantics></math>)</td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover></mrow><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo>+</mo><mn>1</mn></mrow></mfrac><annotation encoding="application/x-tex">\frac{\sigma^2_\theta \bar{\mathcal{J}}}{\sigma^2_\theta \bar{\mathcal{J}} + 1}</annotation></semantics></math></td>
-<td>EQC (faster)</td>
+<tr class="even">
+<td><strong>Cross-algorithm</strong></td>
+<td><code><a href="reference/compare_eqc_sac.html">compare_eqc_sac()</a></code></td>
+<td>Agreement between EQC and SAC on <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math>
+</td>
+</tr>
+<tr class="odd">
+<td><strong>External</strong></td>
+<td><code><a href="reference/compute_reliability_tam.html">compute_reliability_tam()</a></code></td>
+<td>TAM-fitted WLE/EAP reliability on generated response data</td>
 </tr>
 </tbody>
 </table>
-<p>By Jensen’s inequality: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mo>≥</mo><mover><mi>ρ</mi><mo accent="true">‾</mo></mover></mrow><annotation encoding="application/x-tex">\tilde{\rho} \geq \bar{\rho}</annotation></semantics></math> always holds.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="vignettes">Vignettes<a class="anchor" aria-label="anchor" href="#vignettes"></a>
+<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
-<p>For detailed guidance, see the package vignettes:</p>
+<p>IRTsimrel includes <a href="https://joonho112.github.io/IRTsimrel/articles/">12 vignettes</a> organized in two tracks:</p>
+<p><strong>Getting Started</strong> — <code><a href="articles/introduction.html">vignette("introduction")</a></code> | <code><a href="articles/quick-start.html">vignette("quick-start")</a></code></p>
+<p><strong>Applied Researchers Track</strong> — For running simulation studies:</p>
 <ul>
 <li>
-<code><a href="articles/introduction_to_irtsimrel.html">vignette("introduction_to_irtsimrel")</a></code> — Package overview and workflow</li>
+<code><a href="articles/applied-guide.html">vignette("applied-guide")</a></code> — 6-step workflow from feasibility check to data export</li>
 <li>
-<code><a href="articles/latent_distributions.html">vignette("latent_distributions")</a></code> — Working with 12 latent shapes</li>
+<code><a href="articles/latent-distributions.html">vignette("latent-distributions")</a></code> — All 12 shapes with examples</li>
 <li>
-<code><a href="articles/item_parameters.html">vignette("item_parameters")</a></code> — Generating realistic item parameters</li>
+<code><a href="articles/item-parameters.html">vignette("item-parameters")</a></code> — Parametric, IRW, hierarchical, and custom item generation</li>
 <li>
-<code><a href="articles/eqc_algorithm.html">vignette("eqc_algorithm")</a></code> — Algorithm 1: EQC details</li>
+<code><a href="articles/simulation-design.html">vignette("simulation-design")</a></code> — Designing factorial Monte Carlo studies with reliability as a factor</li>
 <li>
-<code><a href="articles/spc_algorithm.html">vignette("spc_algorithm")</a></code> — Algorithm 2: SPC details</li>
+<code><a href="articles/case-studies.html">vignette("case-studies")</a></code> — Three complete publication-ready simulation templates</li>
+</ul>
+<p><strong>Methodological Researchers Track</strong> — For understanding the theory:</p>
+<ul>
 <li>
-<code><a href="articles/validation.html">vignette("validation")</a></code> — Validating calibration results</li>
+<code><a href="articles/theory-reliability.html">vignette("theory-reliability")</a></code> — Formal reliability definitions, Jensen’s inequality, and the inverse design problem</li>
+<li>
+<code><a href="articles/algorithm-eqc.html">vignette("algorithm-eqc")</a></code> — EQC convergence theory and diagnostics</li>
+<li>
+<code><a href="articles/algorithm-sac.html">vignette("algorithm-sac")</a></code> — SAC step-size analysis and Polyak–Ruppert averaging</li>
+<li>
+<code><a href="articles/validation.html">vignette("validation")</a></code> — Three-level validation framework</li>
+<li>
+<code><a href="articles/api-reference.html">vignette("api-reference")</a></code> — Complete function reference with examples</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
-<p>If you use IRTsimrel in your research, please cite:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>Lee, J.<span class="sc">-</span><span class="fu">H.</span> (<span class="dv">2025</span>). Reliability<span class="sc">-</span>targeted simulation <span class="cf">for</span> item response data.</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>arXiv preprint. arXiv<span class="sc">:</span>XXXX.XXXXX</span></code></pre></div>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>arXiv preprint arXiv<span class="sc">:</span><span class="dv">2512</span>.<span class="fl">16012.</span> https<span class="sc">:</span><span class="er">//</span>arxiv.org<span class="sc">/</span>abs<span class="sc">/</span><span class="fl">2512.16012</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="related-work">Related Work<a class="anchor" aria-label="anchor" href="#related-work"></a>
@@ -328,7 +342,7 @@
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
-<p>MIT © JoonHo Lee</p>
+<p>MIT</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -336,6 +350,7 @@
 <ul class="list-unstyled">
 <li><a href="https://github.com/joonho112/IRTsimrel/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/joonho112/IRTsimrel/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://arxiv.org/abs/2512.16012" class="external-link">arXiv paper (Lee, 2025)</a></li>
 </ul>
 </div>
 
@@ -367,7 +382,8 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://github.com/joonho112/IRTsimrel/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/joonho112/IRTsimrel/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
+<li><a href="https://lifecycle.r-lib.org/articles/stages.html#stable" class="external-link"><img src="https://img.shields.io/badge/lifecycle-stable-brightgreen.svg" alt="Lifecycle: stable"></a></li>
+<li><a href="https://CRAN.R-project.org/package=IRTsimrel" class="external-link"><img src="https://www.r-pkg.org/badges/version/IRTsimrel" alt="CRAN status"></a></li>
 </ul>
 </div>
 

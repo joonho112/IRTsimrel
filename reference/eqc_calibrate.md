@@ -35,16 +35,22 @@ eqc_calibrate(
   n_items,
   model = c("rasch", "2pl"),
   latent_shape = "normal",
-  item_source = "irw",
+  item_source = "parametric",
   latent_params = list(),
   item_params = list(),
-  reliability_metric = c("msem", "info", "bar", "tilde"),
+  reliability_metric = c("info", "tilde", "msem", "bar"),
   M = 10000L,
   c_bounds = c(0.3, 3),
   tol = 1e-04,
   seed = NULL,
   verbose = FALSE
 )
+
+# S3 method for class 'eqc_result'
+print(x, digits = 4, ...)
+
+# S3 method for class 'eqc_result'
+summary(object, ...)
 ```
 
 ## Arguments
@@ -72,7 +78,10 @@ eqc_calibrate(
 
   Character. Source argument passed to
   [`sim_item_params()`](https://joonho112.github.io/IRTsimrel/reference/sim_item_params.md)
-  (e.g. `"irw"`, `"parametric"`, `"hierarchical"`, `"custom"`).
+  (e.g. `"parametric"`, `"irw"`, `"hierarchical"`, `"custom"`). Defaults
+  to `"parametric"` since the irw package is an optional dependency
+  (listed in Suggests). Use `"irw"` for empirically-grounded
+  difficulties when the irw package is installed.
 
 - latent_params:
 
@@ -88,15 +97,18 @@ eqc_calibrate(
 
   Character. Reliability definition used inside EQC:
 
-  `"msem"`
-
-  :   MSEM-based marginal reliability (default, theoretically exact).
-
   `"info"`
 
-  :   Average-information reliability (faster, more stable).
+  :   Average-information reliability (default, recommended for EQC).
+      Targets \\\tilde{\rho}\\, which is guaranteed to be monotone in
+      \\c\\.
 
-  Synonyms: `"bar"` for `"msem"`, `"tilde"` for `"info"`.
+  `"msem"`
+
+  :   MSEM-based marginal reliability (theoretically exact, but may have
+      a non-monotone objective for EQC; see Details).
+
+  Synonyms: `"tilde"` for `"info"`, `"bar"` for `"msem"`.
 
 - M:
 
@@ -118,6 +130,22 @@ eqc_calibrate(
 - verbose:
 
   Logical. If TRUE, print progress messages.
+
+- x:
+
+  An object of class `"eqc_result"`.
+
+- digits:
+
+  Integer. Number of decimal places for printing.
+
+- ...:
+
+  Additional arguments passed to or from other methods.
+
+- object:
+
+  An object of class `"eqc_result"`.
 
 ## Value
 
@@ -155,22 +183,36 @@ An object of class `"eqc_result"` (a list) with elements:
 
   item_params object with discriminations scaled by c_star.
 
+The input object, invisibly.
+
+An object of class `"summary.eqc_result"` containing key calibration
+results.
+
 ## Details
 
 ### Reliability Metrics
 
 The function supports two reliability definitions:
 
+- **Average-information** (`"info"`/`"tilde"`, **default**): Uses the
+  arithmetic mean, \\\tilde{\rho}(c) = \sigma^2\_\theta
+  \bar{\mathcal{J}}(c) / (\sigma^2\_\theta \bar{\mathcal{J}}(c) + 1)\\.
+  By Jensen's inequality, \\\tilde{\rho} \geq \bar{w}\\, so this metric
+  typically yields higher reliability values. **This is the recommended
+  default for EQC** because the objective function \\\tilde{\rho}(c) -
+  \rho^\*\\ is guaranteed to be monotone in \\c\\, ensuring that
+  [`uniroot()`](https://rdrr.io/r/stats/uniroot.html) will find the
+  unique root.
+
 - **MSEM-based** (`"msem"`/`"bar"`): Uses the harmonic mean of test
   information, \\\bar{w}(c) = \sigma^2\_\theta / (\sigma^2\_\theta +
-  E\[1/\mathcal{J}(\theta;c)\])\\. This is theoretically exact but may
-  have a lower ceiling for high reliability.
-
-- **Average-information** (`"info"`/`"tilde"`): Uses the arithmetic
-  mean, \\\tilde{\rho}(c) = \sigma^2\_\theta \bar{\mathcal{J}}(c) /
-  (\sigma^2\_\theta \bar{\mathcal{J}}(c) + 1)\\. By Jensen's inequality,
-  \\\tilde{\rho} \geq \bar{w}\\, so this metric typically yields higher
-  reliability values.
+  E\[1/\mathcal{J}(\theta;c)\])\\. This is theoretically exact but the
+  objective \\\bar{w}(c) - \rho^\*\\ may be non-monotone (see Lee, 2025,
+  Section 4.3), which can cause
+  [`uniroot()`](https://rdrr.io/r/stats/uniroot.html) to fail or find an
+  incorrect root. Use
+  [`sac_calibrate`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md)
+  if you need to target \\\bar{w}\\ directly.
 
 ### WLE vs EAP Reliability Interpretation
 
@@ -183,7 +225,7 @@ bound for true measurement precision.
 
 ## See also
 
-[`spc_calibrate`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md)
+[`sac_calibrate`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md)
 for the stochastic approximation alternative,
 [`compute_rho_bar`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_bar.md)
 and
@@ -195,17 +237,58 @@ for TAM validation.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Basic EQC calibration
+# Basic EQC calibration with parametric items (fast)
+# \donttest{
 eqc_result <- eqc_calibrate(
   target_rho = 0.80,
   n_items = 25,
   model = "rasch",
   latent_shape = "normal",
+  item_source = "parametric",
+  M = 5000L,
+  seed = 42
+)
+print(eqc_result)
+#> 
+#> =======================================================
+#>   Empirical Quadrature Calibration (EQC) Results
+#> =======================================================
+#> 
+#> Calibration Summary:
+#>   Model                        : RASCH
+#>   Target reliability (rho*)    : 0.8000
+#>   Achieved reliability         : 0.8000
+#>   Absolute error               : 1.19e-07
+#>   Scaling factor (c*)          : 0.8995
+#> 
+#> Design Parameters:
+#>   Number of items (I)          : 25
+#>   Quadrature points (M)        : 5000
+#>   Reliability metric           : Average-information (tilde)
+#>   Latent variance              : 1.0099
+#> 
+#> Convergence:
+#>   Root status                  : uniroot_success
+#>   Search bracket               : [0.300, 3.000]
+#>   Bracket reliabilities        : [0.3539, 0.9550]
+#> 
+#> Parameter Summaries:
+#>   theta:        mean = -0.014, sd = 1.005
+#>   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]
+#>   lambda_base:  mean = 1.000, sd = 0.000
+#>   lambda_scaled: mean = 0.899, sd = 0.000
+#> 
+# }
+
+if (FALSE) { # \dontrun{
+# EQC with IRW difficulties (requires irw package)
+eqc_result2 <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
   item_source = "irw",
   seed = 42,
   verbose = TRUE
 )
-print(eqc_result)
 } # }
 ```

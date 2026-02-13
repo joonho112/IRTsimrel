@@ -40,4 +40,5 @@ plot(
 
 ## Value
 
-A ggplot2 object (if available) or base R plot.
+A `ggplot` object if ggplot2 is available, or `NULL` invisibly when
+using base R graphics fallback.

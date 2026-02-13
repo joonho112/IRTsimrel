@@ -290,9 +290,9 @@ for comparing multiple shapes.
 # Basic usage: standard normal abilities
 sim1 <- sim_latentG(n = 1000, shape = "normal")
 mean(sim1$theta)  # approximately 0
-#> [1] -0.003041014
+#> [1] -0.01441477
 sd(sim1$theta)    # approximately 1
-#> [1] 1.013878
+#> [1] 1.040669
 
 # Bimodal distribution for heterogeneous population
 sim2 <- sim_latentG(n = 1000, shape = "bimodal",

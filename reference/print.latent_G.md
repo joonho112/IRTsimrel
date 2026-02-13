@@ -19,3 +19,7 @@ print(x, ...)
 - ...:
 
   Additional arguments (ignored).
+
+## Value
+
+The input object, invisibly.

@@ -11,7 +11,7 @@ Main functions:
 - [`eqc_calibrate`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md):
   Empirical Quadrature Calibration (recommended)
 
-- [`spc_calibrate`](https://joonho112.github.io/IRTsimrel/reference/spc_calibrate.md):
+- [`sac_calibrate`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md):
   Stochastic Approximation Calibration
 
 - [`sim_latentG`](https://joonho112.github.io/IRTsimrel/reference/sim_latentG.md):
@@ -28,6 +28,8 @@ Main functions:
 Useful links:
 
 - <https://github.com/joonho112/IRTsimrel>
+
+- <https://joonho112.github.io/IRTsimrel/>
 
 - Report bugs at <https://github.com/joonho112/IRTsimrel/issues>
 

@@ -6,11 +6,21 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Validating Calibration Results • IRTsimrel</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Validating Calibration Results">
+<meta name="description" content="A comprehensive guide to validating reliability-targeted IRT calibration results at three levels: internal prediction checks, cross-algorithm comparison (EQC vs SAC), and external validation with TAM. Covers Jensen's inequality diagnostics, the 960-condition validation study, misspecification analysis, and troubleshooting.
+">
+<meta property="og:description" content="A comprehensive guide to validating reliability-targeted IRT calibration results at three levels: internal prediction checks, cross-algorithm comparison (EQC vs SAC), and external validation with TAM. Covers Jensen's inequality diagnostics, the 960-condition validation study, misspecification analysis, and troubleshooting.
+">
+<meta property="og:image" content="https://joonho112.github.io/IRTsimrel/logo.svg">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -20,7 +30,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">IRTsimrel</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,26 +39,31 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="../articles/introduction_to_irtsimrel.html">Get Started</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/introduction.html">Get Started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
+<li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><h6 class="dropdown-header" data-toc-skip>Getting Started</h6></li>
-    <li><a class="dropdown-item" href="../articles/introduction_to_irtsimrel.html">Introduction to IRTsimrel</a></li>
+    <li><a class="dropdown-item" href="../articles/introduction.html">Introduction</a></li>
+    <li><a class="dropdown-item" href="../articles/quick-start.html">Quick Start</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core Functions</h6></li>
-    <li><a class="dropdown-item" href="../articles/latent_distributions.html">Working with Latent Distributions</a></li>
-    <li><a class="dropdown-item" href="../articles/item_parameters.html">Generating Realistic Item Parameters</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Applied Researchers Track</h6></li>
+    <li><a class="dropdown-item" href="../articles/applied-guide.html">Applied Guide</a></li>
+    <li><a class="dropdown-item" href="../articles/latent-distributions.html">Latent Distributions</a></li>
+    <li><a class="dropdown-item" href="../articles/item-parameters.html">Item Parameters</a></li>
+    <li><a class="dropdown-item" href="../articles/simulation-design.html">Simulation Design</a></li>
+    <li><a class="dropdown-item" href="../articles/case-studies.html">Case Studies</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration Algorithms</h6></li>
-    <li><a class="dropdown-item" href="../articles/eqc_algorithm.html">Algorithm 1: EQC</a></li>
-    <li><a class="dropdown-item" href="../articles/spc_algorithm.html">Algorithm 2: SPC</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Validation</h6></li>
-    <li><a class="dropdown-item" href="../articles/validation.html">Validating Calibration Results</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Methodological Researchers Track</h6></li>
+    <li><a class="dropdown-item" href="../articles/theory-reliability.html">Reliability Theory</a></li>
+    <li><a class="dropdown-item" href="../articles/algorithm-eqc.html">Algorithm 1: EQC</a></li>
+    <li><a class="dropdown-item" href="../articles/algorithm-sac.html">Algorithm 2: SAC</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../articles/api-reference.html">API Reference</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -67,165 +82,366 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Validating Calibration Results</h1>
+      <img src="../logo.svg" class="logo" alt=""><h1>Validating Calibration Results</h1>
+                        <h4 data-toc-skip class="author">JoonHo Lee</h4>
             
+            <h4 data-toc-skip class="date">2026-02-13</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/HEAD/vignettes/validation.Rmd" class="external-link"><code>vignettes/validation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/main/vignettes/validation.Rmd" class="external-link"><code>vignettes/validation.Rmd</code></a></small>
       <div class="d-none name"><code>validation.Rmd</code></div>
     </div>
 
     
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joonho112/IRTsimrel" class="external-link">IRTsimrel</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joonho112/IRTsimrel" class="external-link">IRTsimrel</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>After calibrating item parameters using EQC or SPC, it is essential
-to <strong>validate</strong> that the achieved reliability matches your
-target. IRTsimrel provides several validation tools:</p>
+<p>Validation is the process of confirming that a calibrated test design
+actually achieves the intended reliability when data are generated from
+it. In the IRTsimrel framework, validation operates at three levels:</p>
 <table class="table">
 <colgroup>
-<col width="52%">
-<col width="47%">
+<col width="22%">
+<col width="25%">
+<col width="51%">
 </colgroup>
 <thead><tr class="header">
-<th>Function</th>
-<th>Purpose</th>
+<th align="left">Level</th>
+<th align="left">Method</th>
+<th align="left">What It Checks</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code><a href="../reference/simulate_response_data.html">simulate_response_data()</a></code></td>
-<td>Generate item response data from calibrated parameters</td>
+<td align="left"><strong>1. Internal</strong></td>
+<td align="left">
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>,
+<code><a href="../reference/compute_rho_both.html">compute_rho_both()</a></code>
+</td>
+<td align="left">Achieved reliability matches target; Jensen’s gap is
+understood</td>
 </tr>
 <tr class="even">
-<td><code><a href="../reference/compute_reliability_tam.html">compute_reliability_tam()</a></code></td>
-<td>Compute WLE/EAP reliability using the TAM package</td>
+<td align="left"><strong>2. Cross-algorithm</strong></td>
+<td align="left"><code><a href="../reference/compare_eqc_sac.html">compare_eqc_sac()</a></code></td>
+<td align="left">EQC and SAC agree on
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math>
+</td>
 </tr>
 <tr class="odd">
-<td><code><a href="../reference/compare_eqc_spc.html">compare_eqc_spc()</a></code></td>
-<td>Compare EQC and SPC calibration results</td>
+<td align="left"><strong>3. External</strong></td>
+<td align="left"><code><a href="../reference/compute_reliability_tam.html">compute_reliability_tam()</a></code></td>
+<td align="left">Fitted-model reliability (WLE/EAP) matches theoretical
+target</td>
 </tr>
 </tbody>
 </table>
-<p>This vignette covers:</p>
-<ol style="list-style-type: decimal">
-<li>Generating response data from calibrated parameters</li>
-<li>External validation using the TAM package</li>
-<li>Understanding WLE vs EAP reliability</li>
-<li>Comparing EQC and SPC results</li>
-<li>Monte Carlo validation workflow</li>
-<li>Troubleshooting common validation issues</li>
-</ol>
+<p><strong>Reading time</strong>: approximately 20 minutes.</p>
+<p><strong>Prerequisites</strong>: Basic familiarity with
+<code><a href="../reference/eqc_calibrate.html">eqc_calibrate()</a></code> and <code><a href="../reference/sac_calibrate.html">sac_calibrate()</a></code>. For
+mathematical foundations, see
+<code><a href="../articles/theory-reliability.html">vignette("theory-reliability")</a></code>. For algorithm details, see
+<code><a href="../articles/algorithm-eqc.html">vignette("algorithm-eqc")</a></code> and
+<code><a href="../articles/algorithm-sac.html">vignette("algorithm-sac")</a></code>.</p>
 </div>
 <div class="section level2">
-<h2 id="generating-response-data">Generating Response Data<a class="anchor" aria-label="anchor" href="#generating-response-data"></a>
+<h2 id="level-1-internal-validation">Level 1: Internal Validation<a class="anchor" aria-label="anchor" href="#level-1-internal-validation"></a>
 </h2>
-<p>The <code><a href="../reference/simulate_response_data.html">simulate_response_data()</a></code> function generates item
-response matrices using calibrated parameters from EQC.</p>
+<p>Internal validation checks whether the calibration output is
+self-consistent, without fitting any external model to simulated
+data.</p>
 <div class="section level3">
-<h3 id="basic-usage">Basic Usage<a class="anchor" aria-label="anchor" href="#basic-usage"></a>
+<h3 id="the-predict-method">The <code>predict()</code> Method<a class="anchor" aria-label="anchor" href="#the-predict-method"></a>
 </h3>
+<p>After running <code><a href="../reference/eqc_calibrate.html">eqc_calibrate()</a></code>, the
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> method evaluates the reliability function at
+arbitrary scaling factors using the stored quadrature samples.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># First, run EQC calibration</span></span>
+<code class="sourceCode R"><span><span class="co"># Calibrate</span></span>
 <span><span class="va">eqc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
-<span>  item_source <span class="op">=</span> <span class="st">"irw"</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt; Note: Target rho* = 0.800 is near the achievable maximum (0.824) for this configuration.</span></span>
-<span></span>
-<span><span class="co"># Generate response data</span></span>
-<span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
-<span>  eqc_result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
-<span>  n_persons <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Examine the output</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "response_matrix" "theta"           "beta"            "lambda"</span></span></code></pre></div>
+<span><span class="co"># Internal consistency check</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target reliability:  %.4f\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Target reliability:  0.8000</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Achieved reliability: %.4f\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Achieved reliability: 0.8000</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Absolute error:      %.6f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span> <span class="op">-</span> <span class="va">eqc_result</span><span class="op">$</span><span class="va">target_rho</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Absolute error:      0.000000</span></span></code></pre></div>
+<p>The achieved reliability should match the target within the EQC
+tolerance (default:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mo>−</mo><mn>4</mn></mrow></msup><annotation encoding="application/x-tex">10^{-4}</annotation></semantics></math>).</p>
 </div>
 <div class="section level3">
-<h3 id="output-structure">Output Structure<a class="anchor" aria-label="anchor" href="#output-structure"></a>
+<h3 id="jensens-gap-via-compute_rho_both">Jensen’s Gap via <code>compute_rho_both()</code><a class="anchor" aria-label="anchor" href="#jensens-gap-via-compute_rho_both"></a>
 </h3>
-<p>The function returns a list containing:</p>
+<p>A critical internal diagnostic is measuring the gap between the two
+reliability metrics at the calibrated
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math>.
+This reveals how much the choice of metric matters for the specific test
+configuration.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Response matrix: N persons × I items</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1000   25</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      item1 item2 item3 item4 item5 item6</span></span>
-<span><span class="co">#&gt; [1,]     0     1     0     1     0     1</span></span>
-<span><span class="co">#&gt; [2,]     0     0     1     0     0     0</span></span>
-<span><span class="co">#&gt; [3,]     1     1     1     1     1     1</span></span>
-<span><span class="co">#&gt; [4,]     1     1     1     1     0     1</span></span>
-<span><span class="co">#&gt; [5,]     0     1     0     1     0     0</span></span>
-<span><span class="co">#&gt; [6,]     1     1     1     1     1     0</span></span>
+<code class="sourceCode R"><span><span class="co"># Compute both metrics at c*</span></span>
+<span><span class="va">theta_val</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">5000</span>, shape <span class="op">=</span> <span class="st">"normal"</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span></span>
+<span><span class="va">items_val</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_item_params.html">sim_item_params</a></span><span class="op">(</span><span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>, source <span class="op">=</span> <span class="st">"parametric"</span><span class="op">)</span></span>
+<span><span class="va">beta_val</span>  <span class="op">&lt;-</span> <span class="va">items_val</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">beta</span></span>
+<span><span class="va">lambda_val</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">25</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># True abilities (used for generating responses)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -0.56047565 -0.23017749  1.55870831  0.07050839  0.12928774  1.71506499</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Theta mean: %.3f, SD: %.3f\n"</span>, </span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Theta mean: 0.016, SD: 0.992</span></span>
+<span><span class="va">both</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span><span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">theta_val</span>, <span class="va">beta_val</span>, <span class="va">lambda_val</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Item parameters used</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Number of items: %d\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Number of items: 25</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Beta range: [%.2f, %.2f]\n"</span>, </span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Beta range: [-1.48, 1.06]</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"At calibrated c* = %.4f:\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; At calibrated c* = 0.8995:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  rho_tilde (info): %.4f\n"</span>, <span class="va">both</span><span class="op">$</span><span class="va">rho_tilde</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   rho_tilde (info): 0.8000</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  rho_bar   (msem): %.4f\n"</span>, <span class="va">both</span><span class="op">$</span><span class="va">rho_bar</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   rho_bar   (msem): 0.7937</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Jensen's gap:     %.4f\n"</span>, <span class="va">both</span><span class="op">$</span><span class="va">rho_tilde</span> <span class="op">-</span> <span class="va">both</span><span class="op">$</span><span class="va">rho_bar</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Jensen's gap:     0.0063</span></span></code></pre></div>
+<p><strong>Interpretation guidelines</strong>:</p>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Jensen’s gap</th>
+<th align="left">Interpretation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">&lt; 0.01</td>
+<td align="left">Negligible; metric choice does not matter</td>
+</tr>
+<tr class="even">
+<td align="left">0.01–0.03</td>
+<td align="left">Small; typical for normal latent distributions</td>
+</tr>
+<tr class="odd">
+<td align="left">0.03–0.05</td>
+<td align="left">Moderate; consider which metric is more
+appropriate</td>
+</tr>
+<tr class="even">
+<td align="left">&gt; 0.05</td>
+<td align="left">Large; investigate latent distribution or item
+structure</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
-<h3 id="matching-latent-distribution">Matching Latent Distribution<a class="anchor" aria-label="anchor" href="#matching-latent-distribution"></a>
+<h3 id="jensens-gap-across-latent-distributions">Jensen’s Gap Across Latent Distributions<a class="anchor" aria-label="anchor" href="#jensens-gap-across-latent-distributions"></a>
 </h3>
-<p><strong>Important</strong>: Use the same latent distribution for
-simulation as you used for calibration:</p>
+<p>The gap depends on how much test information varies across the
+ability continuum. Non-standard latent distributions typically produce
+larger gaps.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Calibrate for bimodal population</span></span>
-<span><span class="va">eqc_bimodal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.75</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">20</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"bimodal"</span>,</span>
-<span>  latent_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
+<code class="sourceCode R"><span><span class="va">shapes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal"</span>, <span class="st">"bimodal"</span>, <span class="st">"heavy_tail"</span>, <span class="st">"skew_pos"</span><span class="op">)</span></span>
+<span><span class="va">shape_pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  normal     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  bimodal    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
+<span>  heavy_tail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>df <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  skew_pos   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Generate data with SAME distribution</span></span>
-<span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
-<span>  eqc_result <span class="op">=</span> <span class="va">eqc_bimodal</span>,</span>
-<span>  n_persons <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  latent_shape <span class="op">=</span> <span class="st">"bimodal"</span>,           <span class="co"># Same shape!</span></span>
-<span>  latent_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span>,  <span class="co"># Same params!</span></span>
-<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>If distributions don’t match, achieved reliability will differ from
-target.</p>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Jensen's gap by latent shape (c* from info metric, target = 0.80):\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Jensen's gap by latent shape (c* from info metric, target = 0.80):</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  %-12s %-8s %-10s %-10s %-8s\n"</span>,</span>
+<span>            <span class="st">"Shape"</span>, <span class="st">"c*"</span>, <span class="st">"rho_tilde"</span>, <span class="st">"rho_bar"</span>, <span class="st">"Gap"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Shape        c*       rho_tilde  rho_bar    Gap</span></span>
+<span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">sh</span> <span class="kw">in</span> <span class="va">shapes</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">eqc_sh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
+<span>    target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>    item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>    latent_shape <span class="op">=</span> <span class="va">sh</span>, latent_params <span class="op">=</span> <span class="va">shape_pars</span><span class="op">[[</span><span class="va">sh</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>    M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">theta_sh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">5000</span>, shape <span class="op">=</span> <span class="va">sh</span>, shape_params <span class="op">=</span> <span class="va">shape_pars</span><span class="op">[[</span><span class="va">sh</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span></span>
+<span>  <span class="va">both_sh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span><span class="va">eqc_sh</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">theta_sh</span>, <span class="va">beta_val</span>, <span class="va">lambda_val</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  %-12s %-8.4f %-10.4f %-10.4f %-8.4f\n"</span>,</span>
+<span>              <span class="va">sh</span>, <span class="va">eqc_sh</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">both_sh</span><span class="op">$</span><span class="va">rho_tilde</span>, <span class="va">both_sh</span><span class="op">$</span><span class="va">rho_bar</span>,</span>
+<span>              <span class="va">both_sh</span><span class="op">$</span><span class="va">rho_tilde</span> <span class="op">-</span> <span class="va">both_sh</span><span class="op">$</span><span class="va">rho_bar</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="co">#&gt;   normal       0.8995   0.8006     0.7944     0.0062</span></span>
+<span><span class="co">#&gt; Auto-wrapping shape parameter(s) {delta} into latent_params$shape_params.</span></span>
+<span><span class="co">#&gt;   bimodal      0.9605   0.8133     0.8106     0.0027</span></span>
+<span><span class="co">#&gt; Auto-wrapping shape parameter(s) {df} into latent_params$shape_params.</span></span>
+<span><span class="co">#&gt;   heavy_tail   0.9365   0.8138     0.7952     0.0186</span></span>
+<span><span class="co">#&gt; Auto-wrapping shape parameter(s) {k} into latent_params$shape_params.</span></span>
+<span><span class="co">#&gt;   skew_pos     0.9132   0.8008     0.7885     0.0123</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="external-validation-with-tam">External Validation with TAM<a class="anchor" aria-label="anchor" href="#external-validation-with-tam"></a>
+<h2 id="level-2-cross-algorithm-validation">Level 2: Cross-Algorithm Validation<a class="anchor" aria-label="anchor" href="#level-2-cross-algorithm-validation"></a>
 </h2>
-<p>The <code><a href="../reference/compute_reliability_tam.html">compute_reliability_tam()</a></code> function provides
-independent validation using the TAM package’s official reliability
-functions.</p>
+<p>Cross-algorithm validation uses two independent calibration
+algorithms to solve the same problem. Agreement between them provides
+strong evidence that the calibration is correct.</p>
+<div class="section level3">
+<h3 id="the-compare_eqc_sac-function">The <code>compare_eqc_sac()</code> Function<a class="anchor" aria-label="anchor" href="#the-compare_eqc_sac-function"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run EQC</span></span>
+<span><span class="va">eqc_cross</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Run SAC with EQC warm start</span></span>
+<span><span class="va">sac_cross</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sac_calibrate.html">sac_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  c_init <span class="op">=</span> <span class="va">eqc_cross</span>, n_iter <span class="op">=</span> <span class="fl">300L</span>, M_per_iter <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Formal comparison</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_eqc_sac.html">compare_eqc_sac</a></span><span class="op">(</span><span class="va">eqc_cross</span>, <span class="va">sac_cross</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; =======================================================</span></span>
+<span><span class="co">#&gt;   EQC vs SAC Comparison</span></span>
+<span><span class="co">#&gt; =======================================================</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Target reliability  : 0.8000</span></span>
+<span><span class="co">#&gt;   EQC c*              : 0.899499</span></span>
+<span><span class="co">#&gt;   SAC c*              : 0.912155</span></span>
+<span><span class="co">#&gt;   Absolute difference : 0.012656</span></span>
+<span><span class="co">#&gt;   Percent difference  : 1.41%</span></span>
+<span><span class="co">#&gt;   Agreement (&lt; 5%)    : YES</span></span>
+<span><span class="co">#&gt; </span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="interpreting-the-comparison">Interpreting the Comparison<a class="anchor" aria-label="anchor" href="#interpreting-the-comparison"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nComparison summary:\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Comparison summary:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EQC c*:          %.4f\n"</span>, <span class="va">comparison</span><span class="op">$</span><span class="va">c_eqc</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   EQC c*:          0.8995</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SAC c*:          %.4f\n"</span>, <span class="va">comparison</span><span class="op">$</span><span class="va">c_sac</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   SAC c*:          0.9122</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Absolute diff:   %.4f\n"</span>, <span class="va">comparison</span><span class="op">$</span><span class="va">diff_abs</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Absolute diff:   0.0127</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Percent diff:    %.2f%%\n"</span>, <span class="va">comparison</span><span class="op">$</span><span class="va">diff_pct</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Percent diff:    1.41%</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Agreement (&lt;5%%): %s\n"</span>, <span class="va">comparison</span><span class="op">$</span><span class="va">agreement</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Agreement (&lt;5%): TRUE</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="agreement-criteria">Agreement Criteria<a class="anchor" aria-label="anchor" href="#agreement-criteria"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Percent difference</th>
+<th align="left">Interpretation</th>
+<th align="left">Action</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">&lt; 2%</td>
+<td align="left">Excellent agreement</td>
+<td align="left">Proceed with confidence</td>
+</tr>
+<tr class="even">
+<td align="left">2%–5%</td>
+<td align="left">Good agreement</td>
+<td align="left">Acceptable for most applications</td>
+</tr>
+<tr class="odd">
+<td align="left">5%–10%</td>
+<td align="left">Marginal agreement</td>
+<td align="left">Investigate; increase SAC iterations</td>
+</tr>
+<tr class="even">
+<td align="left">&gt; 10%</td>
+<td align="left">Poor agreement</td>
+<td align="left">Check metrics, convergence, and bounds</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="warm-start-benefits">Warm Start Benefits<a class="anchor" aria-label="anchor" href="#warm-start-benefits"></a>
+</h3>
+<p>Using EQC to initialize SAC dramatically improves convergence and
+agreement.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># SAC without warm start (APC initialization)</span></span>
+<span><span class="va">sac_cold</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sac_calibrate.html">sac_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  c_init <span class="op">=</span> <span class="cn">NULL</span>,  <span class="co"># APC start</span></span>
+<span>  n_iter <span class="op">=</span> <span class="fl">300L</span>, M_per_iter <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># SAC with EQC warm start</span></span>
+<span><span class="va">sac_warm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sac_calibrate.html">sac_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  c_init <span class="op">=</span> <span class="va">eqc_cross</span>,  <span class="co"># EQC warm start</span></span>
+<span>  n_iter <span class="op">=</span> <span class="fl">300L</span>, M_per_iter <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Effect of warm start on SAC-EQC agreement:\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Effect of warm start on SAC-EQC agreement:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SAC (APC start): c* = %.4f, diff from EQC = %.4f\n"</span>,</span>
+<span>            <span class="va">sac_cold</span><span class="op">$</span><span class="va">c_star</span>, <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">sac_cold</span><span class="op">$</span><span class="va">c_star</span> <span class="op">-</span> <span class="va">eqc_cross</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   SAC (APC start): c* = 0.9793, diff from EQC = 0.0798</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SAC (EQC start): c* = %.4f, diff from EQC = %.4f\n"</span>,</span>
+<span>            <span class="va">sac_warm</span><span class="op">$</span><span class="va">c_star</span>, <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">sac_warm</span><span class="op">$</span><span class="va">c_star</span> <span class="op">-</span> <span class="va">eqc_cross</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   SAC (EQC start): c* = 0.9122, diff from EQC = 0.0127</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="level-3-external-validation-with-tam">Level 3: External Validation with TAM<a class="anchor" aria-label="anchor" href="#level-3-external-validation-with-tam"></a>
+</h2>
+<p>External validation fits an IRT model to simulated response data
+using an independent software package (TAM) and compares the recovered
+reliability to the design target.</p>
 <div class="section level3">
 <h3 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install TAM if needed</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"TAM"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="computing-reliability">Computing Reliability<a class="anchor" aria-label="anchor" href="#computing-reliability"></a>
+<h3 id="generating-response-data">Generating Response Data<a class="anchor" aria-label="anchor" href="#generating-response-data"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<p>The <code><a href="../reference/simulate_response_data.html">simulate_response_data()</a></code> function generates item
+response matrices from the calibrated parameters.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
+<span>  result <span class="op">=</span> <span class="va">eqc_cross</span>,</span>
+<span>  n_persons <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Response matrix: %d persons x %d items\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Response matrix: 1000 persons x 25 items</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Theta: mean = %.3f, SD = %.3f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">theta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Theta: mean = 0.016, SD = 0.992</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Item difficulty range: [%.2f, %.2f]\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">sim_data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Item difficulty range: [-2.17, 1.45]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="computing-tam-reliability">Computing TAM Reliability<a class="anchor" aria-label="anchor" href="#computing-tam-reliability"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Compute WLE and EAP reliability</span></span>
 <span><span class="va">tam_rel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span></span>
 <span>  resp <span class="op">=</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span>,</span>
@@ -233,215 +449,137 @@ functions.</p>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># View results</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target reliability:  %.4f\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EQC achieved rho:    %.4f\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"TAM WLE reliability: %.4f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"TAM EAP reliability: %.4f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="output-components">Output Components<a class="anchor" aria-label="anchor" href="#output-components"></a>
-</h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">tam_rel</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># rel_wle: WLE reliability coefficient</span></span>
-<span><span class="co"># rel_eap: EAP reliability coefficient</span></span>
-<span><span class="co"># mod: Fitted TAM model object</span></span>
-<span><span class="co"># wle: Output from TAM::tam.wle()</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="using-with-2pl-model">Using with 2PL Model<a class="anchor" aria-label="anchor" href="#using-with-2pl-model"></a>
-</h3>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># For 2PL data</span></span>
-<span><span class="va">eqc_2pl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">30</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"2pl"</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">sim_2pl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">eqc_2pl</span>, n_persons <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">tam_2pl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span></span>
-<span>  resp <span class="op">=</span> <span class="va">sim_2pl</span><span class="op">$</span><span class="va">response_matrix</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"2pl"</span>  <span class="co"># Specify 2PL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"External validation (TAM):\n"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Target reliability:  %.4f\n"</span>, <span class="va">eqc_cross</span><span class="op">$</span><span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EQC achieved rho:    %.4f\n"</span>, <span class="va">eqc_cross</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  TAM WLE reliability: %.4f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  TAM EAP reliability: %.4f\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="understanding-wle-vs-eap-reliability">Understanding WLE vs EAP Reliability<a class="anchor" aria-label="anchor" href="#understanding-wle-vs-eap-reliability"></a>
 </h2>
-<p>A critical validation finding: <strong>TAM’s EAP reliability is
-systematically higher than WLE reliability</strong>. This is not a
-bug—it reflects fundamentally different mathematical definitions.</p>
+<p>A critical aspect of external validation is understanding why TAM
+reports two different reliability coefficients that bracket the
+target.</p>
 <div class="section level3">
-<h3 id="the-two-definitions">The Two Definitions<a class="anchor" aria-label="anchor" href="#the-two-definitions"></a>
+<h3 id="mathematical-definitions">Mathematical Definitions<a class="anchor" aria-label="anchor" href="#mathematical-definitions"></a>
 </h3>
-<p><strong>WLE Reliability</strong> (design-effect based):
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub><mo>=</mo><mn>1</mn><mo>−</mo><mfrac><msup><mover><mi>s</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><msub><mi>V</mi><mtext mathvariant="normal">WLE</mtext></msub></mfrac></mrow><annotation encoding="application/x-tex">\rho_{\text{WLE}} = 1 - \frac{\bar{s}^2}{V_{\text{WLE}}}</annotation></semantics></math></p>
+<p><strong>WLE Reliability</strong> (design-effect based):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub><mo>=</mo><mn>1</mn><mo>−</mo><mfrac><msup><mover><mi>s</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><msub><mi>V</mi><mtext mathvariant="normal">WLE</mtext></msub></mfrac></mrow><annotation encoding="application/x-tex">
+\rho_{\text{WLE}} = 1 - \frac{\bar{s}^2}{V_{\text{WLE}}}
+\tag{1}
+</annotation></semantics></math></p>
 <p>where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mover><mi>s</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><annotation encoding="application/x-tex">\bar{s}^2</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mover><mi>s</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><mo>=</mo><msup><mi>N</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msubsup><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></msubsup><msup><mtext mathvariant="normal">SE</mtext><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>k</mi><mtext mathvariant="normal">WLE</mtext></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\bar{s}^2 = N^{-1} \sum_{k=1}^N \text{SE}^2(\hat{\theta}_k^{\text{WLE}})</annotation></semantics></math>
 is the average squared standard error and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mtext mathvariant="normal">WLE</mtext></msub><annotation encoding="application/x-tex">V_{\text{WLE}}</annotation></semantics></math>
-is the variance of WLE estimates.</p>
-<p><strong>EAP Reliability</strong> (posterior variance based):
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>=</mo><mfrac><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><mrow><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>+</mo><msup><mover><mi>σ</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup></mrow></mfrac></mrow><annotation encoding="application/x-tex">\rho_{\text{EAP}} = \frac{V_{\text{EAP}}}{V_{\text{EAP}} + \bar{\sigma}^2}</annotation></semantics></math></p>
+is the sample variance of WLE estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">{</mo><msubsup><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>k</mi><mtext mathvariant="normal">WLE</mtext></msubsup><msubsup><mo stretchy="false" form="postfix">}</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></msubsup></mrow><annotation encoding="application/x-tex">\{\hat{\theta}_k^{\text{WLE}}\}_{k=1}^N</annotation></semantics></math>.</p>
+<p><strong>EAP Reliability</strong> (posterior variance based):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>=</mo><mfrac><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><mrow><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>+</mo><msup><mover><mi>σ</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+\rho_{\text{EAP}} = \frac{V_{\text{EAP}}}{V_{\text{EAP}} + \bar{\sigma}^2}
+\tag{2}
+</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><annotation encoding="application/x-tex">V_{\text{EAP}}</annotation></semantics></math>
-is the variance of EAP estimates and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mover><mi>σ</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><annotation encoding="application/x-tex">\bar{\sigma}^2</annotation></semantics></math>
+is the sample variance of EAP estimates and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mover><mi>σ</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><mo>=</mo><msup><mi>N</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msubsup><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></msubsup><msubsup><mi>σ</mi><mi>k</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\bar{\sigma}^2 = N^{-1} \sum_{k=1}^N \sigma^2_k</annotation></semantics></math>
 is the average posterior variance.</p>
 </div>
 <div class="section level3">
-<h3 id="mathematical-relationship">Mathematical Relationship<a class="anchor" aria-label="anchor" href="#mathematical-relationship"></a>
+<h3 id="why-eap-geq-wle-always">Why EAP
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>≥</mo><annotation encoding="application/x-tex">\geq</annotation></semantics></math>
+WLE Always<a class="anchor" aria-label="anchor" href="#why-eap-geq-wle-always"></a>
 </h3>
-<p>Under TAM’s definitions,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>≥</mo><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub></mrow><annotation encoding="application/x-tex">\rho_{\text{EAP}} \geq \rho_{\text{WLE}}</annotation></semantics></math><strong>always</strong> holds. The inequality is strict except in
-trivial cases.</p>
+<p>The inequality
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>≥</mo><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub></mrow><annotation encoding="application/x-tex">\rho_{\text{EAP}} \geq \rho_{\text{WLE}}</annotation></semantics></math>
+is a consequence of how posterior shrinkage affects variance
+estimation.</p>
+<p><strong>EAP shrinkage</strong>: EAP estimates are shrunk toward the
+prior mean, which:</p>
+<ul>
+<li>Reduces the variance of estimates:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>&lt;</mo><msub><mi>V</mi><mtext mathvariant="normal">WLE</mtext></msub></mrow><annotation encoding="application/x-tex">V_{\text{EAP}} &lt; V_{\text{WLE}}</annotation></semantics></math>
+</li>
+<li>Reduces the average error variance:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mover><mi>σ</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup><mo>&lt;</mo><msup><mover><mi>s</mi><mo accent="true">‾</mo></mover><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\bar{\sigma}^2 &lt; \bar{s}^2</annotation></semantics></math>
+</li>
+<li>The error reduction is proportionally larger than the variance
+reduction, resulting in a higher reliability ratio.</li>
+</ul>
+<p><strong>Connection to Jensen’s inequality</strong>: The EAP
+reliability relates to the MSEM-based population reliability
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>w</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{w}</annotation></semantics></math>,
+while the WLE reliability relates more closely to the
+average-information reliability
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{\rho}</annotation></semantics></math>.
+The ordering
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>≥</mo><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub></mrow><annotation encoding="application/x-tex">\rho_{\text{EAP}} \geq \rho_{\text{WLE}}</annotation></semantics></math>
+parallels the theoretical
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mo>≥</mo><mover><mi>w</mi><mo accent="true">‾</mo></mover></mrow><annotation encoding="application/x-tex">\tilde{\rho} \geq \bar{w}</annotation></semantics></math>
+inequality, though the finite-sample estimators introduce additional
+variability.</p>
 </div>
 <div class="section level3">
 <h3 id="practical-interpretation">Practical Interpretation<a class="anchor" aria-label="anchor" href="#practical-interpretation"></a>
 </h3>
 <table class="table">
+<colgroup>
+<col width="19%">
+<col width="25%">
+<col width="54%">
+</colgroup>
 <thead><tr class="header">
-<th>Metric</th>
-<th>Interpretation</th>
-<th>Use Case</th>
+<th align="left">TAM Metric</th>
+<th align="left">Interpretation</th>
+<th align="left">Typical Relationship to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>ρ</mi><mo>*</mo></msup><annotation encoding="application/x-tex">\rho^*</annotation></semantics></math>
+</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>WLE reliability</td>
-<td>Conservative lower bound</td>
-<td>Worst-case scenario</td>
+<td align="left">WLE reliability</td>
+<td align="left">Conservative lower bound</td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub><mo>≲</mo><msup><mi>ρ</mi><mo>*</mo></msup></mrow><annotation encoding="application/x-tex">\rho_{\text{WLE}} \lesssim \rho^*</annotation></semantics></math></td>
 </tr>
 <tr class="even">
-<td>EAP reliability</td>
-<td>Liberal upper bound</td>
-<td>Best-case scenario</td>
+<td align="left">EAP reliability</td>
+<td align="left">Liberal upper bound</td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo>≳</mo><msup><mi>ρ</mi><mo>*</mo></msup></mrow><annotation encoding="application/x-tex">\rho_{\text{EAP}} \gtrsim \rho^*</annotation></semantics></math></td>
 </tr>
 <tr class="odd">
-<td>EQC/SPC target</td>
-<td>Theoretical population reliability</td>
-<td>Design target</td>
+<td align="left">Midpoint</td>
+<td align="left">Reasonable central estimate</td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>≈</mo><msup><mi>ρ</mi><mo>*</mo></msup></mrow><annotation encoding="application/x-tex">\approx \rho^*</annotation></semantics></math></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Recommendation</strong>: For conservative inference, focus on
-WLE reliability. The EQC/SPC target typically falls between WLE and
-EAP.</p>
-</div>
-<div class="section level3">
-<h3 id="expected-patterns">Expected Patterns<a class="anchor" aria-label="anchor" href="#expected-patterns"></a>
-</h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Typical validation results</span></span>
-<span><span class="co"># Target: 0.80</span></span>
-<span></span>
-<span><span class="co"># WLE reliability: 0.78 - 0.82  (slight underestimation common)</span></span>
-<span><span class="co"># EAP reliability: 0.82 - 0.86  (slight overestimation common)</span></span>
-<span></span>
-<span><span class="co"># Both within ±0.03 of target is excellent</span></span>
-<span><span class="co"># WLE within ±0.05 of target is acceptable</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="comparing-eqc-and-spc-results">Comparing EQC and SPC Results<a class="anchor" aria-label="anchor" href="#comparing-eqc-and-spc-results"></a>
-</h2>
-<p>The <code><a href="../reference/compare_eqc_spc.html">compare_eqc_spc()</a></code> function provides a formal
-comparison between the two calibration algorithms.</p>
-<div class="section level3">
-<h3 id="basic-comparison">Basic Comparison<a class="anchor" aria-label="anchor" href="#basic-comparison"></a>
-</h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Run EQC</span></span>
-<span><span class="va">eqc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Run SPC with EQC warm start</span></span>
-<span><span class="va">spc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spc_calibrate.html">spc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
-<span>  c_init <span class="op">=</span> <span class="va">eqc_result</span>,</span>
-<span>  n_iter <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Compare</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_eqc_spc.html">compare_eqc_spc</a></span><span class="op">(</span><span class="va">eqc_result</span>, <span class="va">spc_result</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="interpreting-the-comparison">Interpreting the Comparison<a class="anchor" aria-label="anchor" href="#interpreting-the-comparison"></a>
-</h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Output includes:</span></span>
-<span><span class="va">comparison</span><span class="op">$</span><span class="va">c_eqc</span>      <span class="co"># EQC's c*</span></span>
-<span><span class="va">comparison</span><span class="op">$</span><span class="va">c_spc</span>      <span class="co"># SPC's c*</span></span>
-<span><span class="va">comparison</span><span class="op">$</span><span class="va">diff_abs</span>   <span class="co"># Absolute difference</span></span>
-<span><span class="va">comparison</span><span class="op">$</span><span class="va">diff_pct</span>   <span class="co"># Percent difference</span></span>
-<span><span class="va">comparison</span><span class="op">$</span><span class="va">agreement</span>  <span class="co"># TRUE if difference &lt; 5%</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="expected-differences">Expected Differences<a class="anchor" aria-label="anchor" href="#expected-differences"></a>
-</h3>
-<p>EQC and SPC may produce slightly different results due to:</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>Different reliability formulas</strong>: EQC uses fixed
-quadrature; SPC uses fresh samples</li>
-<li>
-<strong>Stochastic noise</strong>: SPC has Monte Carlo variance</li>
-<li>
-<strong>Reliability metric</strong>: If using different metrics,
-expect systematic differences</li>
-</ol>
-<p><strong>Agreement criterion</strong>: Differences &lt; 5% indicate
-good agreement.</p>
-</div>
-<div class="section level3">
-<h3 id="when-they-disagree">When They Disagree<a class="anchor" aria-label="anchor" href="#when-they-disagree"></a>
-</h3>
-<p>If EQC and SPC differ by more than 5%:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Check if using same reliability metric</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EQC metric: %s\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">metric</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"SPC metric: %s\n"</span>, <span class="va">spc_result</span><span class="op">$</span><span class="va">metric</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 2. Increase SPC iterations for more stable estimate</span></span>
-<span><span class="va">spc_longer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spc_calibrate.html">spc_calibrate</a></span><span class="op">(</span></span>
-<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>,</span>
-<span>  n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>  c_init <span class="op">=</span> <span class="va">eqc_result</span>,</span>
-<span>  n_iter <span class="op">=</span> <span class="fl">500</span>,  <span class="co"># More iterations</span></span>
-<span>  burn_in <span class="op">=</span> <span class="fl">250</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 3. Check SPC convergence</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Converged: %s\n"</span>, <span class="va">spc_longer</span><span class="op">$</span><span class="va">convergence</span><span class="op">$</span><span class="va">converged</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Post-burn-in SD: %.4f\n"</span>, <span class="va">spc_longer</span><span class="op">$</span><span class="va">convergence</span><span class="op">$</span><span class="va">sd_post_burn</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Expected patterns</strong> (for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>ρ</mi><mo>*</mo></msup><mo>=</mo><mn>0.80</mn></mrow><annotation encoding="application/x-tex">\rho^* = 0.80</annotation></semantics></math>):</p>
+<ul>
+<li>WLE reliability: approximately 0.77–0.82</li>
+<li>EAP reliability: approximately 0.82–0.86</li>
+<li>Both within
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>±</mo><mn>0.03</mn></mrow><annotation encoding="application/x-tex">\pm 0.03</annotation></semantics></math>
+of target is excellent</li>
+<li>WLE within
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>±</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">\pm 0.05</annotation></semantics></math>
+of target is acceptable</li>
+</ul>
 </div>
 </div>
 <div class="section level2">
 <h2 id="monte-carlo-validation-workflow">Monte Carlo Validation Workflow<a class="anchor" aria-label="anchor" href="#monte-carlo-validation-workflow"></a>
 </h2>
 <p>For rigorous validation, use multiple replications to account for
-sampling variability.</p>
-<div class="section level3">
-<h3 id="complete-validation-example">Complete Validation Example<a class="anchor" aria-label="anchor" href="#complete-validation-example"></a>
-</h3>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+sampling variability in both data generation and model fitting.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ==== Configuration ====</span></span>
 <span><span class="va">target_rho</span> <span class="op">&lt;-</span> <span class="fl">0.80</span></span>
 <span><span class="va">n_items</span> <span class="op">&lt;-</span> <span class="fl">25</span></span>
 <span><span class="va">n_persons</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
-<span><span class="va">n_replications</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
+<span><span class="va">n_reps</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
 <span></span>
 <span><span class="co"># ==== Step 1: Calibrate ====</span></span>
 <span><span class="va">eqc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
@@ -449,409 +587,685 @@ sampling variability.</p>
 <span>  n_items <span class="op">=</span> <span class="va">n_items</span>,</span>
 <span>  model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
 <span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
-<span>  item_source <span class="op">=</span> <span class="st">"irw"</span>,</span>
-<span>  M <span class="op">=</span> <span class="fl">20000</span>,  <span class="co"># Large quadrature for precision</span></span>
-<span>  seed <span class="op">=</span> <span class="fl">42</span></span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">20000L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">42</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Calibrated c* = %.4f\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EQC achieved rho = %.4f\n\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Calibrated c* = %.4f\n\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ==== Step 2: Monte Carlo Validation ====</span></span>
-<span><span class="va">wle_rels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">n_replications</span><span class="op">)</span></span>
-<span><span class="va">eap_rels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">n_replications</span><span class="op">)</span></span>
+<span><span class="va">wle_rels</span> <span class="op">&lt;-</span> <span class="va">eap_rels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">n_reps</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Running Monte Carlo validation...\n"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_replications</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># Generate data</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_reps</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
-<span>    eqc_result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
+<span>    result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
 <span>    n_persons <span class="op">=</span> <span class="va">n_persons</span>,</span>
 <span>    latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
 <span>    seed <span class="op">=</span> <span class="va">r</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># Compute TAM reliability</span></span>
+<span></span>
 <span>  <span class="va">tam_rel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span></span>
 <span>    resp <span class="op">=</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span>,</span>
 <span>    model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
 <span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">wle_rels</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span></span>
 <span>  <span class="va">eap_rels</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">r</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">10</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Completed %d/%d\n"</span>, <span class="va">r</span>, <span class="va">n_replications</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">r</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">10</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Completed %d/%d\n"</span>, <span class="va">r</span>, <span class="va">n_reps</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># ==== Step 3: Summarize Results ====</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"=======================================================\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  Monte Carlo Validation Results\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"=======================================================\n\n"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target reliability: %.3f\n\n"</span>, <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"WLE Reliability:\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Mean:   %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SD:     %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Range:  [%.4f, %.4f]\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  MAE:    %.4f\n\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"EAP Reliability:\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Mean:   %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SD:     %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Range:  [%.4f, %.4f]\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  MAE:    %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eap_rels</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-</div>
+<span><span class="co"># ==== Step 3: Summarize ====</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nMonte Carlo Validation Results\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"==============================\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target: %.3f\n\n"</span>, <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"WLE: Mean = %.4f, SD = %.4f, MAE = %.4f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EAP: Mean = %.4f, SD = %.4f, MAE = %.4f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eap_rels</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="interpreting-monte-carlo-results">Interpreting Monte Carlo Results<a class="anchor" aria-label="anchor" href="#interpreting-monte-carlo-results"></a>
+<h3 id="success-criteria">Success Criteria<a class="anchor" aria-label="anchor" href="#success-criteria"></a>
 </h3>
-<p><strong>Success criteria</strong>:</p>
 <table class="table">
 <thead><tr class="header">
-<th>Metric</th>
-<th>Good</th>
-<th>Acceptable</th>
-<th>Investigate</th>
+<th align="left">Metric</th>
+<th align="left">Good</th>
+<th align="left">Acceptable</th>
+<th align="left">Investigate</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>MAE (WLE)</td>
-<td>&lt; 0.02</td>
-<td>&lt; 0.03</td>
-<td>&gt; 0.05</td>
+<td align="left">MAE (WLE)</td>
+<td align="left">&lt; 0.02</td>
+<td align="left">&lt; 0.03</td>
+<td align="left">&gt; 0.05</td>
 </tr>
 <tr class="even">
-<td>MAE (EAP)</td>
-<td>&lt; 0.02</td>
-<td>&lt; 0.03</td>
-<td>&gt; 0.05</td>
+<td align="left">MAE (EAP)</td>
+<td align="left">&lt; 0.02</td>
+<td align="left">&lt; 0.03</td>
+<td align="left">&gt; 0.05</td>
 </tr>
 <tr class="odd">
-<td>SD (WLE)</td>
-<td>&lt; 0.02</td>
-<td>&lt; 0.03</td>
-<td>&gt; 0.04</td>
+<td align="left">SD (WLE)</td>
+<td align="left">&lt; 0.02</td>
+<td align="left">&lt; 0.03</td>
+<td align="left">&gt; 0.04</td>
+</tr>
+<tr class="even">
+<td align="left">SD (EAP)</td>
+<td align="left">&lt; 0.01</td>
+<td align="left">&lt; 0.02</td>
+<td align="left">&gt; 0.03</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="the-960-condition-validation-study">The 960-Condition Validation Study<a class="anchor" aria-label="anchor" href="#the-960-condition-validation-study"></a>
+</h2>
+<p>The paper (Lee, 2025) reports a comprehensive validation study that
+provides empirical evidence for the package’s accuracy across a wide
+range of conditions.</p>
+<div class="section level3">
+<h3 id="study-design">Study Design<a class="anchor" aria-label="anchor" href="#study-design"></a>
+</h3>
+<p>The validation study crossed the following factors:</p>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Factor</th>
+<th align="center">Levels</th>
+<th align="left">Values</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">IRT model</td>
+<td align="center">3</td>
+<td align="left">Rasch, 2PL-copula, 2PL-conditional</td>
+</tr>
+<tr class="even">
+<td align="left">Latent shape</td>
+<td align="center">4</td>
+<td align="left">Normal, bimodal, heavy-tailed, skewed</td>
+</tr>
+<tr class="odd">
+<td align="left">Test length</td>
+<td align="center">4</td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>10</mn><mo>,</mo><mn>20</mn><mo>,</mo><mn>30</mn><mo>,</mo><mn>50</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">I \in \{10, 20, 30, 50\}</annotation></semantics></math></td>
+</tr>
+<tr class="even">
+<td align="left">Target reliability</td>
+<td align="center">4</td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>ρ</mi><mo>*</mo></msup><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0.60</mn><mo>,</mo><mn>0.70</mn><mo>,</mo><mn>0.80</mn><mo>,</mo><mn>0.85</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">\rho^* \in \{0.60, 0.70, 0.80, 0.85\}</annotation></semantics></math></td>
+</tr>
+<tr class="odd">
+<td align="left">Replications</td>
+<td align="center">5</td>
+<td align="left">Independent seeds per condition</td>
+</tr>
+</tbody>
+</table>
+<p>Total:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mo>×</mo><mn>4</mn><mo>×</mo><mn>4</mn><mo>×</mo><mn>4</mn><mo>×</mo><mn>5</mn><mo>=</mo><mn>960</mn></mrow><annotation encoding="application/x-tex">3 \times 4 \times 4 \times 4 \times 5 = 960</annotation></semantics></math>
+conditions.</p>
+<p>For each condition, the study:</p>
+<ol style="list-style-type: decimal">
+<li>Ran EQC calibration
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><mn>20</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">M = 20{,}000</annotation></semantics></math>).</li>
+<li>Generated response data
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">N = 1{,}000</annotation></semantics></math>).</li>
+<li>Fitted the model in TAM.</li>
+<li>Computed WLE and EAP reliability.</li>
+</ol>
+</div>
+<div class="section level3">
+<h3 id="key-findings">Key Findings<a class="anchor" aria-label="anchor" href="#key-findings"></a>
+</h3>
+<p>The validation study established the following:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Overall MAE</strong>: The mean absolute error (MAE)
+between the EQC target and TAM WLE reliability was approximately 0.02
+across all 960 conditions, confirming the package achieves its design
+targets.</p></li>
+<li><p><strong>Metric ordering</strong>: EAP reliability was
+consistently higher than WLE reliability, as predicted by the
+theoretical analysis in
+<code><a href="../articles/theory-reliability.html">vignette("theory-reliability")</a></code>.</p></li>
+<li><p><strong>EQC-SAC agreement</strong>: When both algorithms were run
+on the same condition, percent differences were typically below 5%,
+confirming the theoretical consistency results.</p></li>
+<li><p><strong>Latent shape sensitivity</strong>: Non-normal latent
+distributions (bimodal, heavy-tailed) showed slightly larger MAE values
+(approximately 0.03) compared to normal distributions (approximately
+0.015), reflecting the increased Jensen’s gap.</p></li>
+<li><p><strong>Test length effect</strong>: Longer tests
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mo>=</mo><mn>50</mn></mrow><annotation encoding="application/x-tex">I = 50</annotation></semantics></math>)
+produced more stable reliability estimates (smaller SD across
+replications) compared to shorter tests
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">I = 10</annotation></semantics></math>).</p></li>
+</ol>
+<p>These results provide confidence that the calibration algorithms are
+accurate across a wide range of realistic simulation scenarios.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="validation-under-misspecification">Validation Under Misspecification<a class="anchor" aria-label="anchor" href="#validation-under-misspecification"></a>
+</h2>
+<p>An important practical question is: what happens when the latent
+distribution used for data generation does not match the one used for
+calibration?</p>
+<div class="section level3">
+<h3 id="demonstration-calibration-simulation-mismatch">Demonstration: Calibration-Simulation Mismatch<a class="anchor" aria-label="anchor" href="#demonstration-calibration-simulation-mismatch"></a>
+</h3>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Calibrate under normal assumption</span></span>
+<span><span class="va">eqc_normal</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  latent_shape <span class="op">=</span> <span class="st">"normal"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Evaluate reliability under different simulation distributions</span></span>
+<span><span class="va">sim_shapes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal"</span>, <span class="st">"bimodal"</span>, <span class="st">"heavy_tail"</span>, <span class="st">"skew_pos"</span><span class="op">)</span></span>
+<span><span class="va">sim_pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  normal     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  bimodal    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
+<span>  heavy_tail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>df <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  skew_pos   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Misspecification analysis:\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Misspecification analysis:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  Calibration: normal, target = 0.80\n\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Calibration: normal, target = 0.80</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  %-14s %-10s %-10s %-10s\n"</span>,</span>
+<span>            <span class="st">"Sim shape"</span>, <span class="st">"rho_tilde"</span>, <span class="st">"rho_bar"</span>, <span class="st">"Deviation"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Sim shape      rho_tilde  rho_bar    Deviation</span></span>
+<span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">sh</span> <span class="kw">in</span> <span class="va">sim_shapes</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">theta_mis</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">5000</span>, shape <span class="op">=</span> <span class="va">sh</span>, shape_params <span class="op">=</span> <span class="va">sim_pars</span><span class="op">[[</span><span class="va">sh</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span></span>
+<span>  <span class="va">both_mis</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span></span>
+<span>    <span class="va">eqc_normal</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">theta_mis</span>,</span>
+<span>    <span class="va">eqc_normal</span><span class="op">$</span><span class="va">beta_vec</span>, <span class="va">eqc_normal</span><span class="op">$</span><span class="va">lambda_base</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">dev</span> <span class="op">&lt;-</span> <span class="va">both_mis</span><span class="op">$</span><span class="va">rho_tilde</span> <span class="op">-</span> <span class="va">eqc_normal</span><span class="op">$</span><span class="va">target_rho</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  %-14s %-10.4f %-10.4f %+10.4f\n"</span>,</span>
+<span>              <span class="va">sh</span>, <span class="va">both_mis</span><span class="op">$</span><span class="va">rho_tilde</span>, <span class="va">both_mis</span><span class="op">$</span><span class="va">rho_bar</span>, <span class="va">dev</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="co">#&gt;   normal         0.7987     0.7923        -0.0013</span></span>
+<span><span class="co">#&gt;   bimodal        0.7950     0.7928        -0.0050</span></span>
+<span><span class="co">#&gt;   heavy_tail     0.7949     0.7761        -0.0051</span></span>
+<span><span class="co">#&gt;   skew_pos       0.8006     0.7897        +0.0006</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="implications">Implications<a class="anchor" aria-label="anchor" href="#implications"></a>
+</h3>
+<p>When the simulation distribution differs from the calibration
+distribution:</p>
+<ul>
+<li>
+<strong>Same distribution</strong>: Achieved reliability matches
+target closely.</li>
+<li>
+<strong>Different distribution</strong>: Reliability deviates from
+target, sometimes substantially.</li>
+</ul>
+<p><strong>Recommendation</strong>: Always use the same latent
+distribution for calibration and data generation. If you need to study
+misspecification effects, do so deliberately and document the
+mismatch.</p>
+</div>
+<div class="section level3">
+<h3 id="sensitivity-to-difficulty-ability-alignment">Sensitivity to Difficulty-Ability Alignment<a class="anchor" aria-label="anchor" href="#sensitivity-to-difficulty-ability-alignment"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Calibrate with default difficulty distribution (centered at 0)</span></span>
+<span><span class="va">eqc_aligned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
+<span>  target_rho <span class="op">=</span> <span class="fl">0.80</span>, n_items <span class="op">=</span> <span class="fl">25</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># What if abilities are shifted?</span></span>
+<span><span class="va">theta_shifted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">5000</span>, shape <span class="op">=</span> <span class="st">"normal"</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span> <span class="op">+</span> <span class="fl">1.5</span>  <span class="co"># shifted right</span></span>
+<span></span>
+<span><span class="va">both_aligned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span></span>
+<span>  <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">c_star</span>,</span>
+<span>  <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">5000</span>, shape <span class="op">=</span> <span class="st">"normal"</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span>,</span>
+<span>  <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">beta_vec</span>, <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">lambda_base</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">both_shifted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span></span>
+<span>  <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">c_star</span>,</span>
+<span>  <span class="va">theta_shifted</span>,</span>
+<span>  <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">beta_vec</span>, <span class="va">eqc_aligned</span><span class="op">$</span><span class="va">lambda_base</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Effect of ability-difficulty misalignment:\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Effect of ability-difficulty misalignment:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Aligned (theta ~ N(0,1)):   rho_tilde = %.4f\n"</span>,</span>
+<span>            <span class="va">both_aligned</span><span class="op">$</span><span class="va">rho_tilde</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Aligned (theta ~ N(0,1)):   rho_tilde = 0.8002</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Shifted (theta ~ N(1.5,1)): rho_tilde = %.4f\n"</span>,</span>
+<span>            <span class="va">both_shifted</span><span class="op">$</span><span class="va">rho_tilde</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Shifted (theta ~ N(1.5,1)): rho_tilde = 0.7651</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Reliability change:         %+.4f\n"</span>,</span>
+<span>            <span class="va">both_shifted</span><span class="op">$</span><span class="va">rho_tilde</span> <span class="op">-</span> <span class="va">both_aligned</span><span class="op">$</span><span class="va">rho_tilde</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Reliability change:         -0.0351</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="troubleshooting-guide">Troubleshooting Guide<a class="anchor" aria-label="anchor" href="#troubleshooting-guide"></a>
+</h2>
+<div class="section level3">
+<h3 id="issue-1-large-discrepancy-between-target-and-achieved-reliability">Issue 1: Large Discrepancy Between Target and Achieved
+Reliability<a class="anchor" aria-label="anchor" href="#issue-1-large-discrepancy-between-target-and-achieved-reliability"></a>
+</h3>
+<p><strong>Symptoms</strong>:
+<code>|achieved_rho - target_rho| &gt; 0.01</code></p>
+<table class="table">
+<colgroup>
+<col width="42%">
+<col width="31%">
+<col width="26%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Possible Cause</th>
+<th align="left">Diagnostic</th>
+<th align="left">Solution</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Small
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>M</mi><annotation encoding="application/x-tex">M</annotation></semantics></math>
+</td>
+<td align="left">Check <code>length(eqc_result$theta_quad)</code>
+</td>
+<td align="left">Increase <code>M</code> to 10,000+</td>
+</tr>
+<tr class="even">
+<td align="left">Target near boundary</td>
+<td align="left">Check <code>eqc_result$misc$rho_bounds</code>
+</td>
+<td align="left">Extend <code>c_bounds</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Upper/lower bound hit</td>
+<td align="left">Check for warning messages</td>
+<td align="left">Adjust <code>c_bounds</code> or
+<code>n_items</code>
+</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level3">
-<h3 id="visualizing-results">Visualizing Results<a class="anchor" aria-label="anchor" href="#visualizing-results"></a>
-</h3>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create validation plot</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># WLE distribution</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">wle_rels</span>, breaks <span class="op">=</span> <span class="fl">15</span>, col <span class="op">=</span> <span class="st">"lightblue"</span>,</span>
-<span>     main <span class="op">=</span> <span class="st">"WLE Reliability Distribution"</span>,</span>
-<span>     xlab <span class="op">=</span> <span class="st">"Reliability"</span>, xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">target_rho</span> <span class="op">-</span> <span class="fl">0.1</span>, <span class="va">target_rho</span> <span class="op">+</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">target_rho</span>, col <span class="op">=</span> <span class="st">"red"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, lty <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, col <span class="op">=</span> <span class="st">"blue"</span>, lwd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topright"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Target"</span>, <span class="st">"Mean"</span><span class="op">)</span>, </span>
-<span>       col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"red"</span>, <span class="st">"blue"</span><span class="op">)</span>, lty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>, lwd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># EAP distribution</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">eap_rels</span>, breaks <span class="op">=</span> <span class="fl">15</span>, col <span class="op">=</span> <span class="st">"lightgreen"</span>,</span>
-<span>     main <span class="op">=</span> <span class="st">"EAP Reliability Distribution"</span>,</span>
-<span>     xlab <span class="op">=</span> <span class="st">"Reliability"</span>, xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">target_rho</span> <span class="op">-</span> <span class="fl">0.1</span>, <span class="va">target_rho</span> <span class="op">+</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">target_rho</span>, col <span class="op">=</span> <span class="st">"red"</span>, lwd <span class="op">=</span> <span class="fl">2</span>, lty <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, col <span class="op">=</span> <span class="st">"darkgreen"</span>, lwd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topright"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Target"</span>, <span class="st">"Mean"</span><span class="op">)</span>, </span>
-<span>       col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"red"</span>, <span class="st">"darkgreen"</span><span class="op">)</span>, lty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>, lwd <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="validation-across-multiple-targets">Validation Across Multiple Targets<a class="anchor" aria-label="anchor" href="#validation-across-multiple-targets"></a>
-</h2>
-<p>Test calibration accuracy across a range of target reliabilities:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Test multiple target levels</span></span>
-<span><span class="va">targets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.60</span>, <span class="fl">0.70</span>, <span class="fl">0.80</span>, <span class="fl">0.85</span><span class="op">)</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  target <span class="op">=</span> <span class="va">targets</span>,</span>
-<span>  c_star <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  achieved_rho <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  mean_wle <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  mean_eap <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  mae_wle <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  mae_eap <span class="op">=</span> <span class="cn">NA</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">targets</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># Calibrate</span></span>
-<span>  <span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
-<span>    target_rho <span class="op">=</span> <span class="va">targets</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,</span>
-<span>    n_items <span class="op">=</span> <span class="fl">25</span>,</span>
-<span>    model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
-<span>    seed <span class="op">=</span> <span class="fl">42</span></span>
-<span>  <span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">c_star</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">eqc</span><span class="op">$</span><span class="va">c_star</span></span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">eqc</span><span class="op">$</span><span class="va">achieved_rho</span></span>
-<span>  </span>
-<span>  <span class="co"># Validate with 20 replications</span></span>
-<span>  <span class="va">wle</span> <span class="op">&lt;-</span> <span class="va">eap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span></span>
-<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">eqc</span>, n_persons <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="va">r</span><span class="op">)</span></span>
-<span>    <span class="va">tam</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">response_matrix</span>, <span class="st">"rasch"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>    <span class="va">wle</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam</span><span class="op">$</span><span class="va">rel_wle</span></span>
-<span>    <span class="va">eap</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam</span><span class="op">$</span><span class="va">rel_eap</span></span>
-<span>  <span class="op">}</span></span>
-<span>  </span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">mean_wle</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle</span><span class="op">)</span></span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">mean_eap</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap</span><span class="op">)</span></span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">mae_wle</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle</span> <span class="op">-</span> <span class="va">targets</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">results</span><span class="op">$</span><span class="va">mae_eap</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eap</span> <span class="op">-</span> <span class="va">targets</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target %.2f: c* = %.3f, MAE(WLE) = %.4f\n"</span>, </span>
-<span>              <span class="va">targets</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">eqc</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">results</span><span class="op">$</span><span class="va">mae_wle</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># Summary table</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="troubleshooting-validation-issues">Troubleshooting Validation Issues<a class="anchor" aria-label="anchor" href="#troubleshooting-validation-issues"></a>
-</h2>
-<div class="section level3">
-<h3 id="issue-1-large-discrepancy-between-target-and-achieved">Issue 1: Large Discrepancy Between Target and Achieved<a class="anchor" aria-label="anchor" href="#issue-1-large-discrepancy-between-target-and-achieved"></a>
-</h3>
-<p><strong>Symptoms</strong>: MAE &gt; 0.05, systematic bias</p>
-<p><strong>Possible causes and solutions</strong>:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Latent distribution mismatch</span></span>
-<span><span class="co"># Solution: Ensure same distribution for calibration and simulation</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, latent_shape <span class="op">=</span> <span class="st">"bimodal"</span>, latent_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">eqc</span>, <span class="va">...</span>, </span>
-<span>                               latent_shape <span class="op">=</span> <span class="st">"bimodal"</span>,  <span class="co"># MUST match</span></span>
-<span>                               latent_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 2. Small sample size</span></span>
-<span><span class="co"># Solution: Increase n_persons</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">eqc</span>, n_persons <span class="op">=</span> <span class="fl">2000</span>, <span class="va">...</span><span class="op">)</span>  <span class="co"># Larger N</span></span>
-<span></span>
-<span><span class="co"># 3. Insufficient quadrature</span></span>
-<span><span class="co"># Solution: Increase M in EQC</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, M <span class="op">=</span> <span class="fl">50000</span><span class="op">)</span>  <span class="co"># Larger quadrature</span></span></code></pre></div>
-</div>
-<div class="section level3">
 <h3 id="issue-2-wle-reliability-much-lower-than-target">Issue 2: WLE Reliability Much Lower Than Target<a class="anchor" aria-label="anchor" href="#issue-2-wle-reliability-much-lower-than-target"></a>
 </h3>
-<p><strong>Symptoms</strong>: WLE consistently 0.03-0.05 below
-target</p>
-<p><strong>Explanation</strong>: This is often expected behavior due to
-the conservative nature of WLE reliability.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Check if EAP is closer to target</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Target: %.3f\n"</span>, <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"WLE:    %.3f (diff: %+.3f)\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"EAP:    %.3f (diff: %+.3f)\n"</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span>, <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span> <span class="op">-</span> <span class="va">target_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># If EAP is close but WLE is low, this is normal</span></span>
-<span><span class="co"># The true reliability is between WLE and EAP</span></span></code></pre></div>
+<p><strong>Symptoms</strong>:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub><mo>&lt;</mo><msup><mi>ρ</mi><mo>*</mo></msup><mo>−</mo><mn>0.05</mn></mrow><annotation encoding="application/x-tex">\rho_{\text{WLE}} &lt; \rho^* - 0.05</annotation></semantics></math>
+consistently</p>
+<p>This is often <em>expected behavior</em> rather than a calibration
+failure. WLE reliability is a conservative measure (see Section 5
+above).</p>
+<p><strong>Diagnostic</strong>: Check if EAP reliability is closer to
+the target. If the midpoint
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>ρ</mi><mtext mathvariant="normal">WLE</mtext></msub><mo>+</mo><msub><mi>ρ</mi><mtext mathvariant="normal">EAP</mtext></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">(\rho_{\text{WLE}} + \rho_{\text{EAP}}) / 2</annotation></semantics></math>
+is near
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>ρ</mi><mo>*</mo></msup><annotation encoding="application/x-tex">\rho^*</annotation></semantics></math>,
+the calibration is working correctly.</p>
 </div>
 <div class="section level3">
 <h3 id="issue-3-high-variability-across-replications">Issue 3: High Variability Across Replications<a class="anchor" aria-label="anchor" href="#issue-3-high-variability-across-replications"></a>
 </h3>
-<p><strong>Symptoms</strong>: SD of reliability estimates &gt; 0.03</p>
-<p><strong>Solutions</strong>:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Increase sample size per replication</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span><span class="va">eqc</span>, n_persons <span class="op">=</span> <span class="fl">2000</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 2. Use more items</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, n_items <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 3. For heavy-tailed latent distributions, use even larger N</span></span></code></pre></div>
+<p><strong>Symptoms</strong>: SD of TAM reliability estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>&gt;</mo><mn>0.03</mn></mrow><annotation encoding="application/x-tex">&gt; 0.03</annotation></semantics></math></p>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Possible Cause</th>
+<th align="left">Solution</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Small sample size</td>
+<td align="left">Increase <code>n_persons</code> to 2,000+</td>
+</tr>
+<tr class="even">
+<td align="left">Few items</td>
+<td align="left">Increase <code>n_items</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Heavy-tailed latent</td>
+<td align="left">Use larger <code>n_persons</code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Non-standard model</td>
+<td align="left">Verify item parameter distribution</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
-<h3 id="issue-4-eqc-and-spc-disagree-by-10">Issue 4: EQC and SPC Disagree by &gt; 10%<a class="anchor" aria-label="anchor" href="#issue-4-eqc-and-spc-disagree-by-10"></a>
+<h3 id="issue-4-eqc-and-sac-disagree-by-10">Issue 4: EQC and SAC Disagree by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>&gt;</mo><mn>10</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">&gt; 10\%</annotation></semantics></math><a class="anchor" aria-label="anchor" href="#issue-4-eqc-and-sac-disagree-by-10"></a>
 </h3>
-<p><strong>Symptoms</strong>: <code><a href="../reference/compare_eqc_spc.html">compare_eqc_spc()</a></code> shows large
-percentage difference</p>
-<p><strong>Solutions</strong>:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Ensure both use same reliability metric</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, reliability_metric <span class="op">=</span> <span class="st">"msem"</span><span class="op">)</span></span>
-<span><span class="va">spc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spc_calibrate.html">spc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, reliability_metric <span class="op">=</span> <span class="st">"msem"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 2. Increase SPC iterations</span></span>
-<span><span class="va">spc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spc_calibrate.html">spc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, n_iter <span class="op">=</span> <span class="fl">500</span>, burn_in <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 3. Check SPC convergence</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">spc</span><span class="op">$</span><span class="va">convergence</span><span class="op">$</span><span class="va">converged</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning</a></span><span class="op">(</span><span class="st">"SPC did not converge - increase n_iter"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># 4. Some difference is theoretically expected</span></span>
-<span><span class="co"># See SPC vignette for Jensen's inequality explanation</span></span></code></pre></div>
+<p><strong>Symptoms</strong>: <code><a href="../reference/compare_eqc_sac.html">compare_eqc_sac()</a></code> shows large
+difference</p>
+<p><strong>Step-by-step diagnosis</strong>:</p>
+<ol style="list-style-type: decimal">
+<li>Verify both use the same <code>reliability_metric</code>.</li>
+<li>Check SAC convergence:
+<code>sac_result$convergence$converged</code>.</li>
+<li>Increase SAC iterations: <code>n_iter = 500</code>.</li>
+<li>Check if SAC hit bounds:
+<code>sac_result$convergence$hit_lower_bound</code>.</li>
+<li>Run SAC with EQC warm start if not already doing so.</li>
+</ol>
 </div>
 <div class="section level3">
 <h3 id="issue-5-target-reliability-not-achievable">Issue 5: Target Reliability Not Achievable<a class="anchor" aria-label="anchor" href="#issue-5-target-reliability-not-achievable"></a>
 </h3>
-<p><strong>Symptoms</strong>: EQC hits upper bound, warning message</p>
+<p><strong>Symptoms</strong>: EQC returns boundary
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>c</mi><mo>*</mo></msup><annotation encoding="application/x-tex">c^*</annotation></semantics></math>
+with warning.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Use check_feasibility() to diagnose</span></span>
+<span><span class="va">feas</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_feasibility.html">check_feasibility</a></span><span class="op">(</span></span>
+<span>  n_items <span class="op">=</span> <span class="fl">15</span>, model <span class="op">=</span> <span class="st">"rasch"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  c_bounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">5000L</span>, seed <span class="op">=</span> <span class="fl">42</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; =======================================================</span></span>
+<span><span class="co">#&gt;   Feasibility Check: Achievable Reliability Range</span></span>
+<span><span class="co">#&gt; =======================================================</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Number of items  : 15</span></span>
+<span><span class="co">#&gt;   Model            : RASCH</span></span>
+<span><span class="co">#&gt;   Latent shape     : normal</span></span>
+<span><span class="co">#&gt;   Latent variance  : 1.0099</span></span>
+<span><span class="co">#&gt;   c range          : [0.10, 10.00]</span></span>
+<span><span class="co">#&gt;   Monte Carlo M    : 5000</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Achievable Reliability Ranges:</span></span>
+<span><span class="co">#&gt;   rho_tilde (info) : [0.0363, 0.9797]</span></span>
+<span><span class="co">#&gt;   rho_bar   (msem) : [0.0000, 0.8513]</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Note: rho_tilde &gt;= rho_bar always (Jensen's inequality).</span></span>
+<span><span class="co">#&gt;   Use rho_tilde range for EQC targets.</span></span>
+<span><span class="co">#&gt;   Use rho_bar range for SAC targets.</span></span></code></pre></div>
 <p><strong>Solutions</strong>:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. Use "info" metric (yields higher reliability for same c)</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, reliability_metric <span class="op">=</span> <span class="st">"info"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 2. Extend search bounds</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, c_bounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 3. Increase number of items</span></span>
-<span><span class="va">eqc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span><span class="va">...</span>, n_items <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 4. Accept maximum achievable reliability</span></span>
-<span><span class="co"># Check: eqc_result$misc$rho_bounds["rho_U"]</span></span></code></pre></div>
+<ol style="list-style-type: decimal">
+<li>Use <code>reliability_metric = "info"</code> (yields higher values
+than <code>"msem"</code>).</li>
+<li>Extend <code>c_bounds</code> (e.g., <code>c(0.01, 20)</code>).</li>
+<li>Increase <code>n_items</code>.</li>
+<li>Accept the maximum achievable reliability from
+<code><a href="../reference/check_feasibility.html">check_feasibility()</a></code>.</li>
+</ol>
+</div>
+<div class="section level3">
+<h3 id="issue-6-reproducibility-failures">Issue 6: Reproducibility Failures<a class="anchor" aria-label="anchor" href="#issue-6-reproducibility-failures"></a>
+</h3>
+<p><strong>Symptoms</strong>: Different results with the same seed.</p>
+<table class="table">
+<colgroup>
+<col width="61%">
+<col width="38%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Possible Cause</th>
+<th align="left">Solution</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Different R version</td>
+<td align="left">Document <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Different package version</td>
+<td align="left">Pin package version</td>
+</tr>
+<tr class="odd">
+<td align="left">Parallel/multithreaded RNG</td>
+<td align="left">Use sequential execution</td>
+</tr>
+<tr class="even">
+<td align="left">Seed not passed to both steps</td>
+<td align="left">Ensure <code>seed</code> is set in both calibration and
+simulation</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="section level2">
 <h2 id="complete-validation-template">Complete Validation Template<a class="anchor" aria-label="anchor" href="#complete-validation-template"></a>
 </h2>
-<p>Use this template for your simulation studies:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<p>This is a self-contained template that can be copied and adapted for
+any simulation study.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ==============================================================</span></span>
 <span><span class="co"># IRTsimrel Validation Template</span></span>
 <span><span class="co"># ==============================================================</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joonho112/IRTsimrel" class="external-link">IRTsimrel</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.edmeasurementsurveys.com/TAM/Tutorials/" class="external-link">TAM</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ---- Configuration ----</span></span>
-<span><span class="va">TARGET_RHO</span> <span class="op">&lt;-</span> <span class="fl">0.80</span></span>
-<span><span class="va">N_ITEMS</span> <span class="op">&lt;-</span> <span class="fl">25</span></span>
-<span><span class="va">N_PERSONS</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
-<span><span class="va">N_REPS</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
-<span><span class="va">MODEL</span> <span class="op">&lt;-</span> <span class="st">"rasch"</span></span>
-<span><span class="va">LATENT_SHAPE</span> <span class="op">&lt;-</span> <span class="st">"normal"</span></span>
-<span><span class="va">SEED_CALIB</span> <span class="op">&lt;-</span> <span class="fl">42</span></span>
+<span><span class="va">TARGET_RHO</span>     <span class="op">&lt;-</span> <span class="fl">0.80</span></span>
+<span><span class="va">N_ITEMS</span>        <span class="op">&lt;-</span> <span class="fl">25</span></span>
+<span><span class="va">N_PERSONS</span>      <span class="op">&lt;-</span> <span class="fl">1000</span></span>
+<span><span class="va">N_REPS</span>         <span class="op">&lt;-</span> <span class="fl">50</span></span>
+<span><span class="va">MODEL</span>          <span class="op">&lt;-</span> <span class="st">"rasch"</span></span>
+<span><span class="va">LATENT_SHAPE</span>   <span class="op">&lt;-</span> <span class="st">"normal"</span></span>
+<span><span class="va">LATENT_PARAMS</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">ITEM_SOURCE</span>    <span class="op">&lt;-</span> <span class="st">"parametric"</span></span>
+<span><span class="va">ITEM_PARAMS</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">SEED_CALIB</span>     <span class="op">&lt;-</span> <span class="fl">42</span></span>
 <span></span>
-<span><span class="co"># ---- Step 1: Calibration ----</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Step 1: Running EQC calibration...\n"</span><span class="op">)</span></span>
+<span><span class="co"># ---- Step 1: Feasibility Check ----</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Step 1: Feasibility check...\n"</span><span class="op">)</span></span>
+<span><span class="va">feas</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_feasibility.html">check_feasibility</a></span><span class="op">(</span></span>
+<span>  n_items <span class="op">=</span> <span class="va">N_ITEMS</span>, model <span class="op">=</span> <span class="va">MODEL</span>,</span>
+<span>  latent_shape <span class="op">=</span> <span class="va">LATENT_SHAPE</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="va">ITEM_SOURCE</span>,</span>
+<span>  c_bounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">10000L</span>, seed <span class="op">=</span> <span class="va">SEED_CALIB</span>,</span>
+<span>  latent_params <span class="op">=</span> <span class="va">LATENT_PARAMS</span>,</span>
+<span>  item_params <span class="op">=</span> <span class="va">ITEM_PARAMS</span></span>
+<span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="va">TARGET_RHO</span> <span class="op">&gt;=</span> <span class="va">feas</span><span class="op">$</span><span class="va">rho_range_info</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>          <span class="va">TARGET_RHO</span> <span class="op">&lt;=</span> <span class="va">feas</span><span class="op">$</span><span class="va">rho_range_info</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># ---- Step 2: EQC Calibration ----</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 2: EQC calibration...\n"</span><span class="op">)</span></span>
 <span><span class="va">eqc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eqc_calibrate.html">eqc_calibrate</a></span><span class="op">(</span></span>
 <span>  target_rho <span class="op">=</span> <span class="va">TARGET_RHO</span>,</span>
 <span>  n_items <span class="op">=</span> <span class="va">N_ITEMS</span>,</span>
 <span>  model <span class="op">=</span> <span class="va">MODEL</span>,</span>
 <span>  latent_shape <span class="op">=</span> <span class="va">LATENT_SHAPE</span>,</span>
-<span>  item_source <span class="op">=</span> <span class="st">"irw"</span>,</span>
-<span>  M <span class="op">=</span> <span class="fl">20000</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="va">ITEM_SOURCE</span>,</span>
+<span>  latent_params <span class="op">=</span> <span class="va">LATENT_PARAMS</span>,</span>
+<span>  item_params <span class="op">=</span> <span class="va">ITEM_PARAMS</span>,</span>
+<span>  reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  M <span class="op">=</span> <span class="fl">20000L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="va">SEED_CALIB</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ---- Step 2: SPC Validation (Optional) ----</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 2: Running SPC validation...\n"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">spc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spc_calibrate.html">spc_calibrate</a></span><span class="op">(</span></span>
+<span><span class="co"># ---- Step 3: SAC Cross-Validation ----</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 3: SAC cross-validation...\n"</span><span class="op">)</span></span>
+<span><span class="va">sac_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sac_calibrate.html">sac_calibrate</a></span><span class="op">(</span></span>
 <span>  target_rho <span class="op">=</span> <span class="va">TARGET_RHO</span>,</span>
 <span>  n_items <span class="op">=</span> <span class="va">N_ITEMS</span>,</span>
 <span>  model <span class="op">=</span> <span class="va">MODEL</span>,</span>
 <span>  latent_shape <span class="op">=</span> <span class="va">LATENT_SHAPE</span>,</span>
-<span>  item_source <span class="op">=</span> <span class="st">"irw"</span>,</span>
+<span>  item_source <span class="op">=</span> <span class="va">ITEM_SOURCE</span>,</span>
+<span>  latent_params <span class="op">=</span> <span class="va">LATENT_PARAMS</span>,</span>
+<span>  item_params <span class="op">=</span> <span class="va">ITEM_PARAMS</span>,</span>
+<span>  reliability_metric <span class="op">=</span> <span class="st">"info"</span>,</span>
 <span>  c_init <span class="op">=</span> <span class="va">eqc_result</span>,</span>
-<span>  n_iter <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  n_iter <span class="op">=</span> <span class="fl">300L</span>,</span>
+<span>  M_per_iter <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="va">SEED_CALIB</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/compare_eqc_spc.html">compare_eqc_spc</a></span><span class="op">(</span><span class="va">eqc_result</span>, <span class="va">spc_result</span><span class="op">)</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_eqc_sac.html">compare_eqc_sac</a></span><span class="op">(</span><span class="va">eqc_result</span>, <span class="va">sac_result</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">$</span><span class="va">agreement</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ---- Step 3: Monte Carlo TAM Validation ----</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 3: Running Monte Carlo validation...\n"</span><span class="op">)</span></span>
+<span><span class="co"># ---- Step 4: Jensen's Gap Check ----</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 4: Jensen's gap check...\n"</span><span class="op">)</span></span>
+<span><span class="va">theta_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_latentG.html">sim_latentG</a></span><span class="op">(</span><span class="fl">10000</span>, shape <span class="op">=</span> <span class="va">LATENT_SHAPE</span>,</span>
+<span>                            params <span class="op">=</span> <span class="va">LATENT_PARAMS</span><span class="op">)</span><span class="op">$</span><span class="va">theta</span></span>
+<span><span class="va">both_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rho_both.html">compute_rho_both</a></span><span class="op">(</span></span>
+<span>  <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">theta_check</span>,</span>
+<span>  <span class="va">eqc_result</span><span class="op">$</span><span class="va">beta_vec</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">lambda_base</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Jensen's gap: %.4f\n"</span>,</span>
+<span>            <span class="va">both_check</span><span class="op">$</span><span class="va">rho_tilde</span> <span class="op">-</span> <span class="va">both_check</span><span class="op">$</span><span class="va">rho_bar</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># ---- Step 5: Monte Carlo TAM Validation ----</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nStep 5: Monte Carlo TAM validation...\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.edmeasurementsurveys.com/TAM/Tutorials/" class="external-link">TAM</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">wle_rels</span> <span class="op">&lt;-</span> <span class="va">eap_rels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">N_REPS</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N_REPS</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_response_data.html">simulate_response_data</a></span><span class="op">(</span></span>
-<span>    eqc_result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
+<span>    result <span class="op">=</span> <span class="va">eqc_result</span>,</span>
 <span>    n_persons <span class="op">=</span> <span class="va">N_PERSONS</span>,</span>
 <span>    latent_shape <span class="op">=</span> <span class="va">LATENT_SHAPE</span>,</span>
+<span>    latent_params <span class="op">=</span> <span class="va">LATENT_PARAMS</span>,</span>
 <span>    seed <span class="op">=</span> <span class="va">r</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">tam_rel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_reliability_tam.html">compute_reliability_tam</a></span><span class="op">(</span></span>
 <span>    resp <span class="op">=</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">response_matrix</span>,</span>
 <span>    model <span class="op">=</span> <span class="va">MODEL</span>,</span>
 <span>    verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">wle_rels</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_wle</span></span>
 <span>  <span class="va">eap_rels</span><span class="op">[</span><span class="va">r</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">tam_rel</span><span class="op">$</span><span class="va">rel_eap</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">r</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">10</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  %d/%d complete\n"</span>, <span class="va">r</span>, <span class="va">N_REPS</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># ---- Step 4: Summary ----</span></span>
+<span><span class="co"># ---- Step 6: Summary Report ----</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"=======================================================\n"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  VALIDATION SUMMARY\n"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"=======================================================\n\n"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Configuration:\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Target reliability: %.3f\n"</span>, <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Items: %d, Persons: %d, Replications: %d\n\n"</span>, <span class="va">N_ITEMS</span>, <span class="va">N_PERSONS</span>, <span class="va">N_REPS</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Target: %.3f | Items: %d | Model: %s\n"</span>,</span>
+<span>            <span class="va">TARGET_RHO</span>, <span class="va">N_ITEMS</span>, <span class="va">MODEL</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Shape: %s | N: %d | Reps: %d\n\n"</span>,</span>
+<span>            <span class="va">LATENT_SHAPE</span>, <span class="va">N_PERSONS</span>, <span class="va">N_REPS</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Calibration:\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EQC c*: %.4f (achieved rho = %.4f)\n"</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SPC c*: %.4f (agreement: %s)\n\n"</span>, </span>
-<span>            <span class="va">spc_result</span><span class="op">$</span><span class="va">c_star</span>, </span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span> <span class="op">-</span> <span class="va">spc_result</span><span class="op">$</span><span class="va">c_star</span><span class="op">)</span><span class="op">/</span><span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span> <span class="op">&lt;</span> <span class="fl">0.05</span>, <span class="st">"YES"</span>, <span class="st">"NO"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EQC c*: %.4f (achieved = %.4f)\n"</span>,</span>
+<span>            <span class="va">eqc_result</span><span class="op">$</span><span class="va">c_star</span>, <span class="va">eqc_result</span><span class="op">$</span><span class="va">achieved_rho</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  SAC c*: %.4f (agreement: %s)\n\n"</span>,</span>
+<span>            <span class="va">sac_result</span><span class="op">$</span><span class="va">c_star</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">$</span><span class="va">agreement</span>, <span class="st">"YES"</span>, <span class="st">"NO"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"TAM Validation:\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  WLE: Mean = %.4f, SD = %.4f, MAE = %.4f\n"</span>, </span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EAP: Mean = %.4f, SD = %.4f, MAE = %.4f\n"</span>, </span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eap_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  WLE: Mean=%.4f SD=%.4f MAE=%.4f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">wle_rels</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  EAP: Mean=%.4f SD=%.4f MAE=%.4f\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">eap_rels</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">eap_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"\nValidation Status: "</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.03</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"PASSED\n"</span><span class="op">)</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"INVESTIGATE\n"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<span><span class="va">verdict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">wle_rels</span> <span class="op">-</span> <span class="va">TARGET_RHO</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.03</span>,</span>
+<span>                  <span class="st">"PASSED"</span>, <span class="st">"INVESTIGATE"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"\nVerdict: %s\n"</span>, <span class="va">verdict</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
-<p>Effective validation of reliability-targeted simulation requires:</p>
+<p>Effective validation of reliability-targeted simulation requires
+multiple complementary approaches:</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="22%">
+<col width="51%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Level</th>
+<th align="left">Tool</th>
+<th align="left">Key Question</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><strong>Internal</strong></td>
+<td align="left">
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>,
+<code><a href="../reference/compute_rho_both.html">compute_rho_both()</a></code>
+</td>
+<td align="left">Does the calibration achieve its target?</td>
+</tr>
+<tr class="even">
+<td align="left"><strong>Cross-algorithm</strong></td>
+<td align="left"><code><a href="../reference/compare_eqc_sac.html">compare_eqc_sac()</a></code></td>
+<td align="left">Do independent algorithms agree?</td>
+</tr>
+<tr class="odd">
+<td align="left"><strong>External</strong></td>
+<td align="left"><code><a href="../reference/compute_reliability_tam.html">compute_reliability_tam()</a></code></td>
+<td align="left">Does fitted-model reliability match?</td>
+</tr>
+<tr class="even">
+<td align="left"><strong>Misspecification</strong></td>
+<td align="left">Manual analysis</td>
+<td align="left">How robust is the calibration?</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Best practices</strong>:</p>
 <ol style="list-style-type: decimal">
-<li>
-<strong>Generate representative data</strong> using
-<code><a href="../reference/simulate_response_data.html">simulate_response_data()</a></code> with matching latent
-distributions</li>
-<li>
-<strong>External validation</strong> via TAM’s <code><a href="https://rdrr.io/pkg/TAM/man/WLErel.html" class="external-link">WLErel()</a></code>
-and <code><a href="https://rdrr.io/pkg/TAM/man/WLErel.html" class="external-link">EAPrel()</a></code> functions</li>
-<li>
-<strong>Understand reliability metrics</strong>: WLE is
-conservative, EAP is liberal, target falls between</li>
-<li>
-<strong>Cross-validate algorithms</strong> using
-<code><a href="../reference/compare_eqc_spc.html">compare_eqc_spc()</a></code> when possible</li>
-<li>
-<strong>Use Monte Carlo replications</strong> to account for
-sampling variability</li>
-<li>
-<strong>Set realistic expectations</strong>: MAE &lt; 0.03 is
-excellent, &lt; 0.05 is acceptable</li>
+<li>Always check the Jensen’s gap with <code><a href="../reference/compute_rho_both.html">compute_rho_both()</a></code>
+to understand the impact of metric choice.</li>
+<li>Use EQC warm start for SAC cross-validation.</li>
+<li>Report both WLE and EAP reliability from TAM validation.</li>
+<li>Use
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mtext mathvariant="normal">persons</mtext></msub><mo>≥</mo><mn>1</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">N_{\text{persons}} \geq 1{,}000</annotation></semantics></math>
+for stable TAM estimates.</li>
+<li>Match the latent distribution between calibration and
+simulation.</li>
+<li>Document the seed and package version for reproducibility.</li>
 </ol>
-<p>Following these practices ensures your simulation studies achieve the
-intended reliability levels with confidence.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
+<p>Lee, J. (2025). Reliability-targeted simulation of item response
+data: Solving the inverse design problem. <em>arXiv preprint
+arXiv:2512.16012</em>.</p>
 <p>Warm, T. A. (1989). Weighted likelihood estimation of ability in item
-response theory. <em>Psychometrika, 54</em>(3), 427-450.</p>
+response theory. <em>Psychometrika, 54</em>(3), 427–450.</p>
 <p>Robitzsch, A., Kiefer, T., &amp; Wu, M. (2022). TAM: Test Analysis
 Modules. R package version 4.1-4.</p>
+<p>Bock, R. D., &amp; Mislevy, R. J. (1982). Adaptive EAP estimation of
+ability in a microcomputer environment. <em>Applied Psychological
+Measurement, 6</em>(4), 431–444.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

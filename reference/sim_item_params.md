@@ -37,6 +37,12 @@ sim_item_params(
   center_difficulties = TRUE,
   seed = NULL
 )
+
+# S3 method for class 'item_params'
+print(x, ...)
+
+# S3 method for class 'item_params'
+summary(object, ...)
 ```
 
 ## Arguments
@@ -162,6 +168,18 @@ sim_item_params(
 
   Integer. Random seed for reproducibility.
 
+- x:
+
+  An object of class `"item_params"`.
+
+- ...:
+
+  Additional arguments passed to or from other methods.
+
+- object:
+
+  An object of class `"item_params"`.
+
 ## Value
 
 An object of class `"item_params"` containing:
@@ -206,6 +224,11 @@ An object of class `"item_params"` containing:
 - `achieved`:
 
   Achieved statistics (correlations, moments)
+
+The input object, invisibly.
+
+An object of class `"summary.item_params"` containing key parameter
+summaries.
 
 ## Details
 
@@ -255,26 +278,33 @@ Zhang, L., et al. (2025). Realistic simulation of item difficulties.
 ## Examples
 
 ``` r
-# Example 1: Rasch with IRW difficulties
-items1 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+# Example 1: Rasch with parametric difficulties
+items1 <- sim_item_params(n_items = 25, model = "rasch",
+                          source = "parametric", seed = 42)
 
 # Example 2: 2PL with copula method (recommended)
 items2 <- sim_item_params(
-  n_items = 30, model = "2pl", source = "irw",
+  n_items = 30, model = "2pl", source = "parametric",
   method = "copula",
-  discrimination_params = list(rho = -0.3)
+  discrimination_params = list(rho = -0.3),
+  seed = 42
 )
 
-# Example 3: Multiple forms
+# Example 3: Hierarchical 2PL
 items3 <- sim_item_params(
+  n_items = 25, model = "2pl", source = "hierarchical",
+  hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3),
+  seed = 42
+)
+
+if (FALSE) { # \dontrun{
+# Example 4: Using IRW difficulty pool (requires irw package)
+items4 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+
+# Example 5: Multiple forms with IRW
+items5 <- sim_item_params(
   n_items = 20, model = "2pl", n_forms = 5,
   source = "irw", method = "copula"
 )
-#> Warning: collapsing to unique 'x' values
-
-# Example 4: Hierarchical 2PL
-items4 <- sim_item_params(
-  n_items = 25, model = "2pl", source = "hierarchical",
-  hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3)
-)
+} # }
 ```

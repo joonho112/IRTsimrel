@@ -1,12 +1,17 @@
-# Simulate Item Response Data from EQC Results
+# Simulate Item Response Data from Calibration Results
 
-Generates item response data using the calibrated parameters from EQC.
+Generates item response data using the calibrated parameters from
+[`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
+or
+[`sac_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md)
+(formerly
+[`spc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md)).
 
 ## Usage
 
 ``` r
 simulate_response_data(
-  eqc_result,
+  result,
   n_persons,
   latent_shape = "normal",
   latent_params = list(),
@@ -16,10 +21,13 @@ simulate_response_data(
 
 ## Arguments
 
-- eqc_result:
+- result:
 
-  An `eqc_result` object from
-  [`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md).
+  A calibration result object of class `"eqc_result"`, `"sac_result"`,
+  or `"spc_result"` (for backward compatibility), as returned by
+  [`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
+  or
+  [`sac_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md).
 
 - n_persons:
 
@@ -62,13 +70,14 @@ A list containing:
 ## See also
 
 [`eqc_calibrate`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md),
+[`sac_calibrate`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md),
 [`compute_reliability_tam`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md)
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-# First, run EQC calibration
+# Example 1: Using EQC calibration result
 eqc_result <- eqc_calibrate(
   target_rho = 0.80,
   n_items = 25,
@@ -76,9 +85,24 @@ eqc_result <- eqc_calibrate(
   seed = 42
 )
 
-# Generate response data
 sim_data <- simulate_response_data(
-  eqc_result = eqc_result,
+  result = eqc_result,
+  n_persons = 1000,
+  latent_shape = "normal",
+  seed = 123
+)
+
+# Example 2: Using SAC calibration result
+sac_result <- sac_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
+  n_iter = 200,
+  seed = 42
+)
+
+sim_data2 <- simulate_response_data(
+  result = sac_result,
   n_persons = 1000,
   latent_shape = "normal",
   seed = 123

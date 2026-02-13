@@ -7,7 +7,7 @@ functions.
 
 ``` r
 # S3 method for class 'latent_G'
-as.numeric(x)
+as.numeric(x, ...)
 ```
 
 ## Arguments
@@ -15,6 +15,10 @@ as.numeric(x)
 - x:
 
   A `latent_G` object.
+
+- ...:
+
+  Additional arguments (ignored).
 
 ## Value
 

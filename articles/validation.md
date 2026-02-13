@@ -2,129 +2,253 @@
 
 ``` r
 library(IRTsimrel)
+set.seed(42)
 ```
 
 ## Overview
 
-After calibrating item parameters using EQC or SPC, it is essential to
-**validate** that the achieved reliability matches your target.
-IRTsimrel provides several validation tools:
+Validation is the process of confirming that a calibrated test design
+actually achieves the intended reliability when data are generated from
+it. In the IRTsimrel framework, validation operates at three levels:
 
-| Function | Purpose |
-|----|----|
-| [`simulate_response_data()`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md) | Generate item response data from calibrated parameters |
-| [`compute_reliability_tam()`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md) | Compute WLE/EAP reliability using the TAM package |
-| [`compare_eqc_spc()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_spc.md) | Compare EQC and SPC calibration results |
+| Level                  | Method                                                                                                                                           | What It Checks                                                  |
+|:-----------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------|
+| **1. Internal**        | [`predict()`](https://rdrr.io/r/stats/predict.html), [`compute_rho_both()`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_both.md) | Achieved reliability matches target; Jensen’s gap is understood |
+| **2. Cross-algorithm** | [`compare_eqc_sac()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_sac.md)                                                        | EQC and SAC agree on $c^{*}$                                    |
+| **3. External**        | [`compute_reliability_tam()`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md)                                        | Fitted-model reliability (WLE/EAP) matches theoretical target   |
 
-This vignette covers:
+**Reading time**: approximately 20 minutes.
 
-1.  Generating response data from calibrated parameters
-2.  External validation using the TAM package
-3.  Understanding WLE vs EAP reliability
-4.  Comparing EQC and SPC results
-5.  Monte Carlo validation workflow
-6.  Troubleshooting common validation issues
+**Prerequisites**: Basic familiarity with
+[`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
+and
+[`sac_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/sac_calibrate.md).
+For mathematical foundations, see
+[`vignette("theory-reliability")`](https://joonho112.github.io/IRTsimrel/articles/theory-reliability.md).
+For algorithm details, see
+[`vignette("algorithm-eqc")`](https://joonho112.github.io/IRTsimrel/articles/algorithm-eqc.md)
+and
+[`vignette("algorithm-sac")`](https://joonho112.github.io/IRTsimrel/articles/algorithm-sac.md).
 
-## Generating Response Data
+## Level 1: Internal Validation
 
-The
-[`simulate_response_data()`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md)
-function generates item response matrices using calibrated parameters
-from EQC.
+Internal validation checks whether the calibration output is
+self-consistent, without fitting any external model to simulated data.
 
-### Basic Usage
+### The `predict()` Method
+
+After running
+[`eqc_calibrate()`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md),
+the [`predict()`](https://rdrr.io/r/stats/predict.html) method evaluates
+the reliability function at arbitrary scaling factors using the stored
+quadrature samples.
 
 ``` r
-# First, run EQC calibration
+# Calibrate
 eqc_result <- eqc_calibrate(
-target_rho = 0.80,
-  n_items = 25,
-  model = "rasch",
-  latent_shape = "normal",
-  item_source = "irw",
-  seed = 42
-)
-#> Note: Target rho* = 0.800 is near the achievable maximum (0.824) for this configuration.
-
-# Generate response data
-sim_data <- simulate_response_data(
-  eqc_result = eqc_result,
-  n_persons = 1000,
-  latent_shape = "normal",
-  seed = 123
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = FALSE
 )
 
-# Examine the output
-names(sim_data)
-#> [1] "response_matrix" "theta"           "beta"            "lambda"
+# Internal consistency check
+cat(sprintf("Target reliability:  %.4f\n", eqc_result$target_rho))
+#> Target reliability:  0.8000
+cat(sprintf("Achieved reliability: %.4f\n", eqc_result$achieved_rho))
+#> Achieved reliability: 0.8000
+cat(sprintf("Absolute error:      %.6f\n",
+            abs(eqc_result$achieved_rho - eqc_result$target_rho)))
+#> Absolute error:      0.000000
 ```
 
-### Output Structure
+The achieved reliability should match the target within the EQC
+tolerance (default: $10^{- 4}$).
 
-The function returns a list containing:
+### Jensen’s Gap via `compute_rho_both()`
+
+A critical internal diagnostic is measuring the gap between the two
+reliability metrics at the calibrated $c^{*}$. This reveals how much the
+choice of metric matters for the specific test configuration.
 
 ``` r
-# Response matrix: N persons × I items
-dim(sim_data$response_matrix)
-#> [1] 1000   25
-head(sim_data$response_matrix[, 1:6])
-#>      item1 item2 item3 item4 item5 item6
-#> [1,]     0     1     0     1     0     1
-#> [2,]     0     0     1     0     0     0
-#> [3,]     1     1     1     1     1     1
-#> [4,]     1     1     1     1     0     1
-#> [5,]     0     1     0     1     0     0
-#> [6,]     1     1     1     1     1     0
+# Compute both metrics at c*
+theta_val <- sim_latentG(5000, shape = "normal")$theta
+items_val <- sim_item_params(25, model = "rasch", source = "parametric")
+beta_val  <- items_val$data$beta
+lambda_val <- rep(1, 25)
 
-# True abilities (used for generating responses)
-head(sim_data$theta)
-#> [1] -0.56047565 -0.23017749  1.55870831  0.07050839  0.12928774  1.71506499
-cat(sprintf("Theta mean: %.3f, SD: %.3f\n", 
-            mean(sim_data$theta), sd(sim_data$theta)))
-#> Theta mean: 0.016, SD: 0.992
+both <- compute_rho_both(eqc_result$c_star, theta_val, beta_val, lambda_val)
 
-# Item parameters used
-cat(sprintf("Number of items: %d\n", length(sim_data$beta)))
-#> Number of items: 25
-cat(sprintf("Beta range: [%.2f, %.2f]\n", 
-            min(sim_data$beta), max(sim_data$beta)))
-#> Beta range: [-1.48, 1.06]
+cat(sprintf("At calibrated c* = %.4f:\n", eqc_result$c_star))
+#> At calibrated c* = 0.8995:
+cat(sprintf("  rho_tilde (info): %.4f\n", both$rho_tilde))
+#>   rho_tilde (info): 0.8000
+cat(sprintf("  rho_bar   (msem): %.4f\n", both$rho_bar))
+#>   rho_bar   (msem): 0.7937
+cat(sprintf("  Jensen's gap:     %.4f\n", both$rho_tilde - both$rho_bar))
+#>   Jensen's gap:     0.0063
 ```
 
-### Matching Latent Distribution
+**Interpretation guidelines**:
 
-**Important**: Use the same latent distribution for simulation as you
-used for calibration:
+| Jensen’s gap | Interpretation                                           |
+|:-------------|:---------------------------------------------------------|
+| \< 0.01      | Negligible; metric choice does not matter                |
+| 0.01–0.03    | Small; typical for normal latent distributions           |
+| 0.03–0.05    | Moderate; consider which metric is more appropriate      |
+| \> 0.05      | Large; investigate latent distribution or item structure |
+
+### Jensen’s Gap Across Latent Distributions
+
+The gap depends on how much test information varies across the ability
+continuum. Non-standard latent distributions typically produce larger
+gaps.
 
 ``` r
-# Calibrate for bimodal population
-eqc_bimodal <- eqc_calibrate(
-  target_rho = 0.75,
-  n_items = 20,
-  latent_shape = "bimodal",
-  latent_params = list(delta = 0.8),
-  seed = 42
+shapes <- c("normal", "bimodal", "heavy_tail", "skew_pos")
+shape_pars <- list(
+  normal     = list(),
+  bimodal    = list(delta = 0.9),
+  heavy_tail = list(df = 5),
+  skew_pos   = list(k = 4)
 )
 
-# Generate data with SAME distribution
-sim_data <- simulate_response_data(
-  eqc_result = eqc_bimodal,
-  n_persons = 1000,
-  latent_shape = "bimodal",           # Same shape!
-  latent_params = list(delta = 0.8),  # Same params!
-  seed = 123
-)
+cat("Jensen's gap by latent shape (c* from info metric, target = 0.80):\n")
+#> Jensen's gap by latent shape (c* from info metric, target = 0.80):
+cat(sprintf("  %-12s %-8s %-10s %-10s %-8s\n",
+            "Shape", "c*", "rho_tilde", "rho_bar", "Gap"))
+#>   Shape        c*       rho_tilde  rho_bar    Gap
+
+for (sh in shapes) {
+  eqc_sh <- eqc_calibrate(
+    target_rho = 0.80, n_items = 25, model = "rasch",
+    item_source = "parametric", reliability_metric = "info",
+    latent_shape = sh, latent_params = shape_pars[[sh]],
+    M = 5000L, seed = 42, verbose = FALSE
+  )
+
+  theta_sh <- sim_latentG(5000, shape = sh, shape_params = shape_pars[[sh]])$theta
+  both_sh <- compute_rho_both(eqc_sh$c_star, theta_sh, beta_val, lambda_val)
+
+  cat(sprintf("  %-12s %-8.4f %-10.4f %-10.4f %-8.4f\n",
+              sh, eqc_sh$c_star, both_sh$rho_tilde, both_sh$rho_bar,
+              both_sh$rho_tilde - both_sh$rho_bar))
+}
+#>   normal       0.8995   0.8006     0.7944     0.0062
+#> Auto-wrapping shape parameter(s) {delta} into latent_params$shape_params.
+#>   bimodal      0.9605   0.8133     0.8106     0.0027
+#> Auto-wrapping shape parameter(s) {df} into latent_params$shape_params.
+#>   heavy_tail   0.9365   0.8138     0.7952     0.0186
+#> Auto-wrapping shape parameter(s) {k} into latent_params$shape_params.
+#>   skew_pos     0.9132   0.8008     0.7885     0.0123
 ```
 
-If distributions don’t match, achieved reliability will differ from
-target.
+## Level 2: Cross-Algorithm Validation
 
-## External Validation with TAM
+Cross-algorithm validation uses two independent calibration algorithms
+to solve the same problem. Agreement between them provides strong
+evidence that the calibration is correct.
 
-The
-[`compute_reliability_tam()`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md)
-function provides independent validation using the TAM package’s
-official reliability functions.
+### The `compare_eqc_sac()` Function
+
+``` r
+# Run EQC
+eqc_cross <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = FALSE
+)
+
+# Run SAC with EQC warm start
+sac_cross <- sac_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  c_init = eqc_cross, n_iter = 300L, M_per_iter = 1000L,
+  seed = 42, verbose = FALSE
+)
+
+# Formal comparison
+comparison <- compare_eqc_sac(eqc_cross, sac_cross)
+#> 
+#> =======================================================
+#>   EQC vs SAC Comparison
+#> =======================================================
+#> 
+#>   Target reliability  : 0.8000
+#>   EQC c*              : 0.899499
+#>   SAC c*              : 0.912155
+#>   Absolute difference : 0.012656
+#>   Percent difference  : 1.41%
+#>   Agreement (< 5%)    : YES
+#> 
+```
+
+### Interpreting the Comparison
+
+``` r
+cat("\nComparison summary:\n")
+#> 
+#> Comparison summary:
+cat(sprintf("  EQC c*:          %.4f\n", comparison$c_eqc))
+#>   EQC c*:          0.8995
+cat(sprintf("  SAC c*:          %.4f\n", comparison$c_sac))
+#>   SAC c*:          0.9122
+cat(sprintf("  Absolute diff:   %.4f\n", comparison$diff_abs))
+#>   Absolute diff:   0.0127
+cat(sprintf("  Percent diff:    %.2f%%\n", comparison$diff_pct))
+#>   Percent diff:    1.41%
+cat(sprintf("  Agreement (<5%%): %s\n", comparison$agreement))
+#>   Agreement (<5%): TRUE
+```
+
+### Agreement Criteria
+
+| Percent difference | Interpretation      | Action                                 |
+|:-------------------|:--------------------|:---------------------------------------|
+| \< 2%              | Excellent agreement | Proceed with confidence                |
+| 2%–5%              | Good agreement      | Acceptable for most applications       |
+| 5%–10%             | Marginal agreement  | Investigate; increase SAC iterations   |
+| \> 10%             | Poor agreement      | Check metrics, convergence, and bounds |
+
+### Warm Start Benefits
+
+Using EQC to initialize SAC dramatically improves convergence and
+agreement.
+
+``` r
+# SAC without warm start (APC initialization)
+sac_cold <- sac_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  c_init = NULL,  # APC start
+  n_iter = 300L, M_per_iter = 1000L,
+  seed = 42, verbose = FALSE
+)
+
+# SAC with EQC warm start
+sac_warm <- sac_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  c_init = eqc_cross,  # EQC warm start
+  n_iter = 300L, M_per_iter = 1000L,
+  seed = 42, verbose = FALSE
+)
+
+cat("Effect of warm start on SAC-EQC agreement:\n")
+#> Effect of warm start on SAC-EQC agreement:
+cat(sprintf("  SAC (APC start): c* = %.4f, diff from EQC = %.4f\n",
+            sac_cold$c_star, abs(sac_cold$c_star - eqc_cross$c_star)))
+#>   SAC (APC start): c* = 0.9793, diff from EQC = 0.0798
+cat(sprintf("  SAC (EQC start): c* = %.4f, diff from EQC = %.4f\n",
+            sac_warm$c_star, abs(sac_warm$c_star - eqc_cross$c_star)))
+#>   SAC (EQC start): c* = 0.9122, diff from EQC = 0.0127
+```
+
+## Level 3: External Validation with TAM
+
+External validation fits an IRT model to simulated response data using
+an independent software package (TAM) and compares the recovered
+reliability to the design target.
 
 ### Requirements
 
@@ -133,7 +257,34 @@ official reliability functions.
 install.packages("TAM")
 ```
 
-### Computing Reliability
+### Generating Response Data
+
+The
+[`simulate_response_data()`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md)
+function generates item response matrices from the calibrated
+parameters.
+
+``` r
+sim_data <- simulate_response_data(
+  result = eqc_cross,
+  n_persons = 1000,
+  latent_shape = "normal",
+  seed = 123
+)
+
+cat(sprintf("Response matrix: %d persons x %d items\n",
+            nrow(sim_data$response_matrix),
+            ncol(sim_data$response_matrix)))
+#> Response matrix: 1000 persons x 25 items
+cat(sprintf("Theta: mean = %.3f, SD = %.3f\n",
+            mean(sim_data$theta), sd(sim_data$theta)))
+#> Theta: mean = 0.016, SD = 0.992
+cat(sprintf("Item difficulty range: [%.2f, %.2f]\n",
+            min(sim_data$beta), max(sim_data$beta)))
+#> Item difficulty range: [-2.17, 1.45]
+```
+
+### Computing TAM Reliability
 
 ``` r
 # Compute WLE and EAP reliability
@@ -143,189 +294,86 @@ tam_rel <- compute_reliability_tam(
   verbose = FALSE
 )
 
-# View results
-cat(sprintf("Target reliability:  %.4f\n", eqc_result$target_rho))
-cat(sprintf("EQC achieved rho:    %.4f\n", eqc_result$achieved_rho))
-cat(sprintf("TAM WLE reliability: %.4f\n", tam_rel$rel_wle))
-cat(sprintf("TAM EAP reliability: %.4f\n", tam_rel$rel_eap))
-```
-
-### Output Components
-
-``` r
-names(tam_rel)
-
-# rel_wle: WLE reliability coefficient
-# rel_eap: EAP reliability coefficient
-# mod: Fitted TAM model object
-# wle: Output from TAM::tam.wle()
-```
-
-### Using with 2PL Model
-
-``` r
-# For 2PL data
-eqc_2pl <- eqc_calibrate(
-  target_rho = 0.80,
-  n_items = 30,
-  model = "2pl",
-  seed = 42
-)
-
-sim_2pl <- simulate_response_data(eqc_2pl, n_persons = 1000, seed = 123)
-
-tam_2pl <- compute_reliability_tam(
-  resp = sim_2pl$response_matrix,
-  model = "2pl"  # Specify 2PL
-)
+cat(sprintf("External validation (TAM):\n"))
+cat(sprintf("  Target reliability:  %.4f\n", eqc_cross$target_rho))
+cat(sprintf("  EQC achieved rho:    %.4f\n", eqc_cross$achieved_rho))
+cat(sprintf("  TAM WLE reliability: %.4f\n", tam_rel$rel_wle))
+cat(sprintf("  TAM EAP reliability: %.4f\n", tam_rel$rel_eap))
 ```
 
 ## Understanding WLE vs EAP Reliability
 
-A critical validation finding: **TAM’s EAP reliability is systematically
-higher than WLE reliability**. This is not a bug—it reflects
-fundamentally different mathematical definitions.
+A critical aspect of external validation is understanding why TAM
+reports two different reliability coefficients that bracket the target.
 
-### The Two Definitions
+### Mathematical Definitions
 
 **WLE Reliability** (design-effect based):
-``` math
-\rho_{\text{WLE}} = 1 - \frac{\bar{s}^2}{V_{\text{WLE}}}
-```
 
-where $`\bar{s}^2`$ is the average squared standard error and
-$`V_{\text{WLE}}`$ is the variance of WLE estimates.
+$$\rho_{\text{WLE}} = 1 - \frac{{\bar{s}}^{2}}{V_{\text{WLE}}}$$
+
+where
+${\bar{s}}^{2} = N^{- 1}\sum_{k = 1}^{N}\text{SE}^{2}\left( {\widehat{\theta}}_{k}^{\text{WLE}} \right)$
+is the average squared standard error and $V_{\text{WLE}}$ is the sample
+variance of WLE estimates
+$\{{\widehat{\theta}}_{k}^{\text{WLE}}\}_{k = 1}^{N}$.
 
 **EAP Reliability** (posterior variance based):
-``` math
-\rho_{\text{EAP}} = \frac{V_{\text{EAP}}}{V_{\text{EAP}} + \bar{\sigma}^2}
-```
 
-where $`V_{\text{EAP}}`$ is the variance of EAP estimates and
-$`\bar{\sigma}^2`$ is the average posterior variance.
+$$\rho_{\text{EAP}} = \frac{V_{\text{EAP}}}{V_{\text{EAP}} + {\bar{\sigma}}^{2}}$$
 
-### Mathematical Relationship
+where $V_{\text{EAP}}$ is the sample variance of EAP estimates and
+${\bar{\sigma}}^{2} = N^{- 1}\sum_{k = 1}^{N}\sigma_{k}^{2}$ is the
+average posterior variance.
 
-Under TAM’s definitions,
-$`\rho_{\text{EAP}} \geq \rho_{\text{WLE}}`$**always** holds. The
-inequality is strict except in trivial cases.
+### Why EAP $\geq$ WLE Always
+
+The inequality $\rho_{\text{EAP}} \geq \rho_{\text{WLE}}$ is a
+consequence of how posterior shrinkage affects variance estimation.
+
+**EAP shrinkage**: EAP estimates are shrunk toward the prior mean,
+which:
+
+- Reduces the variance of estimates: $V_{\text{EAP}} < V_{\text{WLE}}$
+- Reduces the average error variance:
+  ${\bar{\sigma}}^{2} < {\bar{s}}^{2}$
+- The error reduction is proportionally larger than the variance
+  reduction, resulting in a higher reliability ratio.
+
+**Connection to Jensen’s inequality**: The EAP reliability relates to
+the MSEM-based population reliability $\bar{w}$, while the WLE
+reliability relates more closely to the average-information reliability
+$\widetilde{\rho}$. The ordering
+$\rho_{\text{EAP}} \geq \rho_{\text{WLE}}$ parallels the theoretical
+$\widetilde{\rho} \geq \bar{w}$ inequality, though the finite-sample
+estimators introduce additional variability.
 
 ### Practical Interpretation
 
-| Metric          | Interpretation                     | Use Case            |
-|-----------------|------------------------------------|---------------------|
-| WLE reliability | Conservative lower bound           | Worst-case scenario |
-| EAP reliability | Liberal upper bound                | Best-case scenario  |
-| EQC/SPC target  | Theoretical population reliability | Design target       |
+| TAM Metric      | Interpretation              | Typical Relationship to $\rho^{*}$    |
+|:----------------|:----------------------------|:--------------------------------------|
+| WLE reliability | Conservative lower bound    | $\rho_{\text{WLE}} \lesssim \rho^{*}$ |
+| EAP reliability | Liberal upper bound         | $\rho_{\text{EAP}} \gtrsim \rho^{*}$  |
+| Midpoint        | Reasonable central estimate | $\approx \rho^{*}$                    |
 
-**Recommendation**: For conservative inference, focus on WLE
-reliability. The EQC/SPC target typically falls between WLE and EAP.
+**Expected patterns** (for $\rho^{*} = 0.80$):
 
-### Expected Patterns
-
-``` r
-# Typical validation results
-# Target: 0.80
-
-# WLE reliability: 0.78 - 0.82  (slight underestimation common)
-# EAP reliability: 0.82 - 0.86  (slight overestimation common)
-
-# Both within ±0.03 of target is excellent
-# WLE within ±0.05 of target is acceptable
-```
-
-## Comparing EQC and SPC Results
-
-The
-[`compare_eqc_spc()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_spc.md)
-function provides a formal comparison between the two calibration
-algorithms.
-
-### Basic Comparison
-
-``` r
-# Run EQC
-eqc_result <- eqc_calibrate(
-  target_rho = 0.80,
-  n_items = 25,
-  model = "rasch",
-  seed = 42
-)
-
-# Run SPC with EQC warm start
-spc_result <- spc_calibrate(
-  target_rho = 0.80,
-  n_items = 25,
-  model = "rasch",
-  c_init = eqc_result,
-  n_iter = 200,
-  seed = 42
-)
-
-# Compare
-comparison <- compare_eqc_spc(eqc_result, spc_result)
-```
-
-### Interpreting the Comparison
-
-``` r
-# Output includes:
-comparison$c_eqc      # EQC's c*
-comparison$c_spc      # SPC's c*
-comparison$diff_abs   # Absolute difference
-comparison$diff_pct   # Percent difference
-comparison$agreement  # TRUE if difference < 5%
-```
-
-### Expected Differences
-
-EQC and SPC may produce slightly different results due to:
-
-1.  **Different reliability formulas**: EQC uses fixed quadrature; SPC
-    uses fresh samples
-2.  **Stochastic noise**: SPC has Monte Carlo variance
-3.  **Reliability metric**: If using different metrics, expect
-    systematic differences
-
-**Agreement criterion**: Differences \< 5% indicate good agreement.
-
-### When They Disagree
-
-If EQC and SPC differ by more than 5%:
-
-``` r
-# 1. Check if using same reliability metric
-cat(sprintf("EQC metric: %s\n", eqc_result$metric))
-cat(sprintf("SPC metric: %s\n", spc_result$metric))
-
-# 2. Increase SPC iterations for more stable estimate
-spc_longer <- spc_calibrate(
-  target_rho = 0.80,
-  n_items = 25,
-  c_init = eqc_result,
-  n_iter = 500,  # More iterations
-  burn_in = 250,
-  seed = 42
-)
-
-# 3. Check SPC convergence
-cat(sprintf("Converged: %s\n", spc_longer$convergence$converged))
-cat(sprintf("Post-burn-in SD: %.4f\n", spc_longer$convergence$sd_post_burn))
-```
+- WLE reliability: approximately 0.77–0.82
+- EAP reliability: approximately 0.82–0.86
+- Both within $\pm 0.03$ of target is excellent
+- WLE within $\pm 0.05$ of target is acceptable
 
 ## Monte Carlo Validation Workflow
 
 For rigorous validation, use multiple replications to account for
-sampling variability.
-
-### Complete Validation Example
+sampling variability in both data generation and model fitting.
 
 ``` r
 # ==== Configuration ====
 target_rho <- 0.80
 n_items <- 25
 n_persons <- 1000
-n_replications <- 50
+n_reps <- 50
 
 # ==== Step 1: Calibrate ====
 eqc_result <- eqc_calibrate(
@@ -333,257 +381,319 @@ eqc_result <- eqc_calibrate(
   n_items = n_items,
   model = "rasch",
   latent_shape = "normal",
-  item_source = "irw",
-  M = 20000,  # Large quadrature for precision
-  seed = 42
+  item_source = "parametric",
+  M = 20000L,
+  seed = 42,
+  verbose = TRUE
 )
 
-cat(sprintf("Calibrated c* = %.4f\n", eqc_result$c_star))
-cat(sprintf("EQC achieved rho = %.4f\n\n", eqc_result$achieved_rho))
+cat(sprintf("Calibrated c* = %.4f\n\n", eqc_result$c_star))
 
 # ==== Step 2: Monte Carlo Validation ====
-wle_rels <- numeric(n_replications)
-eap_rels <- numeric(n_replications)
+wle_rels <- eap_rels <- numeric(n_reps)
 
-cat("Running Monte Carlo validation...\n")
-
-for (r in 1:n_replications) {
-  # Generate data
+for (r in 1:n_reps) {
   sim_data <- simulate_response_data(
-    eqc_result = eqc_result,
+    result = eqc_result,
     n_persons = n_persons,
     latent_shape = "normal",
     seed = r
   )
-  
-  # Compute TAM reliability
+
   tam_rel <- compute_reliability_tam(
     resp = sim_data$response_matrix,
     model = "rasch",
     verbose = FALSE
   )
-  
+
   wle_rels[r] <- tam_rel$rel_wle
   eap_rels[r] <- tam_rel$rel_eap
-  
-  if (r %% 10 == 0) cat(sprintf("  Completed %d/%d\n", r, n_replications))
+
+  if (r %% 10 == 0) cat(sprintf("  Completed %d/%d\n", r, n_reps))
 }
 
-# ==== Step 3: Summarize Results ====
-cat("\n")
-cat("=======================================================\n")
-cat("  Monte Carlo Validation Results\n")
-cat("=======================================================\n\n")
-
-cat(sprintf("Target reliability: %.3f\n\n", target_rho))
-
-cat("WLE Reliability:\n")
-cat(sprintf("  Mean:   %.4f\n", mean(wle_rels)))
-cat(sprintf("  SD:     %.4f\n", sd(wle_rels)))
-cat(sprintf("  Range:  [%.4f, %.4f]\n", min(wle_rels), max(wle_rels)))
-cat(sprintf("  MAE:    %.4f\n\n", mean(abs(wle_rels - target_rho))))
-
-cat("EAP Reliability:\n")
-cat(sprintf("  Mean:   %.4f\n", mean(eap_rels)))
-cat(sprintf("  SD:     %.4f\n", sd(eap_rels)))
-cat(sprintf("  Range:  [%.4f, %.4f]\n", min(eap_rels), max(eap_rels)))
-cat(sprintf("  MAE:    %.4f\n", mean(abs(eap_rels - target_rho))))
+# ==== Step 3: Summarize ====
+cat("\nMonte Carlo Validation Results\n")
+cat("==============================\n")
+cat(sprintf("Target: %.3f\n\n", target_rho))
+cat(sprintf("WLE: Mean = %.4f, SD = %.4f, MAE = %.4f\n",
+            mean(wle_rels), sd(wle_rels),
+            mean(abs(wle_rels - target_rho))))
+cat(sprintf("EAP: Mean = %.4f, SD = %.4f, MAE = %.4f\n",
+            mean(eap_rels), sd(eap_rels),
+            mean(abs(eap_rels - target_rho))))
 ```
 
-### Interpreting Monte Carlo Results
-
-**Success criteria**:
+### Success Criteria
 
 | Metric    | Good    | Acceptable | Investigate |
-|-----------|---------|------------|-------------|
+|:----------|:--------|:-----------|:------------|
 | MAE (WLE) | \< 0.02 | \< 0.03    | \> 0.05     |
 | MAE (EAP) | \< 0.02 | \< 0.03    | \> 0.05     |
 | SD (WLE)  | \< 0.02 | \< 0.03    | \> 0.04     |
+| SD (EAP)  | \< 0.01 | \< 0.02    | \> 0.03     |
 
-### Visualizing Results
+## The 960-Condition Validation Study
+
+The paper (Lee, 2025) reports a comprehensive validation study that
+provides empirical evidence for the package’s accuracy across a wide
+range of conditions.
+
+### Study Design
+
+The validation study crossed the following factors:
+
+| Factor             | Levels | Values                                  |
+|:-------------------|:------:|:----------------------------------------|
+| IRT model          |   3    | Rasch, 2PL-copula, 2PL-conditional      |
+| Latent shape       |   4    | Normal, bimodal, heavy-tailed, skewed   |
+| Test length        |   4    | $I \in \{ 10,20,30,50\}$                |
+| Target reliability |   4    | $\rho^{*} \in \{ 0.60,0.70,0.80,0.85\}$ |
+| Replications       |   5    | Independent seeds per condition         |
+
+Total: $3 \times 4 \times 4 \times 4 \times 5 = 960$ conditions.
+
+For each condition, the study:
+
+1.  Ran EQC calibration ($M = 20,000$).
+2.  Generated response data ($N = 1,000$).
+3.  Fitted the model in TAM.
+4.  Computed WLE and EAP reliability.
+
+### Key Findings
+
+The validation study established the following:
+
+1.  **Overall MAE**: The mean absolute error (MAE) between the EQC
+    target and TAM WLE reliability was approximately 0.02 across all 960
+    conditions, confirming the package achieves its design targets.
+
+2.  **Metric ordering**: EAP reliability was consistently higher than
+    WLE reliability, as predicted by the theoretical analysis in
+    [`vignette("theory-reliability")`](https://joonho112.github.io/IRTsimrel/articles/theory-reliability.md).
+
+3.  **EQC-SAC agreement**: When both algorithms were run on the same
+    condition, percent differences were typically below 5%, confirming
+    the theoretical consistency results.
+
+4.  **Latent shape sensitivity**: Non-normal latent distributions
+    (bimodal, heavy-tailed) showed slightly larger MAE values
+    (approximately 0.03) compared to normal distributions (approximately
+    0.015), reflecting the increased Jensen’s gap.
+
+5.  **Test length effect**: Longer tests ($I = 50$) produced more stable
+    reliability estimates (smaller SD across replications) compared to
+    shorter tests ($I = 10$).
+
+These results provide confidence that the calibration algorithms are
+accurate across a wide range of realistic simulation scenarios.
+
+## Validation Under Misspecification
+
+An important practical question is: what happens when the latent
+distribution used for data generation does not match the one used for
+calibration?
+
+### Demonstration: Calibration-Simulation Mismatch
 
 ``` r
-# Create validation plot
-par(mfrow = c(1, 2))
-
-# WLE distribution
-hist(wle_rels, breaks = 15, col = "lightblue",
-     main = "WLE Reliability Distribution",
-     xlab = "Reliability", xlim = c(target_rho - 0.1, target_rho + 0.1))
-abline(v = target_rho, col = "red", lwd = 2, lty = 2)
-abline(v = mean(wle_rels), col = "blue", lwd = 2)
-legend("topright", c("Target", "Mean"), 
-       col = c("red", "blue"), lty = c(2, 1), lwd = 2)
-
-# EAP distribution
-hist(eap_rels, breaks = 15, col = "lightgreen",
-     main = "EAP Reliability Distribution",
-     xlab = "Reliability", xlim = c(target_rho - 0.1, target_rho + 0.1))
-abline(v = target_rho, col = "red", lwd = 2, lty = 2)
-abline(v = mean(eap_rels), col = "darkgreen", lwd = 2)
-legend("topright", c("Target", "Mean"), 
-       col = c("red", "darkgreen"), lty = c(2, 1), lwd = 2)
-
-par(mfrow = c(1, 1))
-```
-
-## Validation Across Multiple Targets
-
-Test calibration accuracy across a range of target reliabilities:
-
-``` r
-# Test multiple target levels
-targets <- c(0.60, 0.70, 0.80, 0.85)
-results <- data.frame(
-  target = targets,
-  c_star = NA,
-  achieved_rho = NA,
-  mean_wle = NA,
-  mean_eap = NA,
-  mae_wle = NA,
-  mae_eap = NA
+# Calibrate under normal assumption
+eqc_normal <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric",
+  latent_shape = "normal",
+  M = 5000L, seed = 42, verbose = FALSE
 )
 
-for (i in seq_along(targets)) {
-  # Calibrate
-  eqc <- eqc_calibrate(
-    target_rho = targets[i],
-    n_items = 25,
-    model = "rasch",
-    seed = 42
-  )
-  
-  results$c_star[i] <- eqc$c_star
-  results$achieved_rho[i] <- eqc$achieved_rho
-  
-  # Validate with 20 replications
-  wle <- eap <- numeric(20)
-  for (r in 1:20) {
-    sim <- simulate_response_data(eqc, n_persons = 1000, seed = r)
-    tam <- compute_reliability_tam(sim$response_matrix, "rasch", verbose = FALSE)
-    wle[r] <- tam$rel_wle
-    eap[r] <- tam$rel_eap
-  }
-  
-  results$mean_wle[i] <- mean(wle)
-  results$mean_eap[i] <- mean(eap)
-  results$mae_wle[i] <- mean(abs(wle - targets[i]))
-  results$mae_eap[i] <- mean(abs(eap - targets[i]))
-  
-  cat(sprintf("Target %.2f: c* = %.3f, MAE(WLE) = %.4f\n", 
-              targets[i], eqc$c_star, results$mae_wle[i]))
-}
+# Evaluate reliability under different simulation distributions
+sim_shapes <- c("normal", "bimodal", "heavy_tail", "skew_pos")
+sim_pars <- list(
+  normal     = list(),
+  bimodal    = list(delta = 0.9),
+  heavy_tail = list(df = 5),
+  skew_pos   = list(k = 4)
+)
 
-# Summary table
-print(results)
+cat("Misspecification analysis:\n")
+#> Misspecification analysis:
+cat("  Calibration: normal, target = 0.80\n\n")
+#>   Calibration: normal, target = 0.80
+cat(sprintf("  %-14s %-10s %-10s %-10s\n",
+            "Sim shape", "rho_tilde", "rho_bar", "Deviation"))
+#>   Sim shape      rho_tilde  rho_bar    Deviation
+
+for (sh in sim_shapes) {
+  theta_mis <- sim_latentG(5000, shape = sh, shape_params = sim_pars[[sh]])$theta
+  both_mis <- compute_rho_both(
+    eqc_normal$c_star, theta_mis,
+    eqc_normal$beta_vec, eqc_normal$lambda_base
+  )
+  dev <- both_mis$rho_tilde - eqc_normal$target_rho
+  cat(sprintf("  %-14s %-10.4f %-10.4f %+10.4f\n",
+              sh, both_mis$rho_tilde, both_mis$rho_bar, dev))
+}
+#>   normal         0.7987     0.7923        -0.0013
+#>   bimodal        0.7950     0.7928        -0.0050
+#>   heavy_tail     0.7949     0.7761        -0.0051
+#>   skew_pos       0.8006     0.7897        +0.0006
 ```
 
-## Troubleshooting Validation Issues
+### Implications
 
-### Issue 1: Large Discrepancy Between Target and Achieved
+When the simulation distribution differs from the calibration
+distribution:
 
-**Symptoms**: MAE \> 0.05, systematic bias
+- **Same distribution**: Achieved reliability matches target closely.
+- **Different distribution**: Reliability deviates from target,
+  sometimes substantially.
 
-**Possible causes and solutions**:
+**Recommendation**: Always use the same latent distribution for
+calibration and data generation. If you need to study misspecification
+effects, do so deliberately and document the mismatch.
+
+### Sensitivity to Difficulty-Ability Alignment
 
 ``` r
-# 1. Latent distribution mismatch
-# Solution: Ensure same distribution for calibration and simulation
-eqc <- eqc_calibrate(..., latent_shape = "bimodal", latent_params = list(delta = 0.8))
-sim <- simulate_response_data(eqc, ..., 
-                               latent_shape = "bimodal",  # MUST match
-                               latent_params = list(delta = 0.8))
+# Calibrate with default difficulty distribution (centered at 0)
+eqc_aligned <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric",
+  M = 5000L, seed = 42, verbose = FALSE
+)
 
-# 2. Small sample size
-# Solution: Increase n_persons
-sim <- simulate_response_data(eqc, n_persons = 2000, ...)  # Larger N
+# What if abilities are shifted?
+theta_shifted <- sim_latentG(5000, shape = "normal")$theta + 1.5  # shifted right
 
-# 3. Insufficient quadrature
-# Solution: Increase M in EQC
-eqc <- eqc_calibrate(..., M = 50000)  # Larger quadrature
+both_aligned <- compute_rho_both(
+  eqc_aligned$c_star,
+  sim_latentG(5000, shape = "normal")$theta,
+  eqc_aligned$beta_vec, eqc_aligned$lambda_base
+)
+
+both_shifted <- compute_rho_both(
+  eqc_aligned$c_star,
+  theta_shifted,
+  eqc_aligned$beta_vec, eqc_aligned$lambda_base
+)
+
+cat("Effect of ability-difficulty misalignment:\n")
+#> Effect of ability-difficulty misalignment:
+cat(sprintf("  Aligned (theta ~ N(0,1)):   rho_tilde = %.4f\n",
+            both_aligned$rho_tilde))
+#>   Aligned (theta ~ N(0,1)):   rho_tilde = 0.8002
+cat(sprintf("  Shifted (theta ~ N(1.5,1)): rho_tilde = %.4f\n",
+            both_shifted$rho_tilde))
+#>   Shifted (theta ~ N(1.5,1)): rho_tilde = 0.7651
+cat(sprintf("  Reliability change:         %+.4f\n",
+            both_shifted$rho_tilde - both_aligned$rho_tilde))
+#>   Reliability change:         -0.0351
 ```
+
+## Troubleshooting Guide
+
+### Issue 1: Large Discrepancy Between Target and Achieved Reliability
+
+**Symptoms**: `|achieved_rho - target_rho| > 0.01`
+
+| Possible Cause        | Diagnostic                            | Solution                       |
+|:----------------------|:--------------------------------------|:-------------------------------|
+| Small $M$             | Check `length(eqc_result$theta_quad)` | Increase `M` to 10,000+        |
+| Target near boundary  | Check `eqc_result$misc$rho_bounds`    | Extend `c_bounds`              |
+| Upper/lower bound hit | Check for warning messages            | Adjust `c_bounds` or `n_items` |
 
 ### Issue 2: WLE Reliability Much Lower Than Target
 
-**Symptoms**: WLE consistently 0.03-0.05 below target
+**Symptoms**: $\rho_{\text{WLE}} < \rho^{*} - 0.05$ consistently
 
-**Explanation**: This is often expected behavior due to the conservative
-nature of WLE reliability.
+This is often *expected behavior* rather than a calibration failure. WLE
+reliability is a conservative measure (see Section 5 above).
 
-``` r
-# Check if EAP is closer to target
-cat(sprintf("Target: %.3f\n", target_rho))
-cat(sprintf("WLE:    %.3f (diff: %+.3f)\n", tam_rel$rel_wle, tam_rel$rel_wle - target_rho))
-cat(sprintf("EAP:    %.3f (diff: %+.3f)\n", tam_rel$rel_eap, tam_rel$rel_eap - target_rho))
-
-# If EAP is close but WLE is low, this is normal
-# The true reliability is between WLE and EAP
-```
+**Diagnostic**: Check if EAP reliability is closer to the target. If the
+midpoint $\left( \rho_{\text{WLE}} + \rho_{\text{EAP}} \right)/2$ is
+near $\rho^{*}$, the calibration is working correctly.
 
 ### Issue 3: High Variability Across Replications
 
-**Symptoms**: SD of reliability estimates \> 0.03
+**Symptoms**: SD of TAM reliability estimates $> 0.03$
 
-**Solutions**:
+| Possible Cause      | Solution                           |
+|:--------------------|:-----------------------------------|
+| Small sample size   | Increase `n_persons` to 2,000+     |
+| Few items           | Increase `n_items`                 |
+| Heavy-tailed latent | Use larger `n_persons`             |
+| Non-standard model  | Verify item parameter distribution |
 
-``` r
-# 1. Increase sample size per replication
-sim <- simulate_response_data(eqc, n_persons = 2000, ...)
-
-# 2. Use more items
-eqc <- eqc_calibrate(..., n_items = 40)
-
-# 3. For heavy-tailed latent distributions, use even larger N
-```
-
-### Issue 4: EQC and SPC Disagree by \> 10%
+### Issue 4: EQC and SAC Disagree by $> 10\%$
 
 **Symptoms**:
-[`compare_eqc_spc()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_spc.md)
-shows large percentage difference
+[`compare_eqc_sac()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_sac.md)
+shows large difference
 
-**Solutions**:
+**Step-by-step diagnosis**:
 
-``` r
-# 1. Ensure both use same reliability metric
-eqc <- eqc_calibrate(..., reliability_metric = "msem")
-spc <- spc_calibrate(..., reliability_metric = "msem")
-
-# 2. Increase SPC iterations
-spc <- spc_calibrate(..., n_iter = 500, burn_in = 250)
-
-# 3. Check SPC convergence
-if (!spc$convergence$converged) {
-  warning("SPC did not converge - increase n_iter")
-}
-
-# 4. Some difference is theoretically expected
-# See SPC vignette for Jensen's inequality explanation
-```
+1.  Verify both use the same `reliability_metric`.
+2.  Check SAC convergence: `sac_result$convergence$converged`.
+3.  Increase SAC iterations: `n_iter = 500`.
+4.  Check if SAC hit bounds: `sac_result$convergence$hit_lower_bound`.
+5.  Run SAC with EQC warm start if not already doing so.
 
 ### Issue 5: Target Reliability Not Achievable
 
-**Symptoms**: EQC hits upper bound, warning message
+**Symptoms**: EQC returns boundary $c^{*}$ with warning.
+
+``` r
+# Use check_feasibility() to diagnose
+feas <- check_feasibility(
+  n_items = 15, model = "rasch",
+  item_source = "parametric",
+  c_bounds = c(0.1, 10),
+  M = 5000L, seed = 42
+)
+#> 
+#> =======================================================
+#>   Feasibility Check: Achievable Reliability Range
+#> =======================================================
+#> 
+#>   Number of items  : 15
+#>   Model            : RASCH
+#>   Latent shape     : normal
+#>   Latent variance  : 1.0099
+#>   c range          : [0.10, 10.00]
+#>   Monte Carlo M    : 5000
+#> 
+#> Achievable Reliability Ranges:
+#>   rho_tilde (info) : [0.0363, 0.9797]
+#>   rho_bar   (msem) : [0.0000, 0.8513]
+#> 
+#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#>   Use rho_tilde range for EQC targets.
+#>   Use rho_bar range for SAC targets.
+```
 
 **Solutions**:
 
-``` r
-# 1. Use "info" metric (yields higher reliability for same c)
-eqc <- eqc_calibrate(..., reliability_metric = "info")
+1.  Use `reliability_metric = "info"` (yields higher values than
+    `"msem"`).
+2.  Extend `c_bounds` (e.g., `c(0.01, 20)`).
+3.  Increase `n_items`.
+4.  Accept the maximum achievable reliability from
+    [`check_feasibility()`](https://joonho112.github.io/IRTsimrel/reference/check_feasibility.md).
 
-# 2. Extend search bounds
-eqc <- eqc_calibrate(..., c_bounds = c(0.1, 5))
+### Issue 6: Reproducibility Failures
 
-# 3. Increase number of items
-eqc <- eqc_calibrate(..., n_items = 40)
+**Symptoms**: Different results with the same seed.
 
-# 4. Accept maximum achievable reliability
-# Check: eqc_result$misc$rho_bounds["rho_U"]
-```
+| Possible Cause                | Solution                                                             |
+|:------------------------------|:---------------------------------------------------------------------|
+| Different R version           | Document [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) |
+| Different package version     | Pin package version                                                  |
+| Parallel/multithreaded RNG    | Use sequential execution                                             |
+| Seed not passed to both steps | Ensure `seed` is set in both calibration and simulation              |
 
 ## Complete Validation Template
 
-Use this template for your simulation studies:
+This is a self-contained template that can be copied and adapted for any
+simulation study.
 
 ``` r
 # ==============================================================
@@ -591,129 +701,176 @@ Use this template for your simulation studies:
 # ==============================================================
 
 library(IRTsimrel)
-library(TAM)
 
 # ---- Configuration ----
-TARGET_RHO <- 0.80
-N_ITEMS <- 25
-N_PERSONS <- 1000
-N_REPS <- 50
-MODEL <- "rasch"
-LATENT_SHAPE <- "normal"
-SEED_CALIB <- 42
+TARGET_RHO     <- 0.80
+N_ITEMS        <- 25
+N_PERSONS      <- 1000
+N_REPS         <- 50
+MODEL          <- "rasch"
+LATENT_SHAPE   <- "normal"
+LATENT_PARAMS  <- list()
+ITEM_SOURCE    <- "parametric"
+ITEM_PARAMS    <- list()
+SEED_CALIB     <- 42
 
-# ---- Step 1: Calibration ----
-cat("Step 1: Running EQC calibration...\n")
+# ---- Step 1: Feasibility Check ----
+cat("Step 1: Feasibility check...\n")
+feas <- check_feasibility(
+  n_items = N_ITEMS, model = MODEL,
+  latent_shape = LATENT_SHAPE,
+  item_source = ITEM_SOURCE,
+  c_bounds = c(0.1, 10),
+  M = 10000L, seed = SEED_CALIB,
+  latent_params = LATENT_PARAMS,
+  item_params = ITEM_PARAMS
+)
 
+stopifnot(TARGET_RHO >= feas$rho_range_info[1],
+          TARGET_RHO <= feas$rho_range_info[2])
+
+# ---- Step 2: EQC Calibration ----
+cat("\nStep 2: EQC calibration...\n")
 eqc_result <- eqc_calibrate(
   target_rho = TARGET_RHO,
   n_items = N_ITEMS,
   model = MODEL,
   latent_shape = LATENT_SHAPE,
-  item_source = "irw",
-  M = 20000,
+  item_source = ITEM_SOURCE,
+  latent_params = LATENT_PARAMS,
+  item_params = ITEM_PARAMS,
+  reliability_metric = "info",
+  M = 20000L,
   seed = SEED_CALIB,
   verbose = TRUE
 )
 
-# ---- Step 2: SPC Validation (Optional) ----
-cat("\nStep 2: Running SPC validation...\n")
-
-spc_result <- spc_calibrate(
+# ---- Step 3: SAC Cross-Validation ----
+cat("\nStep 3: SAC cross-validation...\n")
+sac_result <- sac_calibrate(
   target_rho = TARGET_RHO,
   n_items = N_ITEMS,
   model = MODEL,
   latent_shape = LATENT_SHAPE,
-  item_source = "irw",
+  item_source = ITEM_SOURCE,
+  latent_params = LATENT_PARAMS,
+  item_params = ITEM_PARAMS,
+  reliability_metric = "info",
   c_init = eqc_result,
-  n_iter = 200,
+  n_iter = 300L,
+  M_per_iter = 1000L,
   seed = SEED_CALIB,
   verbose = TRUE
 )
 
-compare_eqc_spc(eqc_result, spc_result)
+comparison <- compare_eqc_sac(eqc_result, sac_result)
+stopifnot(comparison$agreement)
 
-# ---- Step 3: Monte Carlo TAM Validation ----
-cat("\nStep 3: Running Monte Carlo validation...\n")
+# ---- Step 4: Jensen's Gap Check ----
+cat("\nStep 4: Jensen's gap check...\n")
+theta_check <- sim_latentG(10000, shape = LATENT_SHAPE,
+                            params = LATENT_PARAMS)$theta
+both_check <- compute_rho_both(
+  eqc_result$c_star, theta_check,
+  eqc_result$beta_vec, eqc_result$lambda_base
+)
+cat(sprintf("  Jensen's gap: %.4f\n",
+            both_check$rho_tilde - both_check$rho_bar))
+
+# ---- Step 5: Monte Carlo TAM Validation ----
+cat("\nStep 5: Monte Carlo TAM validation...\n")
+
+library(TAM)
 
 wle_rels <- eap_rels <- numeric(N_REPS)
 
 for (r in 1:N_REPS) {
   sim_data <- simulate_response_data(
-    eqc_result = eqc_result,
+    result = eqc_result,
     n_persons = N_PERSONS,
     latent_shape = LATENT_SHAPE,
+    latent_params = LATENT_PARAMS,
     seed = r
   )
-  
+
   tam_rel <- compute_reliability_tam(
     resp = sim_data$response_matrix,
     model = MODEL,
     verbose = FALSE
   )
-  
+
   wle_rels[r] <- tam_rel$rel_wle
   eap_rels[r] <- tam_rel$rel_eap
-  
+
   if (r %% 10 == 0) cat(sprintf("  %d/%d complete\n", r, N_REPS))
 }
 
-# ---- Step 4: Summary ----
+# ---- Step 6: Summary Report ----
 cat("\n")
 cat("=======================================================\n")
 cat("  VALIDATION SUMMARY\n")
 cat("=======================================================\n\n")
 
 cat(sprintf("Configuration:\n"))
-cat(sprintf("  Target reliability: %.3f\n", TARGET_RHO))
-cat(sprintf("  Items: %d, Persons: %d, Replications: %d\n\n", N_ITEMS, N_PERSONS, N_REPS))
+cat(sprintf("  Target: %.3f | Items: %d | Model: %s\n",
+            TARGET_RHO, N_ITEMS, MODEL))
+cat(sprintf("  Shape: %s | N: %d | Reps: %d\n\n",
+            LATENT_SHAPE, N_PERSONS, N_REPS))
 
 cat(sprintf("Calibration:\n"))
-cat(sprintf("  EQC c*: %.4f (achieved rho = %.4f)\n", eqc_result$c_star, eqc_result$achieved_rho))
-cat(sprintf("  SPC c*: %.4f (agreement: %s)\n\n", 
-            spc_result$c_star, 
-            ifelse(abs(eqc_result$c_star - spc_result$c_star)/eqc_result$c_star < 0.05, "YES", "NO")))
+cat(sprintf("  EQC c*: %.4f (achieved = %.4f)\n",
+            eqc_result$c_star, eqc_result$achieved_rho))
+cat(sprintf("  SAC c*: %.4f (agreement: %s)\n\n",
+            sac_result$c_star,
+            ifelse(comparison$agreement, "YES", "NO")))
 
 cat(sprintf("TAM Validation:\n"))
-cat(sprintf("  WLE: Mean = %.4f, SD = %.4f, MAE = %.4f\n", 
-            mean(wle_rels), sd(wle_rels), mean(abs(wle_rels - TARGET_RHO))))
-cat(sprintf("  EAP: Mean = %.4f, SD = %.4f, MAE = %.4f\n", 
-            mean(eap_rels), sd(eap_rels), mean(abs(eap_rels - TARGET_RHO))))
+cat(sprintf("  WLE: Mean=%.4f SD=%.4f MAE=%.4f\n",
+            mean(wle_rels), sd(wle_rels),
+            mean(abs(wle_rels - TARGET_RHO))))
+cat(sprintf("  EAP: Mean=%.4f SD=%.4f MAE=%.4f\n",
+            mean(eap_rels), sd(eap_rels),
+            mean(abs(eap_rels - TARGET_RHO))))
 
-cat(sprintf("\nValidation Status: "))
-if (mean(abs(wle_rels - TARGET_RHO)) < 0.03) {
-  cat("PASSED\n")
-} else {
-  cat("INVESTIGATE\n")
-}
+verdict <- ifelse(mean(abs(wle_rels - TARGET_RHO)) < 0.03,
+                  "PASSED", "INVESTIGATE")
+cat(sprintf("\nVerdict: %s\n", verdict))
 ```
 
 ## Summary
 
-Effective validation of reliability-targeted simulation requires:
+Effective validation of reliability-targeted simulation requires
+multiple complementary approaches:
 
-1.  **Generate representative data** using
-    [`simulate_response_data()`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md)
-    with matching latent distributions
-2.  **External validation** via TAM’s
-    [`WLErel()`](https://rdrr.io/pkg/TAM/man/WLErel.html) and
-    [`EAPrel()`](https://rdrr.io/pkg/TAM/man/WLErel.html) functions
-3.  **Understand reliability metrics**: WLE is conservative, EAP is
-    liberal, target falls between
-4.  **Cross-validate algorithms** using
-    [`compare_eqc_spc()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_spc.md)
-    when possible
-5.  **Use Monte Carlo replications** to account for sampling variability
-6.  **Set realistic expectations**: MAE \< 0.03 is excellent, \< 0.05 is
-    acceptable
+| Level                | Tool                                                                                                                                             | Key Question                             |
+|:---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------|
+| **Internal**         | [`predict()`](https://rdrr.io/r/stats/predict.html), [`compute_rho_both()`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_both.md) | Does the calibration achieve its target? |
+| **Cross-algorithm**  | [`compare_eqc_sac()`](https://joonho112.github.io/IRTsimrel/reference/compare_eqc_sac.md)                                                        | Do independent algorithms agree?         |
+| **External**         | [`compute_reliability_tam()`](https://joonho112.github.io/IRTsimrel/reference/compute_reliability_tam.md)                                        | Does fitted-model reliability match?     |
+| **Misspecification** | Manual analysis                                                                                                                                  | How robust is the calibration?           |
 
-Following these practices ensures your simulation studies achieve the
-intended reliability levels with confidence.
+**Best practices**:
+
+1.  Always check the Jensen’s gap with
+    [`compute_rho_both()`](https://joonho112.github.io/IRTsimrel/reference/compute_rho_both.md)
+    to understand the impact of metric choice.
+2.  Use EQC warm start for SAC cross-validation.
+3.  Report both WLE and EAP reliability from TAM validation.
+4.  Use $N_{\text{persons}} \geq 1,000$ for stable TAM estimates.
+5.  Match the latent distribution between calibration and simulation.
+6.  Document the seed and package version for reproducibility.
 
 ## References
 
+Lee, J. (2025). Reliability-targeted simulation of item response data:
+Solving the inverse design problem. *arXiv preprint arXiv:2512.16012*.
+
 Warm, T. A. (1989). Weighted likelihood estimation of ability in item
-response theory. *Psychometrika, 54*(3), 427-450.
+response theory. *Psychometrika, 54*(3), 427–450.
 
 Robitzsch, A., Kiefer, T., & Wu, M. (2022). TAM: Test Analysis Modules.
 R package version 4.1-4.
+
+Bock, R. D., & Mislevy, R. J. (1982). Adaptive EAP estimation of ability
+in a microcomputer environment. *Applied Psychological Measurement,
+6*(4), 431–444.

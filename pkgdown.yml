@@ -1,14 +1,20 @@
-pandoc: 3.6.3
+pandoc: 3.1.11
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
-  eqc_algorithm: eqc_algorithm.html
-  introduction_to_irtsimrel: introduction_to_irtsimrel.html
-  item_parameters: item_parameters.html
-  latent_distributions: latent_distributions.html
-  spc_algorithm: spc_algorithm.html
+  algorithm-eqc: algorithm-eqc.html
+  algorithm-sac: algorithm-sac.html
+  api-reference: api-reference.html
+  applied-guide: applied-guide.html
+  case-studies: case-studies.html
+  introduction: introduction.html
+  item-parameters: item-parameters.html
+  latent-distributions: latent-distributions.html
+  quick-start: quick-start.html
+  simulation-design: simulation-design.html
+  theory-reliability: theory-reliability.html
   validation: validation.html
-last_built: 2025-12-04T08:20Z
+last_built: 2026-02-13T04:14Z
 urls:
   reference: https://joonho112.github.io/IRTsimrel/reference
   article: https://joonho112.github.io/IRTsimrel/articles
