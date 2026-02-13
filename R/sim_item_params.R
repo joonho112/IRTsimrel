@@ -395,19 +395,21 @@ sim_item_params <- function(n_items,
 #' @noRd
 .generate_irw_difficulties <- function(n_items, params) {
 
-  if (!requireNamespace("irw", quietly = TRUE)) {
+  irw_available <- nzchar(system.file(package = "irw"))
+  if (!irw_available) {
     stop("Package 'irw' is required for source = 'irw'. ",
          "Install with: devtools::install_github('itemresponsewarehouse/Rpkg')")
   }
 
   pool <- params$pool
   if (is.null(pool)) {
-    data("diff_long", package = "irw", envir = environment())
+    utils::data("diff_long", package = "irw", envir = environment())
     pool <- get("diff_long", envir = environment())
   }
 
   # Use IRW function with num_replications = 1
-  result <- irw::irw_simu_diff(
+  irw_simu_diff <- utils::getFromNamespace("irw_simu_diff", "irw")
+  result <- irw_simu_diff(
     num_items = n_items,
     num_replications = 1,
     difficulty_pool = pool

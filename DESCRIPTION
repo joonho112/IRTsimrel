@@ -30,13 +30,10 @@ Suggests:
     ggplot2 (>= 3.4.0),
     patchwork,
     TAM,
-    irw,
     MASS,
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
-Remotes:
-    itemresponsewarehouse/Rpkg
 VignetteBuilder: knitr
 URL: https://github.com/joonho112/IRTsimrel, https://joonho112.github.io/IRTsimrel/
 BugReports: https://github.com/joonho112/IRTsimrel/issues
