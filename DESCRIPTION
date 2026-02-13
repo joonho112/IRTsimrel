@@ -35,6 +35,8 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
+Remotes:
+    ben-domingue/irw
 VignetteBuilder: knitr
 URL: https://github.com/joonho112/IRTsimrel, https://joonho112.github.io/IRTsimrel/
 BugReports: https://github.com/joonho112/IRTsimrel/issues
