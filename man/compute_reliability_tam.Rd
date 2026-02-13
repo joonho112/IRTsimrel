@@ -44,8 +44,8 @@ For conservative inference, treat WLE as a lower bound.
 }
 \examples{
 \dontrun{
-# Simulate response data from EQC results
-sim_data <- simulate_response_data(eqc_result, n_persons = 500)
+# Simulate response data from calibration results
+sim_data <- simulate_response_data(result = eqc_result, n_persons = 500)
 
 # Compute TAM reliability
 tam_rel <- compute_reliability_tam(sim_data$response_matrix, model = "rasch")

@@ -30,7 +30,7 @@ Low-level utilities for mapping a discrimination scale \eqn{c} and
 simulated person/item parameters to marginal reliability.
 
 These functions implement the same reliability definitions used
-inside both \code{eqc_calibrate()} and \code{spc_calibrate()}:
+inside both \code{eqc_calibrate()} and \code{sac_calibrate()}:
 
 \itemize{
 \item \code{compute_rho_bar()}: MSEM-based marginal reliability
@@ -75,7 +75,7 @@ lambda0 <- rep(1, 20)
 compute_rho_bar(1, theta, beta, lambda0)
 compute_rho_tilde(1, theta, beta, lambda0)
 
-# With pre-calculated theta variance (recommended for SPC)
+# With pre-calculated theta variance (recommended for SAC)
 theta_var_fixed <- var(rnorm(10000))  # Pre-calculate from large sample
 compute_rho_bar(1, theta, beta, lambda0, theta_var = theta_var_fixed)
 

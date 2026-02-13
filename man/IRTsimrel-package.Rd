@@ -14,7 +14,7 @@ package calibrates item discriminations to achieve that target.
 Main functions:
 \itemize{
 \item \code{\link{eqc_calibrate}}: Empirical Quadrature Calibration (recommended)
-\item \code{\link{spc_calibrate}}: Stochastic Approximation Calibration
+\item \code{\link{sac_calibrate}}: Stochastic Approximation Calibration
 \item \code{\link{sim_latentG}}: Generate latent ability distributions
 \item \code{\link{sim_item_params}}: Generate item parameters
 \item \code{\link{simulate_response_data}}: Generate response data
@@ -24,6 +24,7 @@ Main functions:
 Useful links:
 \itemize{
   \item \url{https://github.com/joonho112/IRTsimrel}
+  \item \url{https://joonho112.github.io/IRTsimrel/}
   \item Report bugs at \url{https://github.com/joonho112/IRTsimrel/issues}
 }
 

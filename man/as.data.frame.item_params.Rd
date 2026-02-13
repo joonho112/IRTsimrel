@@ -4,7 +4,19 @@
 \alias{as.data.frame.item_params}
 \title{Extract item parameters as data frame}
 \usage{
-\method{as.data.frame}{item_params}(x, ...)
+\method{as.data.frame}{item_params}(x, row.names = NULL, optional = FALSE, ...)
+}
+\arguments{
+\item{x}{An \code{item_params} object.}
+
+\item{row.names}{NULL or a character vector giving the row names.}
+
+\item{optional}{Logical. If TRUE, setting row names is optional.}
+
+\item{...}{Additional arguments (ignored).}
+}
+\value{
+A data frame of item parameters.
 }
 \description{
 Extract item parameters as data frame

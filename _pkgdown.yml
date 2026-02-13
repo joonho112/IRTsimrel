@@ -11,6 +11,9 @@ template:
 home:
   title: IRTsimrel
   description: Reliability-Targeted Simulation for Item Response Data
+  links:
+    - text: arXiv paper (Lee, 2025)
+      href: https://arxiv.org/abs/2512.16012
 
 authors:
   JoonHo Lee:
@@ -23,29 +26,39 @@ navbar:
   components:
     intro:
       text: Get Started
-      href: articles/introduction_to_irtsimrel.html
+      href: articles/introduction.html
     articles:
       text: Articles
       menu:
         - text: "Getting Started"
-        - text: Introduction to IRTsimrel
-          href: articles/introduction_to_irtsimrel.html
+        - text: Introduction
+          href: articles/introduction.html
+        - text: Quick Start
+          href: articles/quick-start.html
         - text: "---"
-        - text: "Core Functions"
-        - text: Working with Latent Distributions
-          href: articles/latent_distributions.html
-        - text: Generating Realistic Item Parameters
-          href: articles/item_parameters.html
+        - text: "Applied Researchers Track"
+        - text: Applied Guide
+          href: articles/applied-guide.html
+        - text: Latent Distributions
+          href: articles/latent-distributions.html
+        - text: Item Parameters
+          href: articles/item-parameters.html
+        - text: Simulation Design
+          href: articles/simulation-design.html
+        - text: Case Studies
+          href: articles/case-studies.html
         - text: "---"
-        - text: "Calibration Algorithms"
+        - text: "Methodological Researchers Track"
+        - text: "Reliability Theory"
+          href: articles/theory-reliability.html
         - text: "Algorithm 1: EQC"
-          href: articles/eqc_algorithm.html
-        - text: "Algorithm 2: SPC"
-          href: articles/spc_algorithm.html
-        - text: "---"
-        - text: "Validation"
-        - text: Validating Calibration Results
+          href: articles/algorithm-eqc.html
+        - text: "Algorithm 2: SAC"
+          href: articles/algorithm-sac.html
+        - text: Validation
           href: articles/validation.html
+        - text: API Reference
+          href: articles/api-reference.html
 
 reference:
   - title: "Package Overview"
@@ -57,8 +70,8 @@ reference:
       Core functions for reliability-targeted calibration
     contents:
       - eqc_calibrate
-      - spc_calibrate
       - sac_calibrate
+      - spc_calibrate
 
   - title: "Simulation Functions"
     desc: >
@@ -70,48 +83,59 @@ reference:
 
   - title: "Reliability Utilities"
     desc: >
-      Compute reliability metrics
+      Compute reliability metrics and screening tools
     contents:
       - compute_rho_bar
       - compute_rho_tilde
+      - compute_rho_both
       - compute_apc_init
       - compute_reliability_tam
+      - check_feasibility
+      - rho_curve
 
   - title: "Comparison & Visualization"
     desc: >
       Compare distributions and calibration results
     contents:
       - compare_shapes
-      - compare_eqc_spc
+      - compare_eqc_sac
 
   - title: "S3 Methods"
     desc: >
-      Print, plot, and summary methods
+      Print, plot, summary, coef, and predict methods
     contents:
       - starts_with("print.")
       - starts_with("plot.")
       - starts_with("summary.")
+      - starts_with("coef.")
+      - starts_with("predict.")
       - starts_with("as.")
 
 articles:
   - title: Getting Started
     navbar: ~
     contents:
-      - introduction_to_irtsimrel
+      - introduction
+      - quick-start
 
-  - title: Core Functions
+  - title: Applied Researchers Track
     contents:
-      - latent_distributions
-      - item_parameters
+      - applied-guide
+      - latent-distributions
+      - item-parameters
+      - simulation-design
+      - case-studies
 
-  - title: Calibration Algorithms
+  - title: Methodological Researchers Track
     contents:
-      - eqc_algorithm
-      - spc_algorithm
-
-  - title: Validation
-    contents:
+      - theory-reliability
+      - algorithm-eqc
+      - algorithm-sac
       - validation
+
+  - title: Reference
+    contents:
+      - api-reference
 
 footer:
   structure:

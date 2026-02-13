@@ -1,0 +1,932 @@
+---
+title: "Applied Guide: Reliability-Targeted IRT Simulation"
+author: "JoonHo Lee"
+date: "`r Sys.Date()`"
+description: >
+  A comprehensive practical workflow guide for reliability-targeted IRT simulation
+  using IRTsimrel, covering the full 6-step pipeline from feasibility screening
+  through response data generation.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Applied Guide: Reliability-Targeted IRT Simulation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  fig.width = 7, fig.height = 5,
+  fig.align = "center", out.width = "85%"
+)
+library(IRTsimrel)
+set.seed(42)
+```
+
+# 1. Overview
+
+**Reading time**: approximately 30--40 minutes.
+
+This vignette walks through the complete workflow for generating simulated item
+response data with a **pre-specified marginal reliability**. The approach
+implements the framework described in Lee (2025), which treats reliability as a
+design parameter rather than an emergent property of the simulation.
+
+**Learning objectives.** After completing this guide you will be able to:
+
+1. Screen whether a desired reliability is achievable for a given test design.
+2. Visualize the reliability curve to understand the design space.
+3. Calibrate a discrimination scaling factor with EQC (Algorithm 1).
+4. Optionally validate the calibration with SAC (Algorithm 2).
+5. Generate item response data at the target reliability.
+6. Extract, summarize, and export calibrated item parameters.
+
+**Prerequisites.** Install IRTsimrel and (optionally) TAM for external
+validation:
+
+```{r install-packages, eval = FALSE}
+# install.packages("devtools")
+devtools::install_github("your-repo/IRTsimrel")
+install.packages("TAM")
+```
+
+Throughout this guide we use `seed = 42` and `M = 5000L` so that examples run
+quickly and reproduce exactly.
+
+
+# 2. The 6-Step Workflow
+
+The reliability-targeted simulation workflow consists of six steps.  The table
+below provides a quick summary before we walk through each step in detail.
+
+| Step | Function | Purpose |
+|:----:|:---------|:--------|
+| 1 | `check_feasibility()` | Screen whether $\rho^*$ is achievable |
+| 2 | `rho_curve()` | Visualize $\rho(c)$ across scaling factors |
+| 3 | `eqc_calibrate()` | Find $c^*$ such that $\rho(c^*) \approx \rho^*$ |
+| 4 | `sac_calibrate()` | (Optional) Validate $c^*$ via stochastic approximation |
+| 5 | `simulate_response_data()` | Generate binary response matrix |
+| 6 | `coef()`, `predict()`, `as.data.frame()` | Extract and use results |
+
+
+## 2.1 Step 1: Screen Feasibility with `check_feasibility()`
+
+Before investing computation time in calibration, verify that the target
+reliability is achievable.  `check_feasibility()` evaluates both reliability
+metrics across a range of scaling factors and reports the achievable interval.
+
+```{r step1-feasibility}
+feas <- check_feasibility(
+  n_items      = 25,
+  model        = "rasch",
+  latent_shape = "normal",
+  item_source  = "parametric",
+  c_bounds     = c(0.1, 10),
+  M            = 5000L,
+  seed         = 42
+)
+```
+
+The output tells you the achievable range for both the average-information
+metric ($\tilde{\rho}$) and the MSEM-based metric ($\bar{w}$).  If your target
+falls outside the reported range, you must change the design (e.g., add items or
+switch to a 2PL model).
+
+**Quick check for a specific target:**
+
+```{r step1-check-target}
+target <- 0.85
+in_range <- target >= feas$rho_range_info[1] && target <= feas$rho_range_info[2]
+cat(sprintf("Target rho = %.2f is %s for this design.\n",
+            target, ifelse(in_range, "FEASIBLE", "NOT feasible")))
+```
+
+### Comparing feasibility across designs
+
+You can compare different test lengths to find the minimum number of items
+needed:
+
+```{r step1-compare-designs}
+test_lengths <- c(10, 15, 20, 25, 30, 40)
+feas_table <- data.frame(
+  n_items   = test_lengths,
+  rho_min   = numeric(length(test_lengths)),
+  rho_max   = numeric(length(test_lengths))
+)
+
+for (i in seq_along(test_lengths)) {
+  fi <- check_feasibility(
+    n_items = test_lengths[i], model = "rasch",
+    item_source = "parametric", M = 5000L,
+    seed = 42, verbose = FALSE
+  )
+  feas_table$rho_min[i] <- round(fi$rho_range_info[1], 4)
+  feas_table$rho_max[i] <- round(fi$rho_range_info[2], 4)
+}
+
+feas_table
+```
+
+```{r step1-feas-plot, fig.height = 4}
+plot(NULL, xlim = range(test_lengths), ylim = c(0, 1),
+     xlab = "Number of Items", ylab = expression(tilde(rho)),
+     main = "Achievable Reliability Range by Test Length")
+polygon(c(test_lengths, rev(test_lengths)),
+        c(feas_table$rho_min, rev(feas_table$rho_max)),
+        col = adjustcolor("steelblue", alpha.f = 0.3), border = NA)
+lines(test_lengths, feas_table$rho_min, col = "steelblue", lwd = 2)
+lines(test_lengths, feas_table$rho_max, col = "steelblue", lwd = 2)
+abline(h = 0.85, lty = 2, col = "firebrick")
+text(max(test_lengths), 0.86, expression(rho^"*" == 0.85),
+     col = "firebrick", pos = 2, cex = 0.9)
+```
+
+The shaded region shows the achievable reliability range as a function of test
+length.  This type of visualization is useful for study planning: you can
+immediately see the minimum test length needed to reach your desired reliability.
+
+For more on how the latent distribution affects these ranges, see
+`vignette("latent-distributions")`.
+
+
+## 2.2 Step 2: Explore the Reliability Curve with `rho_curve()`
+
+The reliability curve $\rho(c)$ shows how reliability changes as the global
+discrimination scaling factor $c$ varies.  This visualization helps you
+understand the shape of the design space and select sensible targets.
+
+```{r step2-rho-curve, fig.height = 5}
+curve_data <- rho_curve(
+  n_items      = 25,
+  model        = "rasch",
+  latent_shape = "normal",
+  item_source  = "parametric",
+  metric       = "both",
+  M            = 5000L,
+  seed         = 42,
+  plot         = TRUE
+)
+```
+
+The plot shows both $\tilde{\rho}$ (average-information) and $\bar{w}$
+(MSEM-based).  Note that $\tilde{\rho} \geq \bar{w}$ always holds by Jensen's
+inequality.
+
+**Reading the curve.** You can use the returned data frame to find approximate
+$c$ values for any target:
+
+```{r step2-read-curve}
+head(curve_data)
+
+# Find approximate c for rho_tilde = 0.80
+idx <- which.min(abs(curve_data$rho_tilde - 0.80))
+cat(sprintf("Approximate c for rho_tilde = 0.80: %.3f\n", curve_data$c[idx]))
+```
+
+
+## 2.3 Step 3: Calibrate with EQC --- `eqc_calibrate()`
+
+EQC (Empirical Quadrature Calibration) is Algorithm 1 from Lee (2025).  It uses
+deterministic root-finding (Brent's method via `uniroot()`) to solve the
+equation $\hat{\rho}_M(c^*) = \rho^*$.
+
+### 2.3.1 Basic calibration (Rasch)
+
+```{r step3-eqc-basic}
+eqc_result <- eqc_calibrate(
+  target_rho        = 0.85,
+  n_items           = 25,
+  model             = "rasch",
+  latent_shape      = "normal",
+  item_source       = "parametric",
+  reliability_metric = "info",
+  M                 = 5000L,
+  seed              = 42,
+  verbose           = TRUE
+)
+```
+
+```{r step3-eqc-print}
+print(eqc_result)
+```
+
+**Key outputs:**
+
+- `c_star`: the calibrated scaling factor $c^*$.
+- `achieved_rho`: the empirical reliability at $c^*$.
+- `items_calib`: the item parameter object with scaled discriminations.
+
+### 2.3.2 Exploring the result
+
+```{r step3-summary}
+summary(eqc_result)
+```
+
+### 2.3.3 Key parameters explained
+
+| Parameter | Default | Description |
+|:----------|:--------|:------------|
+| `target_rho` | --- | Target marginal reliability $\rho^* \in (0, 1)$ |
+| `n_items` | --- | Number of items on the test form |
+| `model` | `"rasch"` | `"rasch"` or `"2pl"` |
+| `latent_shape` | `"normal"` | Latent distribution shape (see `vignette("latent-distributions")`) |
+| `item_source` | `"parametric"` | Item parameter source (see `vignette("item-parameters")`) |
+| `reliability_metric` | `"info"` | `"info"` ($\tilde{\rho}$) or `"msem"` ($\bar{w}$) |
+| `M` | `10000L` | Monte Carlo sample size for quadrature |
+| `c_bounds` | `c(0.3, 3)` | Search interval for $c$ |
+| `seed` | `NULL` | For reproducibility |
+
+### 2.3.4 Calibrating under different models and shapes
+
+**2PL model with bimodal population:**
+
+```{r step3-eqc-2pl-bimodal}
+eqc_2pl <- eqc_calibrate(
+  target_rho   = 0.80,
+  n_items      = 30,
+  model        = "2pl",
+  latent_shape = "bimodal",
+  latent_params = list(shape_params = list(delta = 0.8)),
+  item_source  = "parametric",
+  M            = 5000L,
+  seed         = 42
+)
+
+cat(sprintf("c* = %.4f, achieved rho = %.4f\n",
+            eqc_2pl$c_star, eqc_2pl$achieved_rho))
+```
+
+**Skewed population with heavy tails:**
+
+```{r step3-eqc-skew}
+eqc_skew <- eqc_calibrate(
+  target_rho   = 0.80,
+  n_items      = 25,
+  model        = "rasch",
+  latent_shape = "skew_pos",
+  item_source  = "parametric",
+  M            = 5000L,
+  seed         = 42
+)
+
+cat(sprintf("c* = %.4f, achieved rho = %.4f\n",
+            eqc_skew$c_star, eqc_skew$achieved_rho))
+```
+
+
+## 2.4 Step 4: (Optional) Validate with SAC --- `sac_calibrate()`
+
+SAC (Stochastic Approximation Calibration) is Algorithm 2.  It uses the
+Robbins--Monro stochastic approximation algorithm and can target either
+$\tilde{\rho}$ or $\bar{w}$.  SAC is useful for:
+
+- **Independent validation** of EQC results.
+- **Targeting $\bar{w}$** directly (the theoretically exact metric).
+- **Complex scenarios** where analytic information functions are unavailable.
+
+### 2.4.1 Warm-start from EQC (recommended)
+
+Passing the EQC result as `c_init` accelerates SAC convergence:
+
+```{r step4-sac-warm}
+sac_result <- sac_calibrate(
+  target_rho        = 0.85,
+  n_items           = 25,
+  model             = "rasch",
+  latent_shape      = "normal",
+  item_source       = "parametric",
+  reliability_metric = "info",
+  c_init            = eqc_result,
+  n_iter            = 200L,
+  M_per_iter        = 500L,
+  M_pre             = 5000L,
+  seed              = 42,
+  verbose           = TRUE
+)
+```
+
+### 2.4.2 Visualize SAC convergence
+
+```{r step4-sac-plot, fig.height = 4}
+plot(sac_result)
+```
+
+### 2.4.3 Compare EQC and SAC
+
+```{r step4-compare}
+comparison <- compare_eqc_sac(eqc_result, sac_result)
+```
+
+The comparison reports the absolute and percentage difference in $c^*$ between
+the two algorithms.  Agreement within 5% is typical for well-conditioned
+problems.
+
+### 2.4.4 SAC parameter reference
+
+| Parameter | Default | Description |
+|:----------|:--------|:------------|
+| `c_init` | `NULL` (APC) | Initial $c_0$; pass an `eqc_result` for warm start |
+| `n_iter` | `300L` | Total Robbins--Monro iterations |
+| `M_per_iter` | `500L` | MC samples per iteration |
+| `M_pre` | `10000L` | MC samples for pre-calculating $\sigma^2_\theta$ |
+| `burn_in` | `floor(n_iter/2)` | Iterations to discard before averaging |
+| `step_params` | `list(a=1, A=50, gamma=0.67)` | Step-size sequence: $a_n = a/(n+A)^\gamma$ |
+| `resample_items` | `TRUE` | Re-draw item parameters each iteration |
+
+
+## 2.5 Step 5: Generate Response Data --- `simulate_response_data()`
+
+Once calibration is complete, generate a binary response matrix.  The function
+draws $N$ persons from the specified latent distribution and generates responses
+using the calibrated item parameters.
+
+```{r step5-sim-data}
+sim_data <- simulate_response_data(
+  result       = eqc_result,
+  n_persons    = 500,
+  latent_shape = "normal",
+  seed         = 123
+)
+
+cat(sprintf("Response matrix: %d persons x %d items\n",
+            nrow(sim_data$response_matrix),
+            ncol(sim_data$response_matrix)))
+cat(sprintf("Mean proportion correct: %.3f\n",
+            mean(sim_data$response_matrix)))
+```
+
+### 2.5.1 Inspect the generated data
+
+```{r step5-inspect}
+# First 5 persons, first 5 items
+sim_data$response_matrix[1:5, 1:5]
+
+# Distribution of total scores
+total_scores <- rowSums(sim_data$response_matrix)
+summary(total_scores)
+```
+
+```{r step5-score-hist, fig.height = 4}
+hist(total_scores, breaks = 20, col = "steelblue",
+     border = "white", main = "Distribution of Total Scores",
+     xlab = "Total Score", ylab = "Frequency")
+```
+
+### 2.5.2 Classical item analysis
+
+A quick sanity check: compute item-total correlations and item difficulty
+(proportion correct) from the generated data.
+
+```{r step5-item-analysis, fig.height = 4.5}
+p_correct <- colMeans(sim_data$response_matrix)
+item_total_cor <- apply(sim_data$response_matrix, 2, function(x) {
+  cor(x, total_scores - x)  # corrected item-total correlation
+})
+
+par(mfrow = c(1, 2))
+hist(p_correct, breaks = 15, col = "steelblue", border = "white",
+     main = "Item Difficulty (p)", xlab = "Proportion Correct")
+hist(item_total_cor, breaks = 15, col = "darkorange", border = "white",
+     main = "Item-Total Correlation", xlab = "Corrected r_it")
+par(mfrow = c(1, 1))
+```
+
+### 2.5.3 External validation with TAM
+
+If you have the TAM package installed, you can verify that the achieved
+reliability matches the target:
+
+```{r step5-tam-validation, eval = FALSE}
+# Requires: install.packages("TAM")
+tam_rel <- compute_reliability_tam(sim_data$response_matrix, model = "rasch")
+cat(sprintf("Target reliability: %.4f\n", eqc_result$target_rho))
+cat(sprintf("EQC achieved rho:   %.4f\n", eqc_result$achieved_rho))
+cat(sprintf("TAM WLE reliability: %.4f\n", tam_rel$rel_wle))
+cat(sprintf("TAM EAP reliability: %.4f\n", tam_rel$rel_eap))
+```
+
+> **Note on WLE vs EAP reliability.** EAP reliability is systematically higher
+> than WLE reliability under TAM's definitions.  EAP reliability more directly
+> corresponds to the MSEM-based population reliability.  For conservative
+> inference, treat WLE as a lower bound and EAP as an upper bound.
+
+
+## 2.6 Step 6: Extract and Use Results
+
+### 2.6.1 `coef()` --- calibrated item parameters
+
+The `coef()` method extracts a tidy data frame of item parameters:
+
+```{r step6-coef}
+item_df <- coef(eqc_result)
+head(item_df)
+```
+
+Each row contains:
+
+- `item_id`: item identifier.
+- `beta`: item difficulty.
+- `lambda_base`: baseline (unscaled) discrimination.
+- `lambda_scaled`: calibrated discrimination ($\lambda_{\text{base}} \times c^*$).
+- `c_star`: the calibrated scaling factor (constant across items).
+
+### 2.6.2 `predict()` --- reliability at new scaling factors
+
+Use `predict()` to evaluate reliability at arbitrary scaling factor values:
+
+```{r step6-predict}
+# Achieved reliability
+predict(eqc_result)
+
+# Reliability at several c values
+predict(eqc_result, newdata = c(0.5, 1.0, 1.5, 2.0))
+```
+
+This is useful for sensitivity analysis---for instance, exploring how much
+reliability changes if the scaling factor shifts by $\pm 10\%$.
+
+### 2.6.3 `as.data.frame()` --- export item parameters
+
+For downstream analysis, export the calibrated item parameters to a data frame:
+
+```{r step6-as-df}
+items_df <- as.data.frame(eqc_result$items_calib)
+head(items_df)
+```
+
+### 2.6.4 Accessing internal components
+
+The calibration result objects store additional information for advanced use:
+
+```{r step6-components}
+# EQC components
+cat("EQC result components:\n")
+cat(paste(" ", names(eqc_result), collapse = "\n"), "\n\n")
+
+# Calibrated scaling factor
+cat(sprintf("c* = %.4f\n", eqc_result$c_star))
+
+# Latent variance from quadrature sample
+cat(sprintf("theta_var = %.4f\n", eqc_result$theta_var))
+```
+
+
+# 3. Choosing EQC vs SAC
+
+The following decision table helps you choose between the two algorithms.
+
+| Criterion | EQC (Algorithm 1) | SAC (Algorithm 2) |
+|:----------|:-------------------|:-------------------|
+| **Speed** | Fast (single root-find) | Slower (iterative) |
+| **Default metric** | $\tilde{\rho}$ (info) | $\bar{w}$ (msem) |
+| **Deterministic?** | Yes | No (stochastic) |
+| **Monotonicity** | Guaranteed for $\tilde{\rho}$ | Not required |
+| **Can target $\bar{w}$?** | Possible but risky | Yes, natively |
+| **Warm start** | Not needed | Recommended from EQC |
+| **Use for validation** | Primary calibration | Cross-validation |
+| **Convergence diagnostics** | Not applicable | Trajectory + Polyak avg |
+
+**Practical recommendation:**
+
+1. **Start with EQC** using `reliability_metric = "info"`.  This is fast and
+   deterministic.
+2. **Use SAC to validate** when the discrepancy between $\tilde{\rho}$ and
+   $\bar{w}$ matters for your research question, or when you need to target
+   $\bar{w}$ directly.
+3. **Always warm-start SAC** from EQC for faster convergence.
+
+
+# 4. Choosing the Reliability Metric: info vs msem
+
+IRTsimrel supports two population reliability definitions.
+
+## 4.1 Average-information reliability ($\tilde{\rho}$)
+
+$$
+\tilde{\rho}(c) = \frac{\sigma^2_\theta \, \bar{\mathcal{J}}(c)}
+{\sigma^2_\theta \, \bar{\mathcal{J}}(c) + 1}
+$$
+
+where $\bar{\mathcal{J}}(c) = \mathbb{E}_G[\mathcal{J}(\theta; c)]$ is the
+average test information across the latent distribution.
+
+**Properties:**
+
+- Monotonically increasing in $c$ (guaranteed unique root for EQC).
+- Upper bound on $\bar{w}$ via Jensen's inequality.
+- Faster to compute than $\bar{w}$.
+
+## 4.2 MSEM-based marginal reliability ($\bar{w}$)
+
+$$
+\bar{w}(c) = \frac{\sigma^2_\theta}
+{\sigma^2_\theta + \mathbb{E}_G[1/\mathcal{J}(\theta; c)]}
+$$
+
+**Properties:**
+
+- Theoretically exact marginal reliability.
+- Can be non-monotone in $c$ for extreme scaling.
+- Requires SAC for safe targeting.
+
+## 4.3 Jensen's inequality: the key relationship
+
+By Jensen's inequality applied to the convex function $f(x) = 1/x$:
+
+$$
+\mathbb{E}\!\left[\frac{1}{\mathcal{J}(\theta)}\right]
+\;\geq\;
+\frac{1}{\mathbb{E}[\mathcal{J}(\theta)]}
+$$
+
+which implies $\tilde{\rho} \geq \bar{w}$.  The gap is small when test
+information is approximately constant across $\theta$, and larger when
+information varies substantially (e.g., short tests, non-normal populations).
+
+## 4.4 Decision guidance
+
+| Scenario | Recommended metric | Reason |
+|:---------|:-------------------|:-------|
+| Standard simulation study | `"info"` | Monotone, fast, reliable |
+| Exact marginal reliability needed | `"msem"` | Theoretically exact |
+| Non-normal latent distribution | `"info"` for EQC | Monotonicity guaranteed |
+| Cross-validation | Both | Compare via `compare_eqc_sac()` |
+
+```{r metric-comparison}
+# Compare metrics for the same calibration
+eqc_info <- eqc_calibrate(
+  target_rho = 0.85, n_items = 25, model = "rasch",
+  reliability_metric = "info", M = 5000L, seed = 42
+)
+
+cat(sprintf("Targeting info:  c* = %.4f, achieved = %.4f\n",
+            eqc_info$c_star, eqc_info$achieved_rho))
+```
+
+
+# 5. Working with Different Models
+
+## 5.1 Rasch model
+
+In the Rasch model, all baseline discriminations are equal to 1.  The calibrated
+discriminations are $\lambda_i^* = c^* \times 1 = c^*$ for all items.
+
+```{r model-rasch}
+eqc_rasch <- eqc_calibrate(
+  target_rho  = 0.80,
+  n_items     = 20,
+  model       = "rasch",
+  item_source = "parametric",
+  M           = 5000L,
+  seed        = 42
+)
+
+items_rasch <- coef(eqc_rasch)
+cat(sprintf("All lambda_scaled equal? %s\n",
+            all(items_rasch$lambda_scaled == items_rasch$lambda_scaled[1])))
+cat(sprintf("Common discrimination: %.4f\n", items_rasch$lambda_scaled[1]))
+```
+
+## 5.2 Two-parameter logistic (2PL) model
+
+In the 2PL model, baseline discriminations vary across items.  The scaling
+factor $c^*$ is applied uniformly:
+
+$$\lambda_i^* = c^* \times \lambda_{i,0}$$
+
+```{r model-2pl}
+eqc_2pl_demo <- eqc_calibrate(
+  target_rho  = 0.80,
+  n_items     = 25,
+  model       = "2pl",
+  item_source = "parametric",
+  M           = 5000L,
+  seed        = 42
+)
+
+items_2pl <- coef(eqc_2pl_demo)
+cat(sprintf("c* = %.4f\n", eqc_2pl_demo$c_star))
+cat(sprintf("lambda_scaled range: [%.3f, %.3f]\n",
+            min(items_2pl$lambda_scaled), max(items_2pl$lambda_scaled)))
+```
+
+## 5.3 Rasch vs 2PL comparison
+
+```{r model-comparison}
+targets <- c(0.70, 0.75, 0.80, 0.85, 0.90)
+comp_df <- data.frame(
+  target  = targets,
+  c_rasch = numeric(length(targets)),
+  c_2pl   = numeric(length(targets))
+)
+
+for (i in seq_along(targets)) {
+  r1 <- eqc_calibrate(target_rho = targets[i], n_items = 25, model = "rasch",
+                       item_source = "parametric", M = 5000L, seed = 42)
+  r2 <- eqc_calibrate(target_rho = targets[i], n_items = 25, model = "2pl",
+                       item_source = "parametric", M = 5000L, seed = 42)
+  comp_df$c_rasch[i] <- round(r1$c_star, 4)
+  comp_df$c_2pl[i]   <- round(r2$c_star, 4)
+}
+
+comp_df
+```
+
+## 5.4 How latent shape affects calibration
+
+Different latent distribution shapes require different scaling factors to
+achieve the same target reliability, even with the same item parameters.  This
+is because the test information function interacts differently with each shape.
+
+```{r shape-sensitivity}
+shapes <- c("normal", "bimodal", "skew_pos", "heavy_tail", "uniform")
+shape_df <- data.frame(
+  shape      = shapes,
+  c_star     = numeric(length(shapes)),
+  achieved   = numeric(length(shapes))
+)
+
+for (i in seq_along(shapes)) {
+  ri <- eqc_calibrate(
+    target_rho = 0.80, n_items = 25, model = "rasch",
+    latent_shape = shapes[i], item_source = "parametric",
+    M = 5000L, seed = 42
+  )
+  shape_df$c_star[i]   <- round(ri$c_star, 4)
+  shape_df$achieved[i] <- round(ri$achieved_rho, 4)
+}
+
+shape_df
+```
+
+```{r shape-barplot, fig.height = 4}
+barplot(
+  shape_df$c_star,
+  names.arg = shape_df$shape,
+  col = "steelblue", border = "white",
+  main = "Calibrated c* by Latent Shape (target rho = 0.80)",
+  ylab = expression(c^"*"), las = 2, cex.names = 0.8
+)
+abline(h = mean(shape_df$c_star), lty = 2, col = "grey40")
+```
+
+The barplot reveals that heavy-tailed and skewed distributions generally require
+higher scaling factors (stronger discriminations) to achieve the same
+reliability.  This makes intuitive sense: extreme $\theta$ values receive less
+test information under the logistic model, and heavier tails put more mass in
+those regions.
+
+## 5.5 Effect of test length on reliability curve
+
+```{r test-length-curves, fig.height = 5}
+lengths_to_plot <- c(10, 20, 30, 50)
+cols <- c("firebrick", "darkorange", "steelblue", "forestgreen")
+c_grid <- seq(0.2, 4, length.out = 40)
+
+plot(NULL, xlim = c(0.2, 4), ylim = c(0, 1),
+     xlab = "Scaling factor c", ylab = expression(tilde(rho)),
+     main = "Reliability Curves by Test Length")
+abline(h = 0.80, lty = 2, col = "grey50")
+
+for (j in seq_along(lengths_to_plot)) {
+  cd <- rho_curve(
+    c_values = c_grid, n_items = lengths_to_plot[j],
+    model = "rasch", latent_shape = "normal",
+    item_source = "parametric", metric = "info",
+    M = 5000L, seed = 42, plot = FALSE
+  )
+  lines(cd$c, cd$rho_tilde, col = cols[j], lwd = 2)
+}
+
+legend("bottomright",
+       legend = paste0("I = ", lengths_to_plot),
+       col = cols, lwd = 2, bty = "n")
+```
+
+The figure illustrates a key relationship: longer tests reach any given
+reliability target at a lower scaling factor.  This means that adding items is
+an alternative to increasing discrimination when a high reliability is needed.
+
+
+# 6. Troubleshooting Guide
+
+## 6.1 Common issues and solutions
+
+### "Target reliability not achievable"
+
+**Symptom:** `check_feasibility()` shows the target is outside the achievable
+range.
+
+**Solutions:**
+
+- Increase the number of items.
+- Switch from Rasch to 2PL (varying discriminations provide more flexibility).
+- Widen `c_bounds` in `check_feasibility()` to explore a larger range.
+- Consider whether the latent shape makes the target unrealistic.
+
+### `uniroot()` fails with "values at endpoints not of opposite sign"
+
+**Symptom:** EQC calibration fails because the target lies outside the range
+$[\rho(c_{\min}), \rho(c_{\max})]$.
+
+**Solutions:**
+
+- Run `check_feasibility()` first.
+- Widen `c_bounds` in `eqc_calibrate()`.
+- If targeting `"msem"`, switch to `"info"` (the monotone metric).
+
+### SAC does not converge
+
+**Symptom:** The SAC trajectory oscillates without settling.
+
+**Solutions:**
+
+- Increase `n_iter` (e.g., from 300 to 500 or more).
+- Decrease the step-size base `a` in `step_params`.
+- Increase `A` in `step_params` for more stabilization.
+- Use a warm start from EQC.
+- Increase `M_per_iter` to reduce per-iteration variance.
+
+### Results differ between EQC and SAC
+
+**Symptom:** `compare_eqc_sac()` reports more than 5% difference.
+
+**Possible causes:**
+
+- Different reliability metrics (check `metric` field).
+- Insufficient Monte Carlo samples (`M` for EQC, `M_per_iter`/`n_iter` for SAC).
+- Different random seeds producing different item/theta draws.
+
+**Solutions:**
+
+- Increase `M` and `M_per_iter`.
+- Use `reliability_metric = "info"` for both algorithms for fair comparison.
+- Use the same `seed` for both.
+
+## 6.2 Performance tips
+
+| Goal | Recommendation |
+|:-----|:---------------|
+| Fast exploration | Use `M = 5000L`, `n_iter = 100L` |
+| Publication quality | Use `M = 50000L`, `n_iter = 500L` |
+| Quick feasibility check | Use `check_feasibility()` with `M = 3000L` |
+| Reduce SAC variance | Increase `M_per_iter` to 1000 or 2000 |
+| Faster SAC | Warm start from EQC, reduce `n_iter` |
+
+
+# 7. Complete Template: Copy-Paste Workflow
+
+The following code block is a self-contained template you can copy into your
+project.  Replace the settings in the "Configuration" section with your own.
+
+```{r template-workflow}
+# ============================================================
+# Reliability-Targeted IRT Simulation: Complete Workflow
+# ============================================================
+library(IRTsimrel)
+
+# --- Configuration ------------------------------------------
+target_rho   <- 0.85       # desired marginal reliability
+n_items      <- 25         # test length
+model        <- "rasch"    # "rasch" or "2pl"
+latent_shape <- "normal"   # latent distribution shape
+item_source  <- "parametric"
+N_persons    <- 500        # sample size for response data
+M_quad       <- 5000L      # Monte Carlo samples for EQC
+seed_val     <- 42         # for reproducibility
+
+# --- Step 1: Feasibility ------------------------------------
+feas <- check_feasibility(
+  n_items = n_items, model = model,
+  latent_shape = latent_shape, item_source = item_source,
+  M = M_quad, seed = seed_val, verbose = FALSE
+)
+stopifnot(
+  target_rho >= feas$rho_range_info[1],
+  target_rho <= feas$rho_range_info[2]
+)
+cat("Step 1: Feasibility confirmed.\n")
+
+# --- Step 2: Reliability curve (optional) --------------------
+curve_df <- rho_curve(
+  n_items = n_items, model = model,
+  latent_shape = latent_shape, item_source = item_source,
+  M = M_quad, seed = seed_val, plot = FALSE
+)
+
+# --- Step 3: EQC calibration --------------------------------
+eqc_res <- eqc_calibrate(
+  target_rho = target_rho, n_items = n_items,
+  model = model, latent_shape = latent_shape,
+  item_source = item_source,
+  reliability_metric = "info",
+  M = M_quad, seed = seed_val
+)
+cat(sprintf("Step 3: EQC calibrated c* = %.4f, achieved rho = %.4f\n",
+            eqc_res$c_star, eqc_res$achieved_rho))
+
+# --- Step 4: SAC validation (optional) ----------------------
+sac_res <- sac_calibrate(
+  target_rho = target_rho, n_items = n_items,
+  model = model, latent_shape = latent_shape,
+  item_source = item_source,
+  reliability_metric = "info",
+  c_init = eqc_res,
+  n_iter = 200L, M_per_iter = 500L, M_pre = 5000L,
+  seed = seed_val
+)
+cat(sprintf("Step 4: SAC calibrated c* = %.4f\n", sac_res$c_star))
+
+# --- Step 5: Generate response data -------------------------
+sim_data <- simulate_response_data(
+  result = eqc_res, n_persons = N_persons,
+  latent_shape = latent_shape, seed = 123
+)
+cat(sprintf("Step 5: Generated %d x %d response matrix.\n",
+            nrow(sim_data$response_matrix),
+            ncol(sim_data$response_matrix)))
+
+# --- Step 6: Extract results --------------------------------
+item_params <- coef(eqc_res)
+cat(sprintf("Step 6: Extracted %d item parameters.\n", nrow(item_params)))
+```
+
+
+# 8. Publication-Ready Language
+
+The following text templates can be adapted for the Method section of a journal
+paper.  Replace bracketed values with your specific settings.
+
+## 8.1 Describing the simulation design
+
+> Item response data were generated using the reliability-targeted simulation
+> framework of Lee (2025), implemented in the R package IRTsimrel (version
+> `r packageVersion("IRTsimrel")`).  A [Rasch / two-parameter logistic] model
+> was assumed with [25] items and latent abilities drawn from a [standard
+> normal / bimodal / skewed] distribution.
+
+## 8.2 Describing the calibration
+
+> The global discrimination scaling factor $c^*$ was calibrated using the
+> Empirical Quadrature Calibration algorithm (EQC; Algorithm 1 in Lee, 2025)
+> with a Monte Carlo quadrature sample of size $M =$ [10,000] and the
+> average-information reliability metric ($\tilde{\rho}$).  The target marginal
+> reliability was set to $\rho^* =$ [0.85], and the achieved reliability was
+> [0.8500].
+
+## 8.3 Describing optional SAC validation
+
+> EQC results were cross-validated using the Stochastic Approximation
+> Calibration algorithm (SAC; Algorithm 2 in Lee, 2025) with [300] Robbins--Monro
+> iterations, warm-started from the EQC solution.  The two algorithms agreed to
+> within [X]% on the calibrated scaling factor.
+
+## 8.4 Describing the response data
+
+> Binary item response data were generated for $N =$ [500] simulated examinees
+> using the calibrated item parameters.  Each response $Y_{pi}$ was drawn from
+> $\text{Bernoulli}(p_{pi})$ where $p_{pi} = \text{logit}^{-1}[\lambda_i^*
+> (\theta_p - \beta_i)]$.
+
+## 8.5 Citing the package
+
+> Lee, J. (2025). Reliability-targeted simulation of item response data: Solving
+> the inverse design problem. *arXiv preprint*, arXiv:2512.16012.
+
+
+# 9. Further Reading
+
+The IRTsimrel documentation suite includes several companion vignettes:
+
+- `vignette("quick-start")` --- A minimal 5-minute introduction.
+- `vignette("latent-distributions")` --- Detailed guide to all 12 latent
+  distribution shapes and the pre-standardization principle.
+- `vignette("item-parameters")` --- Sources and methods for generating realistic
+  item parameters, including the copula method and IRW integration.
+- `vignette("theory-reliability")` --- Mathematical foundations of $\tilde{\rho}$
+  and $\bar{w}$.
+- `vignette("algorithm-eqc")` --- Detailed derivation and analysis of Algorithm 1.
+- `vignette("algorithm-sac")` --- Detailed derivation and analysis of Algorithm 2.
+- `vignette("validation")` --- Comprehensive validation studies comparing
+  IRTsimrel outputs against TAM.
+- `vignette("api-reference")` --- Complete function reference with all parameters.
+
+
+# References
+
+Lee, J. (2025). Reliability-targeted simulation of item response data: Solving
+the inverse design problem. *arXiv preprint*, arXiv:2512.16012.
+
+Robbins, H., & Monro, S. (1951). A stochastic approximation method.
+*The Annals of Mathematical Statistics, 22*(3), 400--407.
+
+Polyak, B. T., & Juditsky, A. B. (1992). Acceleration of stochastic
+approximation by averaging. *SIAM Journal on Control and Optimization,
+30*(4), 838--855.
+
+Baker, F. B., & Kim, S.-H. (2004). *Item Response Theory: Parameter Estimation
+Techniques* (2nd ed.). Marcel Dekker.
+
+Sweeney, S. M., et al. (2022). An investigation of the nature and consequence
+of the relationship between IRT difficulty and discrimination.
+*Educational Measurement: Issues and Practice, 41*(4), 50--67.

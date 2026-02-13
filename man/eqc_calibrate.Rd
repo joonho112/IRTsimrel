@@ -2,6 +2,8 @@
 % Please edit documentation in R/eqc_calibrate.R
 \name{eqc_calibrate}
 \alias{eqc_calibrate}
+\alias{print.eqc_result}
+\alias{summary.eqc_result}
 \title{Empirical Quadrature Calibration (Algorithm 1: EQC/SQC)}
 \usage{
 eqc_calibrate(
@@ -9,16 +11,20 @@ eqc_calibrate(
   n_items,
   model = c("rasch", "2pl"),
   latent_shape = "normal",
-  item_source = "irw",
+  item_source = "parametric",
   latent_params = list(),
   item_params = list(),
-  reliability_metric = c("msem", "info", "bar", "tilde"),
+  reliability_metric = c("info", "tilde", "msem", "bar"),
   M = 10000L,
   c_bounds = c(0.3, 3),
   tol = 1e-04,
   seed = NULL,
   verbose = FALSE
 )
+
+\method{print}{eqc_result}(x, digits = 4, ...)
+
+\method{summary}{eqc_result}(object, ...)
 }
 \arguments{
 \item{target_rho}{Numeric in (0, 1). Target marginal reliability \eqn{\rho^*}.}
@@ -32,7 +38,10 @@ For \code{"rasch"}, all baseline discriminations are set to 1 before scaling.}
 (e.g. \code{"normal"}, \code{"bimodal"}, \code{"heavy_tail"}, ...).}
 
 \item{item_source}{Character. Source argument passed to \code{sim_item_params()}
-(e.g. \code{"irw"}, \code{"parametric"}, \code{"hierarchical"}, \code{"custom"}).}
+(e.g. \code{"parametric"}, \code{"irw"}, \code{"hierarchical"}, \code{"custom"}).
+Defaults to \code{"parametric"} since the \pkg{irw} package is an optional
+dependency (listed in Suggests). Use \code{"irw"} for empirically-grounded
+difficulties when the \pkg{irw} package is installed.}
 
 \item{latent_params}{List. Additional arguments passed to \code{sim_latentG()}.}
 
@@ -40,10 +49,12 @@ For \code{"rasch"}, all baseline discriminations are set to 1 before scaling.}
 
 \item{reliability_metric}{Character. Reliability definition used inside EQC:
 \describe{
-\item{\code{"msem"}}{MSEM-based marginal reliability (default, theoretically exact).}
-\item{\code{"info"}}{Average-information reliability (faster, more stable).}
+\item{\code{"info"}}{Average-information reliability (default, recommended for EQC).
+Targets \eqn{\tilde{\rho}}, which is guaranteed to be monotone in \eqn{c}.}
+\item{\code{"msem"}}{MSEM-based marginal reliability (theoretically exact, but may
+have a non-monotone objective for EQC; see Details).}
 }
-Synonyms: \code{"bar"} for \code{"msem"}, \code{"tilde"} for \code{"info"}.}
+Synonyms: \code{"tilde"} for \code{"info"}, \code{"bar"} for \code{"msem"}.}
 
 \item{M}{Integer. Size of the empirical quadrature sample (default: 10000).}
 
@@ -54,6 +65,14 @@ Synonyms: \code{"bar"} for \code{"msem"}, \code{"tilde"} for \code{"info"}.}
 \item{seed}{Optional integer for reproducibility.}
 
 \item{verbose}{Logical. If TRUE, print progress messages.}
+
+\item{x}{An object of class \code{"eqc_result"}.}
+
+\item{digits}{Integer. Number of decimal places for printing.}
+
+\item{...}{Additional arguments passed to or from other methods.}
+
+\item{object}{An object of class \code{"eqc_result"}.}
 }
 \value{
 An object of class \code{"eqc_result"} (a list) with elements:
@@ -67,6 +86,11 @@ An object of class \code{"eqc_result"} (a list) with elements:
 \item{\code{items_base}}{item_params object with scale = 1 (baseline).}
 \item{\code{items_calib}}{item_params object with discriminations scaled by c_star.}
 }
+
+The input object, invisibly.
+
+An object of class \code{"summary.eqc_result"} containing key
+calibration results.
 }
 \description{
 \code{eqc_calibrate()} implements Algorithm 1 (Empirical / Stochastic
@@ -95,13 +119,18 @@ deterministic root-finding (Brent's method via \code{uniroot()}).
 
 The function supports two reliability definitions:
 \itemize{
-\item \strong{MSEM-based} (\code{"msem"}/\code{"bar"}): Uses the harmonic mean of test information,
-\eqn{\bar{w}(c) = \sigma^2_\theta / (\sigma^2_\theta + E[1/\mathcal{J}(\theta;c)])}.
-This is theoretically exact but may have a lower ceiling for high reliability.
-\item \strong{Average-information} (\code{"info"}/\code{"tilde"}): Uses the arithmetic mean,
+\item \strong{Average-information} (\code{"info"}/\code{"tilde"}, \strong{default}): Uses the arithmetic mean,
 \eqn{\tilde{\rho}(c) = \sigma^2_\theta \bar{\mathcal{J}}(c) / (\sigma^2_\theta \bar{\mathcal{J}}(c) + 1)}.
 By Jensen's inequality, \eqn{\tilde{\rho} \geq \bar{w}}, so this metric typically
-yields higher reliability values.
+yields higher reliability values. \strong{This is the recommended default for EQC} because
+the objective function \eqn{\tilde{\rho}(c) - \rho^*} is guaranteed to be monotone
+in \eqn{c}, ensuring that \code{uniroot()} will find the unique root.
+\item \strong{MSEM-based} (\code{"msem"}/\code{"bar"}): Uses the harmonic mean of test information,
+\eqn{\bar{w}(c) = \sigma^2_\theta / (\sigma^2_\theta + E[1/\mathcal{J}(\theta;c)])}.
+This is theoretically exact but the objective \eqn{\bar{w}(c) - \rho^*} may be
+non-monotone (see Lee, 2025, Section 4.3), which can cause \code{uniroot()} to
+fail or find an incorrect root. Use \code{\link{sac_calibrate}} if you need
+to target \eqn{\bar{w}} directly.
 }
 }
 
@@ -115,23 +144,35 @@ as an upper bound for true measurement precision.
 }
 }
 \examples{
-\dontrun{
-# Basic EQC calibration
+# Basic EQC calibration with parametric items (fast)
+\donttest{
 eqc_result <- eqc_calibrate(
   target_rho = 0.80,
   n_items = 25,
   model = "rasch",
   latent_shape = "normal",
-  item_source = "irw",
-  seed = 42,
-  verbose = TRUE
+  item_source = "parametric",
+  M = 5000L,
+  seed = 42
 )
 print(eqc_result)
 }
 
+\dontrun{
+# EQC with IRW difficulties (requires irw package)
+eqc_result2 <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
+  item_source = "irw",
+  seed = 42,
+  verbose = TRUE
+)
+}
+
 }
 \seealso{
-\code{\link{spc_calibrate}} for the stochastic approximation alternative,
+\code{\link{sac_calibrate}} for the stochastic approximation alternative,
 \code{\link{compute_rho_bar}} and \code{\link{compute_rho_tilde}} for
 reliability computation utilities,
 \code{\link{compute_reliability_tam}} for TAM validation.

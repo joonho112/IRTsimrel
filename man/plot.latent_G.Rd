@@ -24,7 +24,8 @@
 \item{...}{Additional arguments passed to plotting functions.}
 }
 \value{
-A ggplot2 object (if available) or base R plot.
+A \code{ggplot} object if \pkg{ggplot2} is available, or
+\code{NULL} invisibly when using base R graphics fallback.
 }
 \description{
 Plot Method for latent_G Objects

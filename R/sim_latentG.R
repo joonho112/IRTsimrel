@@ -241,11 +241,23 @@ sim_latentG <- function(n,
     }
   }
 
-  # Set seed if provided
+  # Set seed if provided (save/restore RNG state)
   if (!is.null(seed)) {
     if (!is.numeric(seed) || length(seed) != 1L) {
       stop("`seed` must be a single numeric value.")
     }
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
     set.seed(as.integer(seed))
   }
 
@@ -535,6 +547,8 @@ sim_latentG <- function(n,
 #' @param x A `latent_G` object from `sim_latentG()`.
 #' @param ... Additional arguments (ignored).
 #'
+#' @return The input object, invisibly.
+#'
 #' @export
 print.latent_G <- function(x, ...) {
   cat("Latent Ability Distribution (G-family)\n")
@@ -586,6 +600,14 @@ summary.latent_G <- function(object, ...) {
 }
 
 
+#' Print Method for summary.latent_G Objects
+#'
+#' @param x A \code{summary.latent_G} object from \code{summary.latent_G()}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return The input object, invisibly.
+#'
 #' @export
 print.summary.latent_G <- function(x, digits = 4, ...) {
   cat("Summary: Latent Ability Distribution\n")
@@ -616,7 +638,8 @@ print.summary.latent_G <- function(x, digits = 4, ...) {
 #' @param bins Integer. Number of histogram bins.
 #' @param ... Additional arguments passed to plotting functions.
 #'
-#' @return A ggplot2 object (if available) or base R plot.
+#' @return A \code{ggplot} object if \pkg{ggplot2} is available, or
+#'   \code{NULL} invisibly when using base R graphics fallback.
 #'
 #' @export
 plot.latent_G <- function(x,
@@ -664,7 +687,7 @@ plot.latent_G <- function(x,
     p <- p +
       ggplot2::labs(
         title = paste0("Latent Ability Distribution (", x$shape, ")"),
-        subtitle = sprintf("n = %d, μ = %.3f, σ = %.3f",
+        subtitle = sprintf("n = %d, \u03bc = %.3f, \u03c3 = %.3f",
                            x$n, mu_sample, sd_sample),
         x = expression(theta ~ "(Latent Ability)"),
         y = "Density"
@@ -718,7 +741,21 @@ compare_shapes <- function(n = 2000,
     stop("Package 'ggplot2' is required for this function.")
   }
 
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
+    set.seed(as.integer(seed))
+  }
 
   # Generate all distributions
   all_data <- lapply(shapes, function(s) {
@@ -775,10 +812,11 @@ compare_shapes <- function(n = 2000,
 #' Convenience function to extract the theta vector for use with other functions.
 #'
 #' @param x A `latent_G` object.
+#' @param ... Additional arguments (ignored).
 #'
 #' @return Numeric vector of latent abilities.
 #'
 #' @export
-as.numeric.latent_G <- function(x) {
+as.numeric.latent_G <- function(x, ...) {
   x$theta
 }

@@ -1,0 +1,641 @@
+---
+title: "Algorithm 1: Empirical Quadrature Calibration (EQC)"
+author: "JoonHo Lee"
+date: "`r Sys.Date()`"
+description: >
+  Detailed treatment of the EQC algorithm for reliability-targeted IRT
+  simulation, including formal algorithm statement, Brent's root-finding
+  method, convergence theory, Monte Carlo error analysis, numerical stability
+  considerations, and diagnostic examples.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Algorithm 1: Empirical Quadrature Calibration (EQC)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  fig.width = 7, fig.height = 5,
+  fig.align = "center", out.width = "85%"
+)
+```
+
+```{r setup}
+library(IRTsimrel)
+set.seed(42)
+```
+
+## Overview
+
+Empirical Quadrature Calibration (EQC) is the primary algorithm in IRTsimrel
+for solving the inverse reliability problem. Given a target marginal
+reliability $\rho^*$, EQC finds a global discrimination scaling factor $c^*$
+such that the population reliability equals the target.
+
+**Reading time**: approximately 25 minutes.
+
+**Prerequisites**: This vignette assumes familiarity with the mathematical
+foundations developed in `vignette("theory-reliability")`. For applied usage
+tutorials and workflows, see `vignette("introduction")`.
+
+**Key references**: Lee (2025, arXiv:2512.16012), Sections 2.3--2.4;
+Brent (1973).
+
+### Why EQC is the Recommended Default
+
+| Property | Benefit |
+|:---------|:--------|
+| Deterministic | Same inputs always produce same output (given seed) |
+| Superlinear convergence | Brent's method converges faster than bisection |
+| No tuning parameters | No step sizes, learning rates, or burn-in to configure |
+| Guaranteed bracketing | Convergence guaranteed on any interval where sign changes |
+| Fast execution | Typically < 1 second for $M = 10{,}000$ |
+
+
+## Algorithm Statement
+
+EQC solves the scalar root-finding problem $\hat{\rho}_M(c) = \rho^*$ using
+a three-step procedure.
+
+### Formal Algorithm
+
+**Algorithm 1** (Empirical Quadrature Calibration).
+
+> **Input**: Target reliability $\rho^*$, number of items $I$, latent
+>   distribution $G$, item parameter distribution $H$, quadrature size $M$,
+>   search bounds $[c_L, c_U]$, tolerance $\varepsilon$.
+>
+> **Step 1** (Quadrature Sampling).
+>   Draw $\{\theta_m\}_{m=1}^M \sim G$ and
+>   $\{(\beta_i, \lambda_i^{(0)})\}_{i=1}^I \sim H$.
+>   Fix these samples for all subsequent evaluations.
+>
+> **Step 2** (Empirical Reliability Function).
+>   Define $\hat{\rho}_M : (0, \infty) \to (0, 1)$ by:
+>
+>   $$
+>   \hat{\rho}_M(c) = \rho\bigl(c;\, \{\theta_m\}_{m=1}^M,\,
+>   \boldsymbol{\beta},\, c \cdot \boldsymbol{\lambda}^{(0)}\bigr)
+>   $$
+>
+>   using either the $\tilde{\rho}$ (info) or $\bar{w}$ (msem) definition.
+>
+> **Step 3** (Brent Root-Finding).
+>   Solve $g_M(c) = \hat{\rho}_M(c) - \rho^* = 0$ on $[c_L, c_U]$ using
+>   Brent's method (`stats::uniroot()` in R) with tolerance $\varepsilon$.
+>
+> **Output**: Calibrated scaling factor $\hat{c}^*_M$, achieved reliability
+>   $\hat{\rho}_M(\hat{c}^*_M)$, calibrated item parameters.
+
+### Why Fixed Quadrature?
+
+A critical design choice is that the same Monte Carlo samples
+$\{\theta_m\}$ and $\{(\beta_i, \lambda_i^{(0)})\}$ are used for every
+evaluation of $\hat{\rho}_M(c)$ during the root-finding iteration. This makes
+$\hat{\rho}_M(c)$ a _deterministic_ function of $c$ for a given draw, which:
+
+1. Guarantees that Brent's method converges (no stochastic oscillation).
+2. Eliminates the need for step size tuning.
+3. Produces reproducible results for a given seed.
+
+The trade-off is that the solution $\hat{c}^*_M$ depends on the particular
+quadrature draw, introducing Monte Carlo error of order $O(1/\sqrt{M})$.
+
+
+## Brent's Root-Finding Method
+
+EQC uses Brent's method (Brent, 1973), which combines the safety of
+bisection with the speed of superlinear methods.
+
+### Components of Brent's Method
+
+Brent's method adaptively selects among three strategies at each iteration:
+
+1. **Bisection**: Takes the midpoint of the current bracketing interval
+   $[a, b]$. Always converges but is slow (linear rate).
+
+2. **Secant method**: Uses linear interpolation between the two most recent
+   points. Superlinear convergence rate of approximately $\varphi \approx 1.618$
+   (the golden ratio), but not guaranteed to stay within bounds.
+
+3. **Inverse quadratic interpolation (IQI)**: Fits a quadratic through the
+   three most recent points (in the inverse direction). Achieves faster
+   convergence when the function is smooth, with order approximately $2$.
+
+At each step, Brent's method:
+
+- Attempts IQI or secant first (for speed).
+- Falls back to bisection if the superlinear step would leave the bracket
+  or make insufficient progress.
+
+### Convergence Properties
+
+**Proposition (Convergence of Brent's Method).** Given a continuous function
+$g$ on $[a, b]$ with $g(a) \cdot g(b) < 0$ (sign change), Brent's method
+converges to a root $c^*$ satisfying $|g(c^*)| < \varepsilon$ in at most:
+
+$$
+O\!\left(\log_2\!\left(\frac{b - a}{\varepsilon}\right)\right)
+\text{ iterations (worst case, bisection)}
+$$
+
+In practice, superlinear convergence typically achieves machine precision in
+fewer than 50 function evaluations. The convergence order when IQI succeeds
+is approximately:
+
+$$
+|c_n - c^*| \approx O\!\left(2^{-2^n}\right)
+$$
+
+which is doubly exponential --- vastly faster than the linearly convergent
+$|c_n - c^*| \approx O(2^{-n})$ of pure bisection.
+
+### Why Brent's Method is Ideal for EQC
+
+Several properties of the reliability function make Brent's method
+particularly well-suited:
+
+1. **Bracketed root**: For the `"info"` metric, strict monotonicity of
+   $\tilde{\rho}(c)$ guarantees a sign change on
+   $[c_L, c_U]$ when $\rho^*$ is feasible.
+
+2. **Smooth function**: $\hat{\rho}_M(c)$ is infinitely differentiable in $c$,
+   enabling fast superlinear convergence.
+
+3. **No derivative needed**: Unlike Newton's method, Brent's method does not
+   require computing $\partial \hat{\rho}_M / \partial c$, avoiding the
+   complexity of differentiating through the Monte Carlo sum.
+
+4. **Robustness**: The bisection fallback prevents divergence even when the
+   function has near-zero slope (high or low reliability regions).
+
+
+## Convergence Theory
+
+The theoretical properties of EQC are established in Lee (2025), Appendix A.
+Here we state the main results with proof sketches. For the full notation and
+definitions, see `vignette("theory-reliability")`.
+
+### Consistency (Theorem A.1)
+
+**Theorem (Consistency of EQC).** Let $c^*$ be the unique population solution
+$\rho(c^*) = \rho^*$ and let $\hat{c}^*_M$ be the EQC solution with
+quadrature size $M$. Then:
+
+$$
+\hat{c}^*_M \xrightarrow{\text{a.s.}} c^* \quad \text{as } M \to \infty
+$$
+
+**Proof sketch.** The argument proceeds in three steps:
+
+1. **Uniform convergence**: By the Uniform Law of Large Numbers (ULLN), the
+   empirical reliability function converges uniformly over the compact set
+   $[c_L, c_U]$:
+   $$
+   \sup_{c \in [c_L, c_U]} |\hat{\rho}_M(c) - \rho(c)| \xrightarrow{\text{a.s.}} 0
+   $$
+   This requires verifying that the family
+   $\{h_c(\theta, \boldsymbol{\beta}, \boldsymbol{\lambda})\}_{c \in [c_L, c_U]}$
+   satisfies a Lipschitz or bounded variation condition in $c$, which follows
+   from the smoothness of the logistic function.
+
+2. **Uniqueness of the root**: By strict monotonicity of $\tilde{\rho}(c)$
+   (Proposition 1 in `vignette("theory-reliability")`), the equation
+   $\rho(c) = \rho^*$ has a unique solution $c^*$ on any interval where
+   $\rho(c_L) < \rho^* < \rho(c_U)$.
+
+3. **Root convergence**: Combining uniform convergence of the objective with
+   uniqueness of the root, the Argmax Continuous Mapping Theorem (or its
+   zero-finding analogue) yields $\hat{c}^*_M \to c^*$ a.s.
+
+### Asymptotic Normality (Theorem A.2)
+
+**Theorem (Asymptotic Normality of EQC).** Under regularity conditions:
+
+$$
+\sqrt{M}\,(\hat{c}^*_M - c^*) \xrightarrow{d} N\!\left(0,\, \frac{\sigma^2_g}{g'(c^*)^2}\right)
+$$
+
+where $g(c) = \rho(c) - \rho^*$, $g'(c^*) = \rho'(c^*)$ is the slope of the
+reliability function at the solution, and $\sigma^2_g$ is the asymptotic
+variance of $\hat{g}_M(c^*)$.
+
+**Proof sketch.** Apply the delta method (implicit function theorem version).
+By the CLT:
+
+$$
+\sqrt{M}\,\hat{g}_M(c^*) \xrightarrow{d} N(0, \sigma^2_g)
+$$
+
+Since $\hat{c}^*_M$ solves $\hat{g}_M(\hat{c}^*_M) = 0$, a Taylor expansion
+around $c^*$ gives:
+
+$$
+0 = \hat{g}_M(\hat{c}^*_M) \approx \hat{g}_M(c^*) + g'(c^*)\,(\hat{c}^*_M - c^*)
+$$
+
+Solving for $\hat{c}^*_M - c^*$ and scaling by $\sqrt{M}$ yields the result.
+The key requirement is $g'(c^*) \neq 0$, which follows from strict
+monotonicity.
+
+### Monte Carlo Error Analysis
+
+**Practical implications.** The asymptotic normality result (above) implies
+that the Monte Carlo standard error of $\hat{c}^*_M$ is:
+
+$$
+\text{SE}(\hat{c}^*_M) \approx \frac{\sigma_g}{\sqrt{M}\, |g'(c^*)|}
+$$
+
+The reliability function's slope $|g'(c^*)|$ acts as an amplification factor:
+steeper slopes (smaller $c^*$, moderate reliability targets) produce smaller
+estimation errors, while flat slopes (extreme reliability targets near 0 or 1)
+produce larger errors.
+
+For the reliability _estimate_ itself, by the delta method:
+
+$$
+|\hat{\rho}_M(\hat{c}^*_M) - \rho^*| = O_p\!\left(\frac{1}{\sqrt{M}}\right)
+$$
+
+
+## Numerical Stability
+
+### Information Floor
+
+When computing the MSEM metric, the reciprocal $1/\mathcal{J}(\theta; c)$ can
+become numerically unstable when test information is very small. The package
+applies a floor:
+
+$$
+\mathcal{J}_{\text{safe}}(\theta; c) = \max\!\bigl(\mathcal{J}(\theta; c),\, 10^{-10}\bigr)
+$$
+
+This prevents division-by-zero while introducing negligible bias (the floor is
+activated only at extreme ability values where the logistic probabilities are
+near 0 or 1).
+
+### Search Bound Sensitivity
+
+The choice of $[c_L, c_U]$ affects both feasibility and numerical behavior:
+
+- **Too narrow**: The target $\rho^*$ may fall outside the achievable range
+  on $[c_L, c_U]$, causing EQC to return a boundary solution with a warning.
+- **Too wide**: For the MSEM metric, non-monotonicity at extreme $c$
+  (Proposition 2 in `vignette("theory-reliability")`) can cause multiple roots,
+  and Brent's method may find the wrong one.
+
+**Default recommendation**: `c_bounds = c(0.3, 3)` works well for most
+applications. Extend to `c(0.1, 5)` or `c(0.1, 10)` for high-reliability
+targets ($\rho^* > 0.90$) or unusual item/latent configurations.
+
+### Edge Cases
+
+| Scenario | Behavior | Recommendation |
+|:---------|:---------|:---------------|
+| $\hat{\rho}_M(c_U) < \rho^*$ | Returns $c_U$ with warning | Increase `c_bounds[2]` or `n_items` |
+| $\hat{\rho}_M(c_L) > \rho^*$ | Returns $c_L$ with warning | Decrease `c_bounds[1]` |
+| $\rho^* \approx \hat{\rho}_M(c_U)$ | Convergence may be slow | Increase `c_bounds[2]` slightly |
+| `n_items = 1` | Very flat reliability curve | Use larger `M` for precision |
+
+
+## Reliability Metric Comparison
+
+EQC supports two reliability metrics. The choice affects both the
+interpretation and the numerical properties of the calibration.
+
+### Average-Information ($\tilde{\rho}$): `reliability_metric = "info"`
+
+**Advantages**:
+
+- Guaranteed monotonicity in $c$: unique root, no bracketing issues.
+- Faster convergence of Brent's method (steeper slope in typical range).
+- Recommended by Lee (2025) as the default.
+
+**Interpretation**: The reliability if measurement precision were uniform at the
+average level. Slightly optimistic (overestimates true marginal reliability).
+
+### MSEM-Based ($\bar{w}$): `reliability_metric = "msem"`
+
+**Advantages**:
+
+- Theoretically exact marginal reliability.
+- Accounts for heterogeneous measurement precision across $\theta$.
+
+**Caution**: Can be non-monotone at extreme $c$ values. The `c_bounds` must
+bracket the correct root.
+
+### Jensen's Gap in Practice
+
+```{r metric-demo}
+# Calibrate under both metrics
+eqc_info <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = FALSE
+)
+
+eqc_msem <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "msem",
+  M = 5000L, seed = 42, verbose = FALSE
+)
+
+cat("Calibration with target rho* = 0.80:\n")
+cat(sprintf("  Info metric: c* = %.4f, achieved = %.4f\n",
+            eqc_info$c_star, eqc_info$achieved_rho))
+cat(sprintf("  MSEM metric: c* = %.4f, achieved = %.4f\n",
+            eqc_msem$c_star, eqc_msem$achieved_rho))
+cat(sprintf("  Ratio c*_msem / c*_info: %.3f\n",
+            eqc_msem$c_star / eqc_info$c_star))
+```
+
+```{r metric-cross-eval}
+# Cross-evaluate: what does each c* achieve under the other metric?
+theta_eval <- sim_latentG(5000, shape = "normal")$theta
+items_eval <- sim_item_params(25, model = "rasch", source = "parametric")
+beta_eval  <- items_eval$data$beta
+lambda_eval <- rep(1, 25)
+
+both_at_info <- compute_rho_both(eqc_info$c_star, theta_eval, beta_eval, lambda_eval)
+both_at_msem <- compute_rho_both(eqc_msem$c_star, theta_eval, beta_eval, lambda_eval)
+
+cat("\nCross-evaluation of c* values:\n")
+cat(sprintf("  At c*_info = %.4f: rho_tilde = %.4f, rho_bar = %.4f\n",
+            eqc_info$c_star, both_at_info$rho_tilde, both_at_info$rho_bar))
+cat(sprintf("  At c*_msem = %.4f: rho_tilde = %.4f, rho_bar = %.4f\n",
+            eqc_msem$c_star, both_at_msem$rho_tilde, both_at_msem$rho_bar))
+```
+
+
+## Diagnostic Examples
+
+### Monte Carlo Convergence Study
+
+How does the EQC solution improve with quadrature size $M$?
+
+```{r mc-convergence, fig.cap = "Figure 1: Monte Carlo convergence of the EQC estimate as a function of quadrature size M."}
+M_values <- c(500, 1000, 2000, 5000)
+n_reps <- 10
+target <- 0.80
+
+# Run multiple replications at each M
+mc_results <- data.frame(
+  M = integer(), rep = integer(), c_star = numeric()
+)
+
+for (M_val in M_values) {
+  for (r in 1:n_reps) {
+    res <- eqc_calibrate(
+      target_rho = target, n_items = 25, model = "rasch",
+      item_source = "parametric", reliability_metric = "info",
+      M = as.integer(M_val), seed = 100 * r + M_val, verbose = FALSE
+    )
+    mc_results <- rbind(mc_results, data.frame(
+      M = M_val, rep = r, c_star = res$c_star
+    ))
+  }
+}
+
+# Summary statistics
+mc_summary <- aggregate(c_star ~ M, data = mc_results, FUN = function(x) {
+  c(mean = mean(x), sd = sd(x), min = min(x), max = max(x))
+})
+
+cat("Monte Carlo convergence of c* (target = 0.80, 25 Rasch items):\n")
+cat(sprintf("  %-8s %-10s %-10s %-10s\n", "M", "Mean c*", "SD(c*)", "Range"))
+for (i in seq_len(nrow(mc_summary))) {
+  vals <- mc_summary$c_star[i, ]
+  cat(sprintf("  %-8d %-10.4f %-10.4f [%.4f, %.4f]\n",
+              mc_summary$M[i], vals["mean"], vals["sd"],
+              vals["min"], vals["max"]))
+}
+```
+
+```{r mc-convergence-plot, fig.cap = "Figure 2: Variability of EQC estimates decreases with quadrature size."}
+oldpar <- par(mar = c(4.5, 4.5, 3, 1))
+on.exit(par(oldpar))
+
+# Box plot of c* across M values
+M_factor <- factor(mc_results$M,
+                   labels = paste0("M=", format(M_values, big.mark = ",")))
+boxplot(c_star ~ M_factor, data = mc_results,
+        col = "lightblue", border = "steelblue",
+        xlab = "Quadrature Size M", ylab = "EQC c* estimate",
+        main = "Monte Carlo Variability of EQC")
+
+# Reference line at the grand mean
+abline(h = mean(mc_results$c_star[mc_results$M == max(M_values)]),
+       lty = 2, col = "red", lwd = 1.5)
+legend("topright", legend = "Reference (largest M)",
+       lty = 2, col = "red", lwd = 1.5, cex = 0.9)
+```
+
+The standard deviation of $\hat{c}^*_M$ decreases approximately as
+$1/\sqrt{M}$, consistent with the theoretical prediction from Theorem A.2.
+
+### Sensitivity to Target Reliability
+
+```{r target-sensitivity}
+targets <- seq(0.50, 0.90, by = 0.05)
+sensitivity <- data.frame(
+  target  = targets,
+  c_star  = numeric(length(targets)),
+  achieved = numeric(length(targets))
+)
+
+for (j in seq_along(targets)) {
+  res <- eqc_calibrate(
+    target_rho = targets[j], n_items = 25, model = "rasch",
+    item_source = "parametric", reliability_metric = "info",
+    M = 5000L, seed = 42, verbose = FALSE
+  )
+  sensitivity$c_star[j]  <- res$c_star
+  sensitivity$achieved[j] <- res$achieved_rho
+}
+
+cat("EQC sensitivity to target reliability (25 Rasch items, info metric):\n")
+cat(sprintf("  %-8s %-10s %-10s %-10s\n",
+            "Target", "c*", "Achieved", "|Error|"))
+for (j in seq_len(nrow(sensitivity))) {
+  cat(sprintf("  %-8.2f %-10.4f %-10.4f %-10.6f\n",
+              sensitivity$target[j],
+              sensitivity$c_star[j],
+              sensitivity$achieved[j],
+              abs(sensitivity$achieved[j] - sensitivity$target[j])))
+}
+```
+
+```{r target-sensitivity-plot, fig.cap = "Figure 3: Calibrated scaling factor as a function of target reliability."}
+oldpar <- par(mar = c(4.5, 4.5, 3, 1))
+on.exit(par(oldpar))
+
+plot(sensitivity$target, sensitivity$c_star, type = "b",
+     pch = 19, col = "steelblue", lwd = 2,
+     xlab = expression("Target reliability " * rho * "*"),
+     ylab = expression("Calibrated scaling factor c*"),
+     main = "EQC: Target vs Calibrated Scale")
+grid(col = "gray90")
+```
+
+### Sensitivity to Latent Distribution Shape
+
+```{r shape-sensitivity}
+shapes <- c("normal", "bimodal", "heavy_tail", "skew_pos")
+shape_pars <- list(
+  normal     = list(),
+  bimodal    = list(delta = 0.9),
+  heavy_tail = list(df = 5),
+  skew_pos   = list(k = 4)
+)
+
+cat("EQC c* for different latent shapes (target = 0.80, 25 Rasch items):\n")
+for (sh in shapes) {
+  res <- eqc_calibrate(
+    target_rho = 0.80, n_items = 25, model = "rasch",
+    item_source = "parametric", reliability_metric = "info",
+    latent_shape = sh, latent_params = shape_pars[[sh]],
+    M = 5000L, seed = 42, verbose = FALSE
+  )
+  cat(sprintf("  %-12s: c* = %.4f, achieved = %.4f\n",
+              sh, res$c_star, res$achieved_rho))
+}
+```
+
+### Model Comparison: Rasch vs 2PL
+
+```{r model-comparison}
+eqc_rasch <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = FALSE
+)
+
+eqc_2pl <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "2pl",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = FALSE
+)
+
+cat("Model comparison (target = 0.80, 25 items, info metric):\n")
+cat(sprintf("  Rasch: c* = %.4f, achieved = %.4f\n",
+            eqc_rasch$c_star, eqc_rasch$achieved_rho))
+cat(sprintf("  2PL:   c* = %.4f, achieved = %.4f\n",
+            eqc_2pl$c_star, eqc_2pl$achieved_rho))
+cat(sprintf("  Rasch baseline lambda: %s\n",
+            paste(unique(round(eqc_rasch$lambda_base, 2)), collapse = ", ")))
+cat(sprintf("  2PL baseline lambda range: [%.2f, %.2f]\n",
+            min(eqc_2pl$lambda_base), max(eqc_2pl$lambda_base)))
+```
+
+### Verbose Output Walkthrough
+
+The verbose mode reveals the internal steps of EQC.
+
+```{r verbose-demo}
+eqc_v <- eqc_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  M = 5000L, seed = 42, verbose = TRUE
+)
+```
+
+Key information from verbose output:
+
+- **Pre-calibration**: Shows APC initialization and feasibility bounds.
+- **Root status**: Brent's convergence status from `uniroot()`.
+- **Achieved reliability**: Final reliability at the calibrated $c^*$.
+
+
+## Output Structure
+
+The `eqc_calibrate()` function returns an object of class `"eqc_result"`
+containing the calibration results.
+
+```{r output-structure}
+# Key components
+cat("EQC result components:\n")
+cat(sprintf("  c_star:       %.4f  (calibrated scaling factor)\n",
+            eqc_v$c_star))
+cat(sprintf("  target_rho:   %.2f  (target reliability)\n",
+            eqc_v$target_rho))
+cat(sprintf("  achieved_rho: %.4f  (achieved reliability)\n",
+            eqc_v$achieved_rho))
+cat(sprintf("  metric:       %s   (reliability metric used)\n",
+            eqc_v$metric))
+cat(sprintf("  n_items:      %d    (number of items)\n",
+            length(eqc_v$beta_vec)))
+cat(sprintf("  M (quadrature): %d\n", length(eqc_v$theta_quad)))
+```
+
+### Prediction and Downstream Use
+
+The `predict()` method evaluates reliability at arbitrary scaling factors
+using the stored quadrature samples.
+
+```{r predict-demo}
+# Evaluate reliability at different c values
+c_query <- c(0.5, 1.0, 1.5, 2.0)
+pred <- predict(eqc_v, newdata = c_query)
+
+cat("Predict method: reliability at different c values\n")
+for (j in seq_along(c_query)) {
+  cat(sprintf("  c = %.1f: rho = %.4f\n", c_query[j], pred[j]))
+}
+```
+
+
+## Connection to SAC Validation
+
+For rigorous validation, EQC results should be cross-checked against the
+SAC algorithm. The recommended workflow is:
+
+1. Run EQC as the primary calibration.
+2. Initialize SAC with the EQC result (warm start).
+3. Compare using `compare_eqc_sac()`.
+
+See `vignette("algorithm-sac")` for the SAC algorithm details and
+`vignette("validation")` for the complete validation framework.
+
+```{r eqc-sac-preview}
+# Quick cross-validation example
+sac_check <- sac_calibrate(
+  target_rho = 0.80, n_items = 25, model = "rasch",
+  item_source = "parametric", reliability_metric = "info",
+  c_init = eqc_v, n_iter = 200L, M_per_iter = 1000L,
+  seed = 42, verbose = FALSE
+)
+
+comparison <- compare_eqc_sac(eqc_v, sac_check, verbose = FALSE)
+cat(sprintf("EQC-SAC agreement: %.2f%% difference\n", comparison$diff_pct))
+```
+
+
+## Summary
+
+EQC is the recommended primary algorithm for reliability-targeted IRT
+simulation:
+
+| Aspect | Summary |
+|:-------|:--------|
+| **Method** | Brent's root-finding on empirical reliability function |
+| **Convergence** | Superlinear; consistent as $M \to \infty$ (Theorem A.1) |
+| **Asymptotic rate** | $\sqrt{M}$-normal (Theorem A.2) |
+| **Default metric** | Average-information (`"info"`) |
+| **Typical accuracy** | $|\hat{\rho} - \rho^*| < 0.001$ with $M \geq 5{,}000$ |
+| **Recommended $M$** | 10,000 (routine); 50,000+ (high precision) |
+| **Validation** | Cross-check with SAC via `compare_eqc_sac()` |
+
+
+## References
+
+Lee, J. (2025). Reliability-targeted simulation of item response data: Solving
+the inverse design problem. *arXiv preprint arXiv:2512.16012*.
+
+Brent, R. P. (1973). *Algorithms for Minimization Without Derivatives*.
+Prentice-Hall.
+
+van der Vaart, A. W. (1998). *Asymptotic Statistics*. Cambridge University
+Press.

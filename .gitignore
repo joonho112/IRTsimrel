@@ -11,6 +11,7 @@ inst/doc
 /Meta/
 *.tar.gz
 *.Rcheck/
+pkg.lock
 
 # Compiled code
 *.o
@@ -38,7 +39,11 @@ Thumbs.db
 # pkgdown site
 docs/
 
-# Temporary files
+# Development files (large reference packages, manuscripts, logs)
+dev/
+
+# Temporary/generated files
 *.bak
 *.tmp
-docs
+Rplots.pdf
+README.html

@@ -106,27 +106,35 @@
 #' }
 #'
 #' @examples
-#' # Example 1: Rasch with IRW difficulties
-#' items1 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+#' # Example 1: Rasch with parametric difficulties
+#' items1 <- sim_item_params(n_items = 25, model = "rasch",
+#'                           source = "parametric", seed = 42)
 #'
 #' # Example 2: 2PL with copula method (recommended)
 #' items2 <- sim_item_params(
-#'   n_items = 30, model = "2pl", source = "irw",
+#'   n_items = 30, model = "2pl", source = "parametric",
 #'   method = "copula",
-#'   discrimination_params = list(rho = -0.3)
+#'   discrimination_params = list(rho = -0.3),
+#'   seed = 42
 #' )
 #'
-#' # Example 3: Multiple forms
+#' # Example 3: Hierarchical 2PL
 #' items3 <- sim_item_params(
+#'   n_items = 25, model = "2pl", source = "hierarchical",
+#'   hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3),
+#'   seed = 42
+#' )
+#'
+#' \dontrun{
+#' # Example 4: Using IRW difficulty pool (requires irw package)
+#' items4 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+#'
+#' # Example 5: Multiple forms with IRW
+#' items5 <- sim_item_params(
 #'   n_items = 20, model = "2pl", n_forms = 5,
 #'   source = "irw", method = "copula"
 #' )
-#'
-#' # Example 4: Hierarchical 2PL
-#' items4 <- sim_item_params(
-#'   n_items = 25, model = "2pl", source = "hierarchical",
-#'   hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3)
-#' )
+#' }
 #'
 #' @references
 #' Glas, C. A. W., & van der Linden, W. J. (2003). Computerized adaptive testing
@@ -174,8 +182,20 @@ sim_item_params <- function(n_items,
     stop("`scale` must be a positive scalar.")
   }
 
-  # Set seed
+  # Set seed (save/restore RNG state)
   if (!is.null(seed)) {
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
     set.seed(as.integer(seed))
   }
 
@@ -594,6 +614,10 @@ sim_item_params <- function(n_items,
 # S3 Methods
 # =============================================================================
 
+#' @rdname sim_item_params
+#' @param x An object of class \code{"item_params"}.
+#' @param ... Additional arguments passed to or from other methods.
+#' @return The input object, invisibly.
 #' @export
 print.item_params <- function(x, ...) {
   cat("Item Parameters Object\n")
@@ -630,59 +654,127 @@ print.item_params <- function(x, ...) {
 }
 
 
+#' @rdname sim_item_params
+#' @param object An object of class \code{"item_params"}.
+#' @return An object of class \code{"summary.item_params"} containing key
+#'   parameter summaries.
 #' @export
 summary.item_params <- function(object, ...) {
 
-  cat("="
-      , rep("=", 60), "\n", sep = "")
-  cat("Summary of Item Parameters\n")
-  cat(rep("=", 61), "\n\n", sep = "")
+  beta_vals <- object$data$beta
+  beta_summary <- list(
+    mean = mean(beta_vals),
+    sd   = sd(beta_vals),
+    min  = min(beta_vals),
+    max  = max(beta_vals),
+    quantiles = quantile(beta_vals, probs = c(0.25, 0.50, 0.75))
+  )
 
-  cat("Generation Settings:\n")
-  cat(sprintf("  Model          : %s\n", toupper(object$model)))
-  cat(sprintf("  Source         : %s\n", object$source))
-  if (!is.na(object$method)) {
-    cat(sprintf("  Method         : %s\n", object$method))
-  }
-  cat(sprintf("  Items/form     : %d\n", object$n_items))
-  cat(sprintf("  Forms          : %d\n", object$n_forms))
-  cat(sprintf("  Total items    : %d\n", nrow(object$data)))
-  cat(sprintf("  Scale factor   : %.3f\n", object$scale))
-  cat(sprintf("  Centered       : %s\n\n", ifelse(object$centered, "Yes", "No")))
-
-  # Difficulty summary
-  cat("Difficulty (beta):\n")
-  cat(sprintf("  Mean     : %8.4f\n", object$achieved$overall$beta_mean))
-  cat(sprintf("  SD       : %8.4f\n", object$achieved$overall$beta_sd))
-  cat(sprintf("  Min      : %8.4f\n", min(object$data$beta)))
-  cat(sprintf("  Max      : %8.4f\n", max(object$data$beta)))
-  cat(sprintf("  Quantiles: Q25=%.3f, Q50=%.3f, Q75=%.3f\n\n",
-              quantile(object$data$beta, 0.25),
-              quantile(object$data$beta, 0.50),
-              quantile(object$data$beta, 0.75)))
-
+  lambda_summary <- NULL
   if (object$model == "2pl") {
-    cat("Discrimination (lambda):\n")
-    cat("  Before scaling:\n")
-    cat(sprintf("    Mean   : %8.4f\n", mean(object$data$lambda_unscaled)))
-    cat(sprintf("    SD     : %8.4f\n", sd(object$data$lambda_unscaled)))
-    cat(sprintf("  After scaling (c = %.3f):\n", object$scale))
-    cat(sprintf("    Mean   : %8.4f\n", object$achieved$overall$lambda_mean))
-    cat(sprintf("    SD     : %8.4f\n", object$achieved$overall$lambda_sd))
-    cat(sprintf("    Min    : %8.4f\n", min(object$data$lambda)))
-    cat(sprintf("    Max    : %8.4f\n\n", max(object$data$lambda)))
-
-    cat("Correlation (beta, log-lambda):\n")
-    cat(sprintf("  Target (rho)    : %8.4f\n", object$params$discrimination$rho))
-    cat(sprintf("  Achieved Pearson: %8.4f\n", object$achieved$overall$cor_pearson_pooled))
-    cat(sprintf("  Achieved Spearman:%8.4f\n", object$achieved$overall$cor_spearman_pooled))
+    lambda_vals <- object$data$lambda
+    lambda_unscaled_vals <- object$data$lambda_unscaled
+    lambda_summary <- list(
+      mean_unscaled = mean(lambda_unscaled_vals),
+      sd_unscaled   = sd(lambda_unscaled_vals),
+      mean_scaled   = mean(lambda_vals),
+      sd_scaled     = sd(lambda_vals),
+      min_scaled    = min(lambda_vals),
+      max_scaled    = max(lambda_vals)
+    )
   }
 
-  invisible(object)
+  achieved_cors <- NULL
+  if (object$model == "2pl") {
+    achieved_cors <- list(
+      target_rho       = object$params$discrimination$rho,
+      pearson_pooled   = object$achieved$overall$cor_pearson_pooled,
+      spearman_pooled  = object$achieved$overall$cor_spearman_pooled
+    )
+  }
+
+  out <- list(
+    model          = object$model,
+    source         = object$source,
+    method         = object$method,
+    n_items        = object$n_items,
+    n_forms        = object$n_forms,
+    scale          = object$scale,
+    centered       = object$centered,
+    beta_summary   = beta_summary,
+    lambda_summary = lambda_summary,
+    achieved_cors  = achieved_cors
+  )
+  class(out) <- "summary.item_params"
+  out
+}
+
+
+#' Print Method for summary.item_params Objects
+#'
+#' @param x A \code{summary.item_params} object from \code{summary.item_params()}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return The input object, invisibly.
+#'
+#' @export
+print.summary.item_params <- function(x, digits = 4, ...) {
+  cat("Summary: Item Parameters\n")
+  cat("========================\n")
+  cat(sprintf("  Model          : %s\n", toupper(x$model)))
+  cat(sprintf("  Source         : %s\n", x$source))
+  if (!is.na(x$method)) {
+    cat(sprintf("  Method         : %s\n", x$method))
+  }
+  cat(sprintf("  Items per form : %d\n", x$n_items))
+  cat(sprintf("  Number of forms: %d\n", x$n_forms))
+  cat(sprintf("  Scale factor   : %.3f\n", x$scale))
+  cat(sprintf("  Centered       : %s\n", ifelse(x$centered, "Yes", "No")))
+
+  cat("\nDifficulty (beta):\n")
+  cat(sprintf("  Mean     : %.*f\n", digits, x$beta_summary$mean))
+  cat(sprintf("  SD       : %.*f\n", digits, x$beta_summary$sd))
+  cat(sprintf("  Min      : %.*f\n", digits, x$beta_summary$min))
+  cat(sprintf("  Max      : %.*f\n", digits, x$beta_summary$max))
+  cat(sprintf("  Quantiles: Q25=%.*f, Q50=%.*f, Q75=%.*f\n",
+              digits, x$beta_summary$quantiles[[1]],
+              digits, x$beta_summary$quantiles[[2]],
+              digits, x$beta_summary$quantiles[[3]]))
+
+  if (x$model == "2pl" && !is.null(x$lambda_summary)) {
+    cat("\nDiscrimination (lambda):\n")
+    cat(sprintf("  Before scaling: Mean=%.*f, SD=%.*f\n",
+                digits, x$lambda_summary$mean_unscaled,
+                digits, x$lambda_summary$sd_unscaled))
+    cat(sprintf("  After scaling (c=%.3f): Mean=%.*f, SD=%.*f\n",
+                x$scale, digits, x$lambda_summary$mean_scaled,
+                digits, x$lambda_summary$sd_scaled))
+    cat(sprintf("  Range [%.*f, %.*f]\n",
+                digits, x$lambda_summary$min_scaled,
+                digits, x$lambda_summary$max_scaled))
+  }
+
+  if (x$model == "2pl" && !is.null(x$achieved_cors)) {
+    cat("\nCorrelation (beta, log-lambda):\n")
+    cat(sprintf("  Target (rho)     : %.*f\n", digits, x$achieved_cors$target_rho))
+    cat(sprintf("  Achieved Pearson : %.*f\n", digits, x$achieved_cors$pearson_pooled))
+    cat(sprintf("  Achieved Spearman: %.*f\n", digits, x$achieved_cors$spearman_pooled))
+  }
+
+  invisible(x)
 }
 
 
 #' Plot method for item_params objects
+#'
+#' @param x An `item_params` object from `sim_item_params()`.
+#' @param type Character. Type of plot: `"scatter"`, `"density"`, or `"both"`.
+#' @param ... Additional arguments (currently ignored).
+#'
+#' @return A \code{ggplot} object if \pkg{ggplot2} is available, or
+#'   \code{NULL} invisibly when using base R graphics fallback.
+#'
 #' @export
 plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
 
@@ -691,19 +783,17 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     # Base R fallback
     if (x$model == "2pl") {
-      par(mfrow = c(1, 2))
+      oldpar <- par(mfrow = c(1, 2))
+      on.exit(par(oldpar))
       hist(x$data$beta, main = "Difficulty Distribution", xlab = "beta", col = "steelblue")
       plot(x$data$beta, x$data$lambda, main = "Difficulty vs Discrimination",
            xlab = "beta", ylab = "lambda", pch = 19, col = rgb(0, 0, 0.5, 0.5))
       abline(lm(lambda ~ beta, data = x$data), col = "red", lty = 2)
-      par(mfrow = c(1, 1))
     } else {
       hist(x$data$beta, main = "Difficulty Distribution", xlab = "beta", col = "steelblue")
     }
     return(invisible(NULL))
   }
-
-  library(ggplot2)
 
   df <- x$data
 
@@ -711,35 +801,35 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
   p_scatter <- NULL
   if (x$model == "2pl") {
     rho_achieved <- x$achieved$overall$cor_spearman_pooled
-    p_scatter <- ggplot(df, aes(x = beta, y = lambda)) +
-      geom_point(alpha = 0.6, color = "darkblue", size = 2) +
-      geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "dashed") +
-      labs(
+    p_scatter <- ggplot2::ggplot(df, ggplot2::aes(x = beta, y = lambda)) +
+      ggplot2::geom_point(alpha = 0.6, color = "darkblue", size = 2) +
+      ggplot2::geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "dashed") +
+      ggplot2::labs(
         title = sprintf("Difficulty vs Discrimination (Spearman r = %.3f)", rho_achieved),
         subtitle = sprintf("Method: %s | Target rho: %.2f", x$method, x$params$discrimination$rho),
         x = expression(beta ~ "(Difficulty)"),
         y = expression(lambda ~ "(Discrimination)")
       ) +
-      theme_minimal() +
-      theme(plot.title = element_text(face = "bold"))
+      ggplot2::theme_minimal() +
+      ggplot2::theme(plot.title = ggplot2::element_text(face = "bold"))
   }
 
   # Density plots
-  p_beta <- ggplot(df, aes(x = beta)) +
-    geom_histogram(aes(y = after_stat(density)), bins = 30,
+  p_beta <- ggplot2::ggplot(df, ggplot2::aes(x = beta)) +
+    ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 30,
                    fill = "steelblue", alpha = 0.5, color = "white") +
-    geom_density(color = "darkblue", linewidth = 1) +
-    labs(title = "Difficulty Distribution", x = expression(beta), y = "Density") +
-    theme_minimal()
+    ggplot2::geom_density(color = "darkblue", linewidth = 1) +
+    ggplot2::labs(title = "Difficulty Distribution", x = expression(beta), y = "Density") +
+    ggplot2::theme_minimal()
 
   p_lambda <- NULL
   if (x$model == "2pl") {
-    p_lambda <- ggplot(df, aes(x = lambda)) +
-      geom_histogram(aes(y = after_stat(density)), bins = 30,
+    p_lambda <- ggplot2::ggplot(df, ggplot2::aes(x = lambda)) +
+      ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 30,
                      fill = "coral", alpha = 0.5, color = "white") +
-      geom_density(color = "darkred", linewidth = 1) +
-      labs(title = "Discrimination Distribution", x = expression(lambda), y = "Density") +
-      theme_minimal()
+      ggplot2::geom_density(color = "darkred", linewidth = 1) +
+      ggplot2::labs(title = "Discrimination Distribution", x = expression(lambda), y = "Density") +
+      ggplot2::theme_minimal()
   }
 
   # Return based on type
@@ -747,14 +837,14 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
     if (x$model == "2pl") return(p_scatter) else return(p_beta)
   } else if (type == "density") {
     if (x$model == "2pl" && requireNamespace("patchwork", quietly = TRUE)) {
-      return(p_beta + p_lambda)
+      return(patchwork::wrap_plots(p_beta, p_lambda, ncol = 2))
     } else {
       return(p_beta)
     }
   } else {  # both
     if (x$model == "2pl" && requireNamespace("patchwork", quietly = TRUE)) {
-      library(patchwork)
-      return((p_beta + p_lambda) / p_scatter)
+      combined_top <- patchwork::wrap_plots(p_beta, p_lambda, ncol = 2)
+      return(patchwork::wrap_plots(combined_top, p_scatter, ncol = 1))
     } else {
       return(p_beta)
     }
@@ -763,7 +853,12 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
 
 
 #' Extract item parameters as data frame
+#' @param x An `item_params` object.
+#' @param row.names NULL or a character vector giving the row names.
+#' @param optional Logical. If TRUE, setting row names is optional.
+#' @param ... Additional arguments (ignored).
+#' @return A data frame of item parameters.
 #' @export
-as.data.frame.item_params <- function(x, ...) {
+as.data.frame.item_params <- function(x, row.names = NULL, optional = FALSE, ...) {
   x$data
 }

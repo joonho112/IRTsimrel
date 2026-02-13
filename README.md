@@ -1,82 +1,65 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# IRTsimrel <img src="man/figures/logo.png" align="right" height="139" alt="" />
+# IRTsimrel <img src="man/figures/logo.png" align="right" height="139" alt="IRTsimrel hex sticker showing a reliability curve with a target crosshair" />
 
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/joonho112/IRTsimrel/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/joonho112/IRTsimrel/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/IRTsimrel)](https://CRAN.R-project.org/package=IRTsimrel)
 <!-- badges: end -->
 
-**IRTsimrel** provides a principled framework for *reliability-targeted
-simulation* of Item Response Theory (IRT) data. Instead of treating
-reliability as an implicit outcome of simulation design choices,
-IRTsimrel allows researchers to specify a **target reliability level**
-as an explicit input parameter.
+**IRTsimrel** is an R package for **reliability-targeted simulation** of
+Item Response Theory (IRT) data. Rather than treating reliability as an
+afterthought, IRTsimrel lets you specify a **target marginal
+reliability** as an explicit input—and calibrates the data-generating
+process to achieve it exactly.
 
-## The Problem
+> *Marginal reliability in IRT serves the same role as ICC in multilevel
+> modeling.*
 
-In Monte Carlo simulation studies for IRT, researchers routinely vary
-sample size, test length, and item parameters—but **marginal
-reliability** is almost never directly controlled. This creates:
+## Why This Matters
 
-- **Ecological validity threats**: Real assessments often have
-  reliabilities of 0.5–0.7, but simulations may implicitly assume higher
-  values
-- **Confounded comparisons**: Conclusions about model superiority may
-  only hold within certain reliability regimes
-- **Limited replicability**: Without knowing implied reliability, exact
-  replication is impossible
+In Monte Carlo IRT studies, researchers routinely vary sample size, test
+length, and item parameters—but **marginal reliability is almost never
+directly controlled**. This leads to three problems:
 
-## The Solution: Think Like Multilevel Modelers
+| Problem | Consequence |
+|----|----|
+| **Ecological validity** | Real assessments often have $\rho = 0.5$–$0.7$, yet simulations may implicitly generate $\rho > 0.90$ |
+| **Confounded comparisons** | Conclusions about estimator superiority may only hold within a narrow reliability regime |
+| **Limited replicability** | Without reporting implied reliability, exact replication is impossible |
 
-In multilevel modeling, the **intraclass correlation (ICC)** is always a
-primary design factor. ICC determines the signal-to-noise ratio—the
-proportion of variance at the cluster level versus residual level.
-
-**Marginal reliability in IRT serves the same role as ICC in multilevel
-models.**
-
-IRTsimrel brings IRT simulation methodology into alignment with this
-best practice.
+Just as multilevel modelers always specify the ICC, IRT simulators
+should always specify the target reliability. IRTsimrel makes this easy.
 
 ## Installation
 
-You can install the development version of IRTsimrel from
-[GitHub](https://github.com/joonho112/IRTsimrel) with:
-
 ``` r
-# install.packages("pak")
-pak::pak("joonho112/IRTsimrel")
+# install.packages("remotes")
+remotes::install_github("joonho112/IRTsimrel")
 ```
 
 ## Quick Start
 
-Suppose you want to simulate Rasch model data with:
-
-- 25 items
-- Target reliability of 0.80
-- Normal latent trait distribution
-
-### Step 1: Calibrate
+Calibrate a 25-item Rasch simulation to achieve $\rho = 0.80$:
 
 ``` r
 library(IRTsimrel)
 
-# Calibrate to achieve target reliability
-eqc_result <- eqc_calibrate(
-  target_rho = 0.80,
-  n_items = 25,
-  model = "rasch",
-  latent_shape = "normal",
+result <- eqc_calibrate(
+  target_rho  = 0.80,
+  n_items     = 25,
+  model       = "rasch",
   item_source = "parametric",
-  M = 10000,
-  seed = 42
+  M           = 10000,
+  seed        = 42
 )
 
-eqc_result
+result
 #> 
 #> =======================================================
 #>   Empirical Quadrature Calibration (EQC) Results
@@ -86,67 +69,61 @@ eqc_result
 #>   Model                        : RASCH
 #>   Target reliability (rho*)    : 0.8000
 #>   Achieved reliability         : 0.8000
-#>   Absolute error               : 3.77e-06
-#>   Scaling factor (c*)          : 0.9277
+#>   Absolute error               : 1.42e-07
+#>   Scaling factor (c*)          : 0.9059
 #> 
 #> Design Parameters:
 #>   Number of items (I)          : 25
 #>   Quadrature points (M)        : 10000
-#>   Reliability metric           : MSEM-based (bar/w)
+#>   Reliability metric           : Average-information (tilde)
 #>   Latent variance              : 1.0123
 #> 
 #> Convergence:
 #>   Root status                  : uniroot_success
 #>   Search bracket               : [0.300, 3.000]
-#>   Bracket reliabilities        : [0.3538, 0.9020]
+#>   Bracket reliabilities        : [0.3540, 0.9532]
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.011, sd = 1.006
 #>   beta:         mean = -0.000, sd = 0.909, range = [-1.60, 1.73]
 #>   lambda_base:  mean = 1.000, sd = 0.000
-#>   lambda_scaled: mean = 0.928, sd = 0.000
+#>   lambda_scaled: mean = 0.906, sd = 0.000
 ```
 
-### Step 2: Generate Data
+Generate a response matrix and you’re ready for analysis:
 
 ``` r
-# Generate response data with calibrated parameters
-sim_data <- simulate_response_data(
-  eqc_result = eqc_result,
-  n_persons = 1000,
-  latent_shape = "normal",
-  seed = 123
-)
-
-# Response matrix ready for analysis
+sim_data <- simulate_response_data(result, n_persons = 1000, seed = 123)
 dim(sim_data$response_matrix)
 #> [1] 1000   25
 ```
 
-### Step 3: Validate (Optional)
+See `vignette("quick-start")` for a 5-minute walkthrough, or
+`vignette("applied-guide")` for the full 6-step workflow.
 
-``` r
-# Validate with TAM package
-tam_rel <- compute_reliability_tam(
-  resp = sim_data$response_matrix,
-  model = "rasch"
-)
+## How It Works
 
-cat(sprintf("Target:  %.3f\n", 0.80))
-cat(sprintf("WLE:     %.3f\n", tam_rel$rel_wle))
-cat(sprintf("EAP:     %.3f\n", tam_rel$rel_eap))
-```
+IRTsimrel separates **structure** from **scale**:
 
-## Key Features
+- **Structure** — Realistic item difficulties, discriminations, and
+  latent distributions are drawn from empirically-grounded generators.
+- **Scale** — A single global scaling factor $c^*$ is calibrated so that
+  $\lambda_i^* = c^* \cdot \lambda_{i,0}$ yields the target reliability.
+
+This means you can vary reliability independently of all other design
+features—just like varying ICC in a multilevel simulation.
 
 ### Two Calibration Algorithms
 
-| Algorithm | Function | Best For |
-|----|----|----|
-| **EQC** (Empirical Quadrature Calibration) | `eqc_calibrate()` | Routine use, fast & accurate |
-| **SPC** (Stochastic Approximation Calibration) | `spc_calibrate()` | Validation, complex DGPs |
+| Algorithm | Function | Method | Recommended For |
+|----|----|----|----|
+| **EQC** | `eqc_calibrate()` | Deterministic root-finding (Brent’s method) | Default: fast, exact, no tuning |
+| **SAC** | `sac_calibrate()` | Stochastic approximation (Robbins–Monro) | Cross-validation, complex DGPs |
 
-### Flexible Latent Distributions
+When both algorithms converge to the same $c^*$, calibration is highly
+trustworthy.
+
+### 12 Pre-Standardized Latent Distributions
 
 ``` r
 compare_shapes(
@@ -158,66 +135,80 @@ compare_shapes(
 
 <img src="man/figures/README-latent-shapes-1.png" width="100%" />
 
-12 built-in shapes including normal, bimodal, trimodal, skewed,
-heavy-tailed, uniform, and floor/ceiling effects—all
-**pre-standardized** to mean 0 and variance 1.
+All 12 built-in shapes (normal, bimodal, trimodal, skewed, heavy-tailed,
+uniform, floor/ceiling effects) are **pre-standardized** to mean 0 and
+variance 1. This ensures that distributional shape is cleanly separated
+from scale—enabling rigorous factorial manipulation.
 
-### Realistic Item Parameters
-
-Generate item parameters with empirically-grounded characteristics:
+### Empirically Realistic Item Parameters
 
 ``` r
-# IRW-based difficulties with copula-correlated discriminations
 items <- sim_item_params(
-  n_items = 30,
-  model = "2pl",
-  source = "irw",
-  method = "copula",
-  discrimination_params = list(rho = -0.3)  # Empirical correlation
+  n_items = 30, model = "2pl",
+  source = "irw", method = "copula",
+  discrimination_params = list(rho = -0.3)
 )
 ```
 
-## The Core Principle: Separation of Structure and Scale
+Generate item parameters from **four sources** (parametric, IRW,
+hierarchical, custom) with empirically-observed
+difficulty–discrimination correlation ($\rho \approx -0.3$) preserved
+via copula methods.
 
-IRTsimrel implements a fundamental principle:
+### Feasibility Screening
 
-- **Structure**: Realistic item characteristics and flexible latent
-  distributions come from empirically-grounded generators
-- **Scale**: A global discrimination scaling factor $c^*$ is calibrated
-  to achieve target reliability
+Before calibrating, verify that your target reliability is achievable
+and visualize the reliability–scaling curve:
 
-$$\lambda_i^* = c^* \cdot \lambda_{i,0}$$
+``` r
+check_feasibility(n_items = 25, model = "rasch", seed = 42)
+rho_curve(n_items = 25, model = "rasch", seed = 42, plot = TRUE)
+```
 
-This allows researchers to study the effect of reliability on estimation
-while maintaining realistic data structures.
+### Three-Level Validation
 
-## Two Reliability Metrics
-
-| Metric | Formula | Used By |
+| Level | Tool | What It Checks |
 |----|----|----|
-| MSEM-based ($\bar{\rho}$) | $\frac{\sigma^2_\theta}{\sigma^2_\theta + E[1/\mathcal{J}(\theta)]}$ | SPC (theoretically exact) |
-| Average-information ($\tilde{\rho}$) | $\frac{\sigma^2_\theta \bar{\mathcal{J}}}{\sigma^2_\theta \bar{\mathcal{J}} + 1}$ | EQC (faster) |
+| **Internal** | `predict()`, `compute_rho_both()` | Consistency of calibrated reliability; Jensen’s gap between $\tilde{\rho}$ and $\bar{w}$ |
+| **Cross-algorithm** | `compare_eqc_sac()` | Agreement between EQC and SAC on $c^*$ |
+| **External** | `compute_reliability_tam()` | TAM-fitted WLE/EAP reliability on generated response data |
 
-By Jensen’s inequality: $\tilde{\rho} \geq \bar{\rho}$ always holds.
+## Documentation
 
-## Vignettes
+IRTsimrel includes [12
+vignettes](https://joonho112.github.io/IRTsimrel/articles/) organized in
+two tracks:
 
-For detailed guidance, see the package vignettes:
+**Getting Started** — `vignette("introduction")` \|
+`vignette("quick-start")`
 
-- `vignette("introduction_to_irtsimrel")` — Package overview and
-  workflow
-- `vignette("latent_distributions")` — Working with 12 latent shapes
-- `vignette("item_parameters")` — Generating realistic item parameters
-- `vignette("eqc_algorithm")` — Algorithm 1: EQC details
-- `vignette("spc_algorithm")` — Algorithm 2: SPC details
-- `vignette("validation")` — Validating calibration results
+**Applied Researchers Track** — For running simulation studies:
+
+- `vignette("applied-guide")` — 6-step workflow from feasibility check
+  to data export
+- `vignette("latent-distributions")` — All 12 shapes with examples
+- `vignette("item-parameters")` — Parametric, IRW, hierarchical, and
+  custom item generation
+- `vignette("simulation-design")` — Designing factorial Monte Carlo
+  studies with reliability as a factor
+- `vignette("case-studies")` — Three complete publication-ready
+  simulation templates
+
+**Methodological Researchers Track** — For understanding the theory:
+
+- `vignette("theory-reliability")` — Formal reliability definitions,
+  Jensen’s inequality, and the inverse design problem
+- `vignette("algorithm-eqc")` — EQC convergence theory and diagnostics
+- `vignette("algorithm-sac")` — SAC step-size analysis and
+  Polyak–Ruppert averaging
+- `vignette("validation")` — Three-level validation framework
+- `vignette("api-reference")` — Complete function reference with
+  examples
 
 ## Citation
 
-If you use IRTsimrel in your research, please cite:
-
     Lee, J.-H. (2025). Reliability-targeted simulation for item response data.
-    arXiv preprint. arXiv:XXXX.XXXXX
+    arXiv preprint arXiv:2512.16012. https://arxiv.org/abs/2512.16012
 
 ## Related Work
 
@@ -229,4 +220,4 @@ If you use IRTsimrel in your research, please cite:
 
 ## License
 
-MIT © JoonHo Lee
+MIT

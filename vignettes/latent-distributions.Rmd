@@ -1,5 +1,11 @@
 ---
 title: "Working with Latent Distributions"
+author: "JoonHo Lee"
+date: "`r Sys.Date()`"
+description: >
+  A comprehensive guide to generating latent ability distributions using
+  sim_latentG(), covering all 12 built-in shapes, custom mixtures, covariate
+  effects, and the connection to reliability-targeted simulation.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Working with Latent Distributions}
@@ -7,39 +13,55 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.width = 7,
-  fig.height = 5
+  collapse = TRUE, comment = "#>",
+  fig.width = 7, fig.height = 5,
+  fig.align = "center", out.width = "85%"
 )
-```
-
-```{r setup}
 library(IRTsimrel)
+set.seed(42)
+
+# Consistent color palette across all figures
+col_primary <- "#2166AC"
+col_accent  <- "#B2182B"
+col_shade   <- adjustcolor("#2166AC", alpha.f = 0.15)
+col_grid    <- "#CCCCCC"
+col_info    <- "#4393C3"
+col_msem    <- "#D6604D"
 ```
 
-## Overview
+## 1. Overview
 
-The `sim_latentG()` function generates latent abilities (person parameters $\theta$) for IRT simulation studies. It implements the population model:
+The `sim_latentG()` function generates latent abilities (person parameters
+$\theta$) for IRT simulation studies. It implements the population model:
 
 $$\theta_p \sim G$$
 
-where $G$ is a flexible distribution family that can take many different shapes.
+where $G$ is a flexible distribution family that can take many different
+shapes while maintaining rigorous standardization properties.
 
-This vignette covers:
+**Estimated reading time**: 20--25 minutes.
+
+**This vignette covers**:
 
 1. The pre-standardization principle
-2. Available distribution shapes
+2. Available distribution shapes (12 built-in + custom)
 3. Customizing shape parameters
 4. Creating custom mixture distributions
 5. Adding covariate effects
 6. Visualization tools
+7. How latent shape affects achievable reliability
 
-## The Pre-Standardization Principle
+For the complete applied workflow that uses `sim_latentG()` as part of
+reliability-targeted simulation, see `vignette("applied-guide")`.
 
-A key design feature of `sim_latentG()` is **pre-standardization**: every built-in distribution shape is mathematically constructed to have **mean 0 and variance 1** before any scaling is applied.
+
+## 2. The Pre-Standardization Principle
+
+A key design feature of `sim_latentG()` is **pre-standardization**: every
+built-in distribution shape is mathematically constructed to have **mean 0
+and variance 1** before any scaling is applied.
 
 This ensures that:
 
@@ -53,13 +75,19 @@ $$\theta_p = \mu + X_p^\top \beta + \sigma \cdot z_p$$
 
 where $z_p \sim G_0$ with $\mathbb{E}[z] = 0$ and $\text{Var}[z] = 1$.
 
-### Why This Matters
+### 2.1 Why This Matters
 
-In traditional simulation approaches, changing the latent distribution often changes both the shape *and* the scale simultaneously. For example, switching from $N(0, 1)$ to $\text{Gamma}(4, 1)$ changes not just the shape but also the variance.
+In traditional simulation approaches, changing the latent distribution often
+changes both the shape *and* the scale simultaneously. For example, switching
+from $N(0, 1)$ to $\text{Gamma}(4, 1)$ changes not just the shape but also
+the variance.
 
-With pre-standardization, you can study the effect of distributional shape on IRT estimation while holding variance constant—a cleaner experimental design.
+With pre-standardization, you can study the effect of distributional shape on
+IRT estimation while holding variance constant -- a cleaner experimental
+design.
 
-## Basic Usage
+
+## 3. Basic Usage
 
 ```{r basic-usage}
 # Generate 1000 standard normal abilities
@@ -80,11 +108,13 @@ cat(sprintf("Sample mean: %.4f (target: 0)\n", mean(sim_normal$theta)))
 cat(sprintf("Sample SD:   %.4f (target: 1)\n", sd(sim_normal$theta)))
 ```
 
-## Available Distribution Shapes
 
-`sim_latentG()` provides 12 built-in shapes, each pre-standardized to mean 0 and variance 1.
+## 4. Available Distribution Shapes
 
-### Standard Normal
+`sim_latentG()` provides 12 built-in shapes, each pre-standardized to mean 0
+and variance 1.
+
+### 4.1 Standard Normal
 
 The baseline case: $z \sim N(0, 1)$
 
@@ -93,11 +123,14 @@ sim_normal <- sim_latentG(n = 2000, shape = "normal", seed = 1)
 plot(sim_normal, show_normal = TRUE)
 ```
 
-### Bimodal Distribution
+### 4.2 Bimodal Distribution
 
-A symmetric two-component Gaussian mixture, useful for representing populations with two distinct subgroups (e.g., native vs. non-native speakers).
+A symmetric two-component Gaussian mixture, useful for representing
+populations with two distinct subgroups (e.g., native vs. non-native
+speakers).
 
 **Mathematical construction:**
+
 $$z = s \cdot \delta + \epsilon, \quad s \sim \text{Rademacher}(\pm 1), \quad \epsilon \sim N(0, 1 - \delta^2)$$
 
 The component variance $1 - \delta^2$ ensures $\text{Var}[z] = \delta^2 + (1 - \delta^2) = 1$.
@@ -109,20 +142,20 @@ plot(sim_bimodal, show_normal = TRUE)
 
 **Customizing mode separation:**
 
-The `delta` parameter controls how far apart the modes are (0 < delta < 1):
+The `delta` parameter controls how far apart the modes are ($0 < \delta < 1$):
 
 ```{r bimodal-delta}
 # Wider separation
 sim_bimodal_wide <- sim_latentG(
-  n = 2000, 
-  shape = "bimodal", 
+  n = 2000,
+  shape = "bimodal",
   shape_params = list(delta = 0.95),
   seed = 1
 )
 plot(sim_bimodal_wide, show_normal = TRUE)
 ```
 
-### Trimodal Distribution
+### 4.3 Trimodal Distribution
 
 A symmetric three-component mixture with a central peak and two side peaks.
 
@@ -153,7 +186,7 @@ sim_trimodal_central <- sim_latentG(
 plot(sim_trimodal_central, show_normal = TRUE)
 ```
 
-### Multimodal (Four Components)
+### 4.4 Multimodal (Four Components)
 
 A symmetric four-component mixture with modes at $\{-m_2, -m_1, +m_1, +m_2\}$.
 
@@ -162,7 +195,7 @@ sim_multi <- sim_latentG(n = 2000, shape = "multimodal", seed = 1)
 plot(sim_multi, show_normal = TRUE)
 ```
 
-### Skewed Distributions
+### 4.5 Skewed Distributions
 
 **Right-skewed (skew_pos)**: Based on standardized Gamma distribution:
 
@@ -184,7 +217,8 @@ plot(sim_skew_neg, show_normal = TRUE)
 
 **Controlling skewness magnitude:**
 
-The `k` parameter (Gamma shape) controls skewness—smaller values = more skewed:
+The `k` parameter (Gamma shape) controls skewness -- smaller values mean more
+skewed:
 
 ```{r skew-control}
 # More extreme skewness (k = 2)
@@ -199,7 +233,7 @@ cat(sprintf("Default k=4 skewness: %.3f\n", sim_skew_pos$sample_moments$skewness
 cat(sprintf("k=2 skewness:         %.3f\n", sim_very_skew$sample_moments$skewness))
 ```
 
-### Heavy-Tailed Distribution
+### 4.6 Heavy-Tailed Distribution
 
 Based on standardized Student-t:
 
@@ -214,7 +248,8 @@ plot(sim_heavy, show_normal = TRUE)
 
 **Controlling tail heaviness:**
 
-The `df` parameter (degrees of freedom) controls tail weight—smaller values = heavier tails:
+The `df` parameter (degrees of freedom) controls tail weight -- smaller values
+mean heavier tails:
 
 ```{r heavy-tail-control}
 # Very heavy tails (df = 3)
@@ -229,16 +264,17 @@ cat(sprintf("Default df=5 kurtosis: %.3f\n", sim_heavy$sample_moments$kurtosis))
 cat(sprintf("df=3 kurtosis:         %.3f\n", sim_very_heavy$sample_moments$kurtosis))
 ```
 
-### Light-Tailed (Platykurtic) Distribution
+### 4.7 Light-Tailed (Platykurtic) Distribution
 
-A mixture distribution approximating a platykurtic shape (negative excess kurtosis).
+A mixture distribution approximating a platykurtic shape (negative excess
+kurtosis).
 
 ```{r light-tail}
 sim_light <- sim_latentG(n = 2000, shape = "light_tail", seed = 1)
 plot(sim_light, show_normal = TRUE)
 ```
 
-### Uniform Distribution
+### 4.8 Uniform Distribution
 
 Uniform on $[-\sqrt{3}, +\sqrt{3}]$, which has mean 0 and variance 1.
 
@@ -247,47 +283,52 @@ sim_uniform <- sim_latentG(n = 2000, shape = "uniform", seed = 1)
 plot(sim_uniform, show_normal = TRUE)
 ```
 
-### Floor and Ceiling Effects
+### 4.9 Floor and Ceiling Effects
 
-These represent situations where there's a concentration of examinees at one end of the ability distribution.
+These represent situations where there is a concentration of examinees at one
+end of the ability distribution.
 
-**Floor effect**: Heavy component near the lower bound (e.g., many low-ability students in a difficult test)
+**Floor effect**: Heavy component near the lower bound (e.g., many low-ability
+students in a difficult test)
 
 ```{r floor}
 sim_floor <- sim_latentG(n = 2000, shape = "floor", seed = 1)
 plot(sim_floor, show_normal = TRUE)
 ```
 
-**Ceiling effect**: Heavy component near the upper bound (e.g., many high-ability students in an easy test)
+**Ceiling effect**: Heavy component near the upper bound (e.g., many
+high-ability students in an easy test)
 
 ```{r ceiling}
 sim_ceiling <- sim_latentG(n = 2000, shape = "ceiling", seed = 1)
 plot(sim_ceiling, show_normal = TRUE)
 ```
 
-## Comparing Multiple Shapes
 
-The `compare_shapes()` function provides a convenient way to visualize multiple distributions side-by-side:
+## 5. Comparing Multiple Shapes
 
-```{r compare-shapes, fig.width=9, fig.height=7}
+The `compare_shapes()` function provides a convenient way to visualize
+multiple distributions side-by-side:
+
+```{r compare-shapes, fig.width = 9, fig.height = 7}
 compare_shapes(
   n = 3000,
-  shapes = c("normal", "bimodal", "trimodal", 
+  shapes = c("normal", "bimodal", "trimodal",
              "skew_pos", "heavy_tail", "uniform"),
   sigma = 1,
   seed = 42
 )
 ```
 
-## Custom Mixture Distributions
+
+## 6. Custom Mixture Distributions
 
 For maximum flexibility, use `shape = "custom"` with `mixture_spec`:
 
 ```{r custom-mixture}
 # Define a custom 3-component mixture
 sim_custom <- sim_latentG(
-
-n = 2000,
+  n = 2000,
   shape = "custom",
   mixture_spec = list(
     weights = c(0.3, 0.5, 0.2),   # Must sum to 1
@@ -300,9 +341,10 @@ n = 2000,
 plot(sim_custom, show_normal = TRUE)
 ```
 
-By default, custom mixtures are automatically post-standardized to have mean 0 and variance 1. To disable this:
+By default, custom mixtures are automatically post-standardized to have
+mean 0 and variance 1. To disable this:
 
-```{r custom-no-standardize, eval=FALSE}
+```{r custom-no-standardize, eval = FALSE}
 # Keep raw mixture parameters
 sim_raw <- sim_latentG(
   n = 2000,
@@ -317,9 +359,11 @@ sim_raw <- sim_latentG(
 )
 ```
 
-## Adjusting Location and Scale
 
-The `mu` and `sigma` parameters allow you to shift and scale the distribution:
+## 7. Adjusting Location and Scale
+
+The `mu` and `sigma` parameters allow you to shift and scale the
+distribution:
 
 ```{r location-scale}
 # Generate abilities with mean 100 and SD 15 (like IQ scores)
@@ -349,7 +393,8 @@ sim_bimodal_scaled <- sim_latentG(
 cat(sprintf("Sample SD: %.3f (target: 1.5)\n", sd(sim_bimodal_scaled$theta)))
 ```
 
-## Adding Covariate Effects
+
+## 8. Adding Covariate Effects
 
 You can incorporate person-level covariates that affect ability:
 
@@ -373,7 +418,7 @@ sim_cov <- sim_latentG(
 cat("Mean ability by group:\n")
 cat(sprintf("  Group 0: %.3f\n", mean(sim_cov$theta[group == 0])))
 cat(sprintf("  Group 1: %.3f\n", mean(sim_cov$theta[group == 1])))
-cat(sprintf("  Difference: %.3f (expected: 0.5)\n", 
+cat(sprintf("  Difference: %.3f (expected: 0.5)\n",
             mean(sim_cov$theta[group == 1]) - mean(sim_cov$theta[group == 0])))
 ```
 
@@ -383,7 +428,8 @@ $$\theta_p = \mu + X_p^\top \beta + \sigma \cdot z_p$$
 
 where $X_p$ is the covariate vector for person $p$.
 
-## Working with the Output Object
+
+## 9. Working with the Output Object
 
 The `sim_latentG()` function returns a `latent_G` object containing:
 
@@ -403,7 +449,7 @@ head(sim$z)
 sim$sample_moments
 ```
 
-### Extracting theta for Other Uses
+### 9.1 Extracting Theta for Other Uses
 
 ```{r extract-theta}
 # Get theta as a numeric vector
@@ -413,60 +459,185 @@ theta_vec <- sim$theta
 mean(theta_vec)
 ```
 
-## Connection to IRT Framework
+
+## 10. Connection to IRT Framework
 
 In the Rasch/2PL model, the latent distribution $G$ affects key quantities:
 
-### Marginal Reliability
+### 10.1 Marginal Reliability
 
 $$\bar{w} = \frac{\sigma^2_\theta}{\sigma^2_\theta + \text{MSEM}}$$
 
 where MSEM is the mean squared error of measurement.
 
-### Expected Test Information
+### 10.2 Expected Test Information
 
 $$\bar{\mathcal{J}} = \mathbb{E}_G[\mathcal{J}(\theta)]$$
 
-Different latent shapes produce different expected information profiles, even with identical item parameters.
+Different latent shapes produce different expected information profiles, even
+with identical item parameters.
 
-### Identifiability
+### 10.3 Identifiability
 
 For model identification in the Rasch model, we typically fix either:
 
 - $\mathbb{E}[\theta] = 0$ (location constraint), or
 - $\sum_i \beta_i = 0$ (item constraint)
 
-The `sim_latentG()` function generates abilities with mean 0 by default, supporting the first identification approach.
+The `sim_latentG()` function generates abilities with mean 0 by default,
+supporting the first identification approach.
 
-## Using sim_latentG with eqc_calibrate
 
-When using `sim_latentG()` as part of reliability-targeted simulation, specify the same parameters in `eqc_calibrate()`:
+## 11. How Latent Shape Affects Achievable Reliability
 
-```{r integration-example, eval=FALSE}
+Different latent shapes lead to different achievable reliability ranges for the
+same test design. This section uses `check_feasibility()` and `rho_curve()` to
+explore this connection.
+
+### 11.1 Feasibility Across Shapes
+
+```{r shape-feasibility}
+shapes_feas <- c("normal", "bimodal", "skew_pos", "heavy_tail", "uniform")
+feas_results <- data.frame(
+  shape = character(), rho_tilde_min = numeric(), rho_tilde_max = numeric(),
+  rho_bar_min = numeric(), rho_bar_max = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (sh in shapes_feas) {
+  feas <- check_feasibility(
+    n_items = 25, model = "rasch", latent_shape = sh,
+    item_source = "parametric", M = 5000L, seed = 42, verbose = FALSE
+  )
+  feas_results <- rbind(feas_results, data.frame(
+    shape = sh,
+    rho_tilde_min = feas$rho_range_info[1],
+    rho_tilde_max = feas$rho_range_info[2],
+    rho_bar_min = feas$rho_range_msem[1],
+    rho_bar_max = feas$rho_range_msem[2],
+    stringsAsFactors = FALSE
+  ))
+}
+
+knitr::kable(
+  feas_results,
+  col.names = c("Shape", "rho_tilde min", "rho_tilde max",
+                "rho_bar min", "rho_bar max"),
+  digits = 4,
+  caption = "Achievable reliability ranges across latent shapes (25-item Rasch)"
+)
+```
+
+### 11.2 Reliability Curves Across Shapes
+
+```{r shape-curves, fig.height = 5.5}
+shapes_curve <- c("normal", "bimodal", "skew_pos", "heavy_tail")
+curve_colors <- c("#2166AC", "#B2182B", "#4DAF4A", "#984EA3")
+
+# Generate curves
+all_curves <- list()
+for (i in seq_along(shapes_curve)) {
+  all_curves[[i]] <- rho_curve(
+    n_items = 25, model = "rasch", latent_shape = shapes_curve[i],
+    item_source = "parametric", metric = "info",
+    M = 5000L, seed = 42, plot = FALSE
+  )
+}
+
+# Plot
+plot(NULL, xlim = c(0.1, 5), ylim = c(0, 1),
+     xlab = "Scaling factor c", ylab = expression(tilde(rho)(c)),
+     main = "Reliability Curves by Latent Shape (25-item Rasch, info metric)")
+
+for (i in seq_along(shapes_curve)) {
+  lines(all_curves[[i]]$c, all_curves[[i]]$rho_tilde,
+        col = curve_colors[i], lwd = 2)
+}
+
+abline(h = 0.80, col = "gray40", lty = 2, lwd = 1)
+text(4.5, 0.82, expression(rho * " = 0.80"), cex = 0.8, col = "gray40")
+
+legend("bottomright", legend = shapes_curve,
+       col = curve_colors, lwd = 2, cex = 0.8, bty = "n")
+grid(col = "#CCCCCC")
+```
+
+The figure shows that all shapes can reach high reliability, but some require
+larger scaling factors $c$ to compensate for the reduced average information
+when ability mass is spread away from the item difficulty region.
+
+### 11.3 Calibrating Across Shapes
+
+Use `eqc_calibrate()` with different `latent_shape` arguments to see how
+the calibrated $c^*$ differs:
+
+```{r shape-calibration}
+shapes_cal <- c("normal", "bimodal", "skew_pos", "heavy_tail", "uniform")
+cal_results <- data.frame(
+  shape = character(), c_star = numeric(),
+  achieved_rho = numeric(), stringsAsFactors = FALSE
+)
+
+for (sh in shapes_cal) {
+  res <- eqc_calibrate(
+    target_rho = 0.80, n_items = 25, model = "rasch",
+    latent_shape = sh, item_source = "parametric",
+    M = 5000L, seed = 42
+  )
+  cal_results <- rbind(cal_results, data.frame(
+    shape = sh, c_star = res$c_star,
+    achieved_rho = res$achieved_rho, stringsAsFactors = FALSE
+  ))
+}
+
+knitr::kable(
+  cal_results,
+  col.names = c("Shape", "c*", "Achieved rho"),
+  digits = 4,
+  caption = "Calibrated c* by latent shape (target rho = 0.80, 25-item Rasch)"
+)
+```
+
+
+## 12. Using `sim_latentG()` with `eqc_calibrate()`
+
+When using `sim_latentG()` as part of reliability-targeted simulation,
+specify the same parameters in `eqc_calibrate()`:
+
+```{r integration-example}
 # Calibrate for a bimodal population
 eqc_result <- eqc_calibrate(
   target_rho = 0.80,
   n_items = 25,
   model = "rasch",
   latent_shape = "bimodal",
-  latent_params = list(delta = 0.8),
+  latent_params = list(shape_params = list(delta = 0.8)),
+  M = 5000L,
   seed = 42
 )
 
 # Generate response data with the same distribution
 sim_data <- simulate_response_data(
-  eqc_result = eqc_result,
+  result = eqc_result,
   n_persons = 1000,
   latent_shape = "bimodal",
-  latent_params = list(delta = 0.8),
+  latent_params = list(shape_params = list(delta = 0.8)),
   seed = 123
 )
+
+cat(sprintf("Calibrated c* = %.4f, achieved rho = %.4f\n",
+            eqc_result$c_star, eqc_result$achieved_rho))
+cat(sprintf("Response data: %d persons x %d items\n",
+            nrow(sim_data$response_matrix), ncol(sim_data$response_matrix)))
 ```
 
-## Summary of Shape Parameters
+For the complete 6-step applied workflow, see `vignette("applied-guide")`.
+
+
+## 13. Summary of Shape Parameters
 
 | Shape | Parameter | Default | Range | Description |
-|-------|-----------|---------|-------|-------------|
+|:------|:----------|:--------|:------|:------------|
 | `bimodal` | `delta` | 0.8 | (0, 1) | Mode separation |
 | `trimodal` | `w0` | 1/3 | (0, 1) | Weight of central component |
 | | `m` | 1.2 | > 0 | Location of side modes |
@@ -480,12 +651,13 @@ sim_data <- simulate_response_data(
 | `ceiling` | `w_ceil` | 0.3 | (0, 1) | Weight at ceiling |
 | | `m_ceil` | 1.5 | > 0 | Ceiling location |
 
-## Practical Recommendations
 
-### Choosing a Shape
+## 14. Practical Recommendations
+
+### 14.1 Choosing a Shape
 
 | Research Question | Recommended Shape |
-|-------------------|-------------------|
+|:------------------|:------------------|
 | Standard simulation | `normal` |
 | Heterogeneous population | `bimodal` |
 | Mixed ability levels | `trimodal` or `multimodal` |
@@ -494,15 +666,15 @@ sim_data <- simulate_response_data(
 | Easy/difficult tests | `ceiling` / `floor` |
 | Sensitivity analysis | Compare multiple shapes |
 
-### Sample Size Considerations
+### 14.2 Sample Size Considerations
 
 For stable Monte Carlo estimates:
 
 - **M = 10,000** or more for `eqc_calibrate()` quadrature
-- **n = 500–2000** per replication for simulation studies
-- Increase n for heavy-tailed or highly multimodal shapes
+- **n = 500--2,000** per replication for simulation studies
+- Increase $n$ for heavy-tailed or highly multimodal shapes
 
-### Reproducibility
+### 14.3 Reproducibility
 
 Always set a seed for reproducible results:
 
@@ -512,12 +684,15 @@ sim2 <- sim_latentG(n = 100, shape = "normal", seed = 42)
 identical(sim1$theta, sim2$theta)  # TRUE
 ```
 
-## Further Reading
 
-For theoretical background on latent distributions in IRT, see:
+## 15. References
 
-- Baker, F. B., & Kim, S.-H. (2004). *Item Response Theory: Parameter Estimation Techniques* (2nd ed.). Marcel Dekker.
+Lee, J. (2025). Reliability-targeted simulation of item response data:
+Solving the inverse design problem. *arXiv preprint*, arXiv:2512.16012.
 
-- Paganin, S., et al. (2023). Computational strategies and estimation performance with Bayesian semiparametric item response theory models. *Journal of Educational and Behavioral Statistics, 48*(2), 147-188.
+Baker, F. B., & Kim, S.-H. (2004). *Item Response Theory: Parameter
+Estimation Techniques* (2nd ed.). Marcel Dekker.
 
-For information on the pre-standardization mathematics, see Appendix F of the IRTsimrel paper.
+Paganin, S., et al. (2023). Computational strategies and estimation
+performance with Bayesian semiparametric item response theory models.
+*Journal of Educational and Behavioral Statistics, 48*(2), 147--188.

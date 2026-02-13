@@ -1,0 +1,772 @@
+---
+title: "Generating Realistic Item Parameters"
+author: "JoonHo Lee"
+date: "`r Sys.Date()`"
+description: >
+  A guide to generating realistic item parameters with sim_item_params(),
+  covering parametric, IRW, hierarchical, and custom sources, the copula
+  method for correlated parameters, and extracting calibrated items with
+  coef().
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Generating Realistic Item Parameters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  fig.width = 7, fig.height = 5,
+  fig.align = "center", out.width = "85%"
+)
+library(IRTsimrel)
+set.seed(42)
+
+# Consistent color palette
+pal <- list(
+  primary    = "steelblue",
+  secondary  = "darkorange",
+  accent     = "firebrick",
+  muted      = "grey60",
+  light_fill = adjustcolor("steelblue", alpha.f = 0.3)
+)
+```
+
+# 1. Overview
+
+**Reading time**: approximately 20--25 minutes.
+
+The `sim_item_params()` function generates item parameters (difficulty $\beta$
+and discrimination $\lambda$) for IRT simulation studies.  It is designed with
+four key principles:
+
+1. **Realistic difficulties**: Integration with the Item Response Warehouse (IRW)
+   for empirically-grounded difficulty distributions.
+2. **Correlated parameters**: Support for the empirically observed negative
+   correlation between difficulty and discrimination.
+3. **Marginal preservation**: The copula method preserves exact marginal
+   distributions.
+4. **Reliability targeting**: A scale factor enables subsequent calibration for
+   target reliability.
+
+This vignette covers:
+
+1. The difficulty-discrimination correlation
+2. Basic usage (Rasch and 2PL)
+3. Sources for difficulty generation
+4. Methods for discrimination generation
+5. Customizing discrimination parameters
+6. Generating multiple test forms
+7. The scale parameter
+8. Visualization
+9. Extracting calibrated item parameters with `coef()`
+10. Integration with calibration functions
+
+For the complete calibration workflow, see `vignette("applied-guide")`.  For
+theoretical details on how item parameters interact with reliability, see
+`vignette("algorithm-eqc")`.
+
+
+# 2. The Difficulty-Discrimination Correlation
+
+A critical finding from psychometric research is that item difficulty and
+discrimination are **negatively correlated** in real assessments (Sweeney et al.,
+2022):
+
+- Easy items ($\beta$ low) tend to have higher discrimination ($\lambda$ high).
+- Difficult items ($\beta$ high) tend to have lower discrimination ($\lambda$ low).
+
+This correlation, typically around $\rho \approx -0.3$, has important
+implications:
+
+- Ignoring it produces unrealistic simulation data.
+- Standard independent generation misses this structural feature.
+- The correlation affects test information functions.
+
+`sim_item_params()` handles this by default using the **copula method** with
+$\rho = -0.3$.
+
+
+# 3. Basic Usage
+
+## 3.1 Rasch model
+
+For the Rasch model, all discriminations are set to 1:
+
+```{r rasch-basic}
+# Generate 25 Rasch items with parametric difficulties
+items_rasch <- sim_item_params(
+  n_items = 25,
+  model   = "rasch",
+  source  = "parametric",
+  seed    = 42
+)
+
+print(items_rasch)
+```
+
+## 3.2 Two-parameter logistic (2PL) model
+
+For the 2PL model, both difficulties and discriminations are generated:
+
+```{r 2pl-basic}
+# Generate 30 2PL items with correlated parameters
+items_2pl <- sim_item_params(
+  n_items = 30,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "copula",
+  seed    = 42
+)
+
+print(items_2pl)
+```
+
+Notice the **achieved correlation** between $\beta$ and $\log(\lambda)$ is
+close to the default target of $-0.3$.
+
+
+# 4. Sources for Difficulty Generation
+
+`sim_item_params()` supports four sources for generating item difficulties.
+
+## 4.1 IRW (Item Response Warehouse)
+
+The **recommended** source for realistic simulations.  IRW provides
+empirically-grounded difficulty distributions based on thousands of real
+assessment items.
+
+```{r source-irw, eval = FALSE}
+# Requires: devtools::install_github("itemresponsewarehouse/irw")
+items_irw <- sim_item_params(
+  n_items = 25,
+  model   = "rasch",
+  source  = "irw",
+  seed    = 42
+)
+
+summary(items_irw$data$beta)
+```
+
+## 4.2 Parametric
+
+Generate difficulties from a parametric distribution:
+
+```{r source-parametric}
+# Normal distribution (default)
+items_normal <- sim_item_params(
+  n_items = 25,
+  model   = "rasch",
+  source  = "parametric",
+  difficulty_params = list(mu = 0, sigma = 1, distribution = "normal"),
+  seed    = 42
+)
+
+# Uniform distribution
+items_uniform <- sim_item_params(
+  n_items = 25,
+  model   = "rasch",
+  source  = "parametric",
+  difficulty_params = list(mu = 0, sigma = 1, distribution = "uniform"),
+  seed    = 42
+)
+```
+
+```{r parametric-compare, fig.height = 4}
+par(mfrow = c(1, 2))
+hist(items_normal$data$beta, breaks = 12, col = pal$primary,
+     border = "white", main = "Normal Difficulties", xlab = expression(beta))
+hist(items_uniform$data$beta, breaks = 12, col = pal$secondary,
+     border = "white", main = "Uniform Difficulties", xlab = expression(beta))
+par(mfrow = c(1, 1))
+```
+
+## 4.3 Hierarchical
+
+Joint bivariate normal generation following Glas & van der Linden (2003).  Both
+$\log(\lambda)$ and $\beta$ are drawn from a multivariate normal:
+
+$$\begin{pmatrix} \log(\lambda_i) \\ \beta_i \end{pmatrix} \sim N\!\left( \begin{pmatrix} \mu_\lambda \\ \mu_\beta \end{pmatrix}, \begin{pmatrix} \tau_\lambda^2 & \rho \tau_\lambda \tau_\beta \\ \rho \tau_\lambda \tau_\beta & \tau_\beta^2 \end{pmatrix} \right)$$
+
+```{r source-hierarchical}
+items_hier <- sim_item_params(
+  n_items = 25,
+  model   = "2pl",
+  source  = "hierarchical",
+  hierarchical_params = list(
+    mu  = c(0, 0),
+    tau = c(0.25, 1),
+    rho = -0.3
+  ),
+  seed = 42
+)
+
+print(items_hier)
+```
+
+## 4.4 Custom
+
+Supply your own parameters directly:
+
+```{r source-custom}
+# Custom difficulties and discriminations
+items_custom <- sim_item_params(
+  n_items = 10,
+  model   = "2pl",
+  source  = "custom",
+  custom_params = list(
+    beta   = seq(-2, 2, length.out = 10),
+    lambda = rep(1.2, 10)
+  ),
+  seed = 42
+)
+
+items_custom$data
+```
+
+You can also provide functions that generate parameters:
+
+```{r source-custom-function, eval = FALSE}
+items_custom_fn <- sim_item_params(
+  n_items = 20,
+  model   = "2pl",
+  source  = "custom",
+  custom_params = list(
+    beta   = function(n) rnorm(n, 0, 1.5),
+    lambda = function(n) rlnorm(n, 0, 0.3)
+  ),
+  seed = 42
+)
+```
+
+
+# 5. Methods for Discrimination Generation
+
+When using `source = "irw"` or `source = "parametric"` with `model = "2pl"`,
+you need to specify how discriminations are generated.  Three methods are
+available.
+
+## 5.1 Copula method (recommended)
+
+The **Gaussian copula** method preserves exact marginal distributions while
+achieving the target correlation.
+
+**Algorithm:**
+
+1. Transform $\beta$ to uniform via empirical CDF: $u = \text{rank}(\beta)/(n+1)$.
+2. Transform to normal: $z_\beta = \Phi^{-1}(u)$.
+3. Generate correlated normal: $z_\lambda = \rho \cdot z_\beta + \sqrt{1-\rho^2} \cdot z_{\text{indep}}$.
+4. Transform to uniform: $v = \Phi(z_\lambda)$.
+5. Transform to log-normal: $\lambda = \exp(\mu + \sigma \cdot \Phi^{-1}(v))$.
+
+```{r method-copula}
+items_copula <- sim_item_params(
+  n_items = 100,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "copula",
+  discrimination_params = list(
+    mu_log    = 0,
+    sigma_log = 0.3,
+    rho       = -0.3
+  ),
+  seed = 42
+)
+
+# Check achieved correlation
+cat(sprintf("Target rho: -0.30\n"))
+cat(sprintf("Achieved Spearman: %.3f\n",
+            items_copula$achieved$overall$cor_spearman_pooled))
+```
+
+**Why copula is recommended:**
+
+- Preserves the exact IRW difficulty distribution.
+- Guarantees log-normal marginal for discriminations.
+- Achieves target **Spearman** correlation (robust to non-normality).
+- Works well with any difficulty distribution shape.
+
+## 5.2 Conditional method
+
+Uses conditional normal regression:
+
+$$\log(\lambda_i) \mid \beta_i \sim N\!\left(\mu_{\log} + \rho \cdot \sigma_{\log} \cdot z_{\beta_i}, \; \sigma_{\log}\sqrt{1-\rho^2}\right)$$
+
+```{r method-conditional}
+items_cond <- sim_item_params(
+  n_items = 100,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "conditional",
+  discrimination_params = list(rho = -0.3),
+  seed    = 42
+)
+
+cat(sprintf("Achieved Pearson:  %.3f\n",
+            items_cond$achieved$overall$cor_pearson_pooled))
+cat(sprintf("Achieved Spearman: %.3f\n",
+            items_cond$achieved$overall$cor_spearman_pooled))
+```
+
+> **Note:** The conditional method assumes linear relationships and normal
+> errors.  When IRW difficulties are non-normal, achieved correlations may
+> differ from targets.
+
+## 5.3 Independent method
+
+Generates discriminations independently of difficulties (no correlation):
+
+```{r method-independent}
+items_indep <- sim_item_params(
+  n_items = 100,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "independent",
+  seed    = 42
+)
+
+cat(sprintf("Achieved correlation: %.3f (expected: ~0)\n",
+            items_indep$achieved$overall$cor_spearman_pooled))
+```
+
+
+# 6. Customizing Discrimination Parameters
+
+The `discrimination_params` list controls the log-normal distribution of
+discriminations:
+
+```{r disc-params}
+# Higher average discrimination
+items_high_disc <- sim_item_params(
+  n_items = 30,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "copula",
+  discrimination_params = list(
+    mu_log    = 0.3,
+    sigma_log = 0.25,
+    rho       = -0.3
+  ),
+  seed = 42
+)
+
+cat(sprintf("Mean lambda: %.3f\n", mean(items_high_disc$data$lambda)))
+cat(sprintf("SD lambda:   %.3f\n", sd(items_high_disc$data$lambda)))
+```
+
+## 6.1 Understanding the parameters
+
+| Parameter | Default | Description |
+|:----------|:--------|:------------|
+| `mu_log` | 0 | Mean of $\log(\lambda)$. $\mathbb{E}[\lambda] \approx \exp(\mu_{\log} + \sigma_{\log}^2/2)$ |
+| `sigma_log` | 0.3 | SD of $\log(\lambda)$. Controls heterogeneity across items |
+| `rho` | -0.3 | Target correlation between $\beta$ and $\log(\lambda)$ |
+
+
+# 7. Generating Multiple Test Forms
+
+Generate multiple parallel forms with independent item samples:
+
+```{r multiple-forms}
+items_5forms <- sim_item_params(
+  n_items = 20,
+  model   = "2pl",
+  source  = "parametric",
+  method  = "copula",
+  n_forms = 5,
+  seed    = 42
+)
+
+cat(sprintf("Total items: %d\n", nrow(items_5forms$data)))
+cat(sprintf("Items per form: %d\n", items_5forms$n_items))
+cat(sprintf("Number of forms: %d\n", items_5forms$n_forms))
+
+# View first few rows
+head(items_5forms$data, 10)
+```
+
+## 7.1 Per-form statistics
+
+```{r form-stats}
+for (f in 1:3) {
+  stats <- items_5forms$achieved$by_form[[f]]
+  cat(sprintf("Form %d: beta_mean=%.3f, lambda_mean=%.3f, cor=%.3f\n",
+              f, stats$beta_mean, stats$lambda_mean, stats$cor_spearman))
+}
+```
+
+
+# 8. The Scale Parameter
+
+The `scale` parameter is central to the reliability-targeted framework.  It
+multiplies all discriminations by a constant factor:
+
+$$\lambda_i^* = c \cdot \lambda_{i,0}$$
+
+where $\lambda_{i,0}$ is the baseline discrimination and $c$ is the scale
+factor.
+
+```{r scale-parameter}
+# Baseline (scale = 1)
+items_base <- sim_item_params(
+  n_items = 25, model = "2pl", source = "parametric",
+  scale = 1, seed = 42
+)
+
+# Scaled up (scale = 1.5)
+items_scaled <- sim_item_params(
+  n_items = 25, model = "2pl", source = "parametric",
+  scale = 1.5, seed = 42
+)
+
+cat(sprintf("Baseline mean lambda: %.3f\n", mean(items_base$data$lambda)))
+cat(sprintf("Scaled mean lambda:   %.3f\n", mean(items_scaled$data$lambda)))
+cat(sprintf("Ratio: %.2f\n",
+            mean(items_scaled$data$lambda) / mean(items_base$data$lambda)))
+```
+
+## 8.1 Unscaled lambda
+
+The output always includes `lambda_unscaled` for reference:
+
+```{r unscaled-lambda}
+head(items_scaled$data[, c("lambda", "lambda_unscaled")])
+
+# Verify relationship
+all.equal(
+  items_scaled$data$lambda,
+  items_scaled$data$lambda_unscaled * items_scaled$scale
+)
+```
+
+
+# 9. Centering Difficulties
+
+By default, difficulties are centered to sum to zero (for model identification):
+
+```{r centering}
+# Default: centered
+items_centered <- sim_item_params(
+  n_items = 25, model = "rasch", source = "parametric",
+  center_difficulties = TRUE, seed = 42
+)
+
+# Uncentered
+items_uncentered <- sim_item_params(
+  n_items = 25, model = "rasch", source = "parametric",
+  center_difficulties = FALSE, seed = 42
+)
+
+cat(sprintf("Centered mean:   %.6f\n", mean(items_centered$data$beta)))
+cat(sprintf("Uncentered mean: %.6f\n", mean(items_uncentered$data$beta)))
+```
+
+
+# 10. Visualization
+
+The `plot()` method provides diagnostic visualizations:
+
+```{r plot-items, fig.width = 8, fig.height = 6}
+items_viz <- sim_item_params(
+  n_items = 50, model = "2pl", source = "parametric",
+  method = "copula", seed = 42
+)
+
+# Scatter plot with regression line
+plot(items_viz, type = "scatter")
+```
+
+```{r plot-density, fig.width = 8, fig.height = 4}
+# Density plots
+plot(items_viz, type = "density")
+```
+
+
+# 11. Extracting Calibrated Item Parameters with `coef()`
+
+After running `eqc_calibrate()` or `sac_calibrate()`, the `coef()` method
+extracts a tidy data frame of all item parameters---including both baseline and
+calibrated (scaled) discriminations.
+
+## 11.1 From an EQC result
+
+```{r coef-eqc}
+eqc_result <- eqc_calibrate(
+  target_rho  = 0.85,
+  n_items     = 25,
+  model       = "rasch",
+  item_source = "parametric",
+  M           = 5000L,
+  seed        = 42
+)
+
+# Extract calibrated item parameters
+item_table <- coef(eqc_result)
+head(item_table)
+```
+
+Each row contains:
+
+| Column | Description |
+|:-------|:------------|
+| `item_id` | Item identifier (1 to $I$) |
+| `beta` | Item difficulty |
+| `lambda_base` | Baseline (unscaled) discrimination |
+| `lambda_scaled` | Calibrated discrimination: $\lambda_{\text{base}} \times c^*$ |
+| `c_star` | The calibrated scaling factor (constant across items) |
+
+## 11.2 Summary statistics from coef output
+
+```{r coef-summary}
+cat(sprintf("Number of items:       %d\n", nrow(item_table)))
+cat(sprintf("Difficulty range:      [%.3f, %.3f]\n",
+            min(item_table$beta), max(item_table$beta)))
+cat(sprintf("Difficulty mean:       %.4f\n", mean(item_table$beta)))
+cat(sprintf("Difficulty SD:         %.4f\n", sd(item_table$beta)))
+cat(sprintf("Calibrated c*:         %.4f\n", item_table$c_star[1]))
+cat(sprintf("Scaled discrimination: %.4f (all equal for Rasch)\n",
+            item_table$lambda_scaled[1]))
+```
+
+## 11.3 From a SAC result
+
+The same `coef()` interface works for SAC results:
+
+```{r coef-sac}
+sac_result <- sac_calibrate(
+  target_rho        = 0.85,
+  n_items           = 25,
+  model             = "rasch",
+  item_source       = "parametric",
+  reliability_metric = "info",
+  c_init            = eqc_result,
+  n_iter            = 200L,
+  M_per_iter        = 500L,
+  M_pre             = 5000L,
+  seed              = 42
+)
+
+sac_items <- coef(sac_result)
+head(sac_items)
+```
+
+## 11.4 Comparing EQC and SAC item parameters
+
+```{r coef-compare}
+cat(sprintf("EQC c*: %.4f\n", item_table$c_star[1]))
+cat(sprintf("SAC c*: %.4f\n", sac_items$c_star[1]))
+cat(sprintf("Difference: %.4f (%.2f%%)\n",
+            abs(item_table$c_star[1] - sac_items$c_star[1]),
+            100 * abs(item_table$c_star[1] - sac_items$c_star[1]) / item_table$c_star[1]))
+```
+
+## 11.5 Exporting to CSV
+
+```{r coef-export, eval = FALSE}
+# Save calibrated item parameters for use in other software
+write.csv(coef(eqc_result), file = "calibrated_items.csv", row.names = FALSE)
+```
+
+## 11.6 Using coef output with 2PL models
+
+With 2PL models, the baseline discriminations vary across items, and `coef()`
+makes it easy to see both the original and scaled values:
+
+```{r coef-2pl}
+eqc_2pl <- eqc_calibrate(
+  target_rho  = 0.80,
+  n_items     = 20,
+  model       = "2pl",
+  item_source = "parametric",
+  M           = 5000L,
+  seed        = 42
+)
+
+items_2pl_df <- coef(eqc_2pl)
+head(items_2pl_df, 10)
+```
+
+```{r coef-2pl-plot, fig.height = 4.5}
+plot(items_2pl_df$beta, items_2pl_df$lambda_scaled,
+     pch = 16, col = pal$primary, cex = 1.2,
+     xlab = expression(beta), ylab = expression(lambda^"*"),
+     main = "Calibrated Item Parameters (2PL)")
+abline(lm(lambda_scaled ~ beta, data = items_2pl_df),
+       col = pal$accent, lty = 2, lwd = 1.5)
+```
+
+
+# 12. Integration with eqc_calibrate
+
+In the reliability-targeted simulation framework, `sim_item_params()` is called
+internally by `eqc_calibrate()`.  You specify item generation settings through
+the `item_source` and `item_params` arguments:
+
+```{r integration-example}
+# EQC automatically calls sim_item_params internally
+eqc_result_full <- eqc_calibrate(
+  target_rho  = 0.80,
+  n_items     = 25,
+  model       = "2pl",
+  item_source = "parametric",
+  item_params = list(
+    discrimination_params = list(
+      mu_log    = 0,
+      sigma_log = 0.3,
+      rho       = -0.3
+    )
+  ),
+  M    = 5000L,
+  seed = 42
+)
+
+cat(sprintf("c* = %.4f, achieved rho = %.4f\n",
+            eqc_result_full$c_star, eqc_result_full$achieved_rho))
+```
+
+## 12.1 Accessing calibrated items
+
+After calibration, you can access both baseline and calibrated item parameters:
+
+```{r access-items}
+# Baseline items (scale = 1)
+items_base_obj <- eqc_result_full$items_base
+
+# Calibrated items (scale = c*)
+items_calib_obj <- eqc_result_full$items_calib
+
+# The calibration factor
+c_star <- eqc_result_full$c_star
+
+cat(sprintf("Baseline scale:    %d\n", items_base_obj$scale))
+cat(sprintf("Calibrated scale:  %.4f\n", items_calib_obj$scale))
+```
+
+
+# 13. Comparison of Methods
+
+Compare the three discrimination generation methods:
+
+```{r compare-methods, fig.width = 9, fig.height = 4}
+methods <- c("copula", "conditional", "independent")
+results <- list()
+
+for (m in methods) {
+  results[[m]] <- sim_item_params(
+    n_items = 200, model = "2pl", source = "parametric",
+    method = m,
+    discrimination_params = list(rho = -0.4),
+    seed = 123
+  )
+}
+
+# Compare achieved correlations
+cat("Method Comparison (target rho = -0.4):\n")
+cat("======================================\n")
+for (m in methods) {
+  cat(sprintf("%-12s: Pearson = %+.3f, Spearman = %+.3f\n",
+              m,
+              results[[m]]$achieved$overall$cor_pearson_pooled,
+              results[[m]]$achieved$overall$cor_spearman_pooled))
+}
+```
+
+The copula method achieves the target Spearman correlation most reliably.
+
+
+# 14. Working with the Output Object
+
+The `item_params` object contains rich information:
+
+```{r output-structure}
+items <- sim_item_params(
+  n_items = 25, model = "2pl", source = "parametric", seed = 42
+)
+
+# Structure
+names(items)
+
+# Extract as data frame
+df <- as.data.frame(items)
+head(df)
+
+# Achieved statistics
+items$achieved$overall
+```
+
+
+# 15. Summary Tables
+
+## 15.1 Sources
+
+| Source | Description | Best For |
+|:-------|:------------|:---------|
+| `irw` | Item Response Warehouse | Realistic simulations |
+| `parametric` | Normal/uniform difficulties | Controlled experiments |
+| `hierarchical` | Joint MVN generation | Bayesian framework |
+| `custom` | User-supplied parameters | Specific scenarios |
+
+## 15.2 Methods
+
+| Method | Preserves Marginals | Target Correlation | Notes |
+|:-------|:--------------------|:-------------------|:------|
+| `copula` | Yes | Spearman | **Recommended** |
+| `conditional` | No | Pearson | Assumes normality |
+| `independent` | Yes | None (0) | No correlation |
+
+
+# 16. Practical Recommendations
+
+## 16.1 For realistic simulations
+
+```{r practical-realistic, eval = FALSE}
+items <- sim_item_params(
+  n_items = 30, model = "2pl",
+  source = "irw",
+  method = "copula",
+  discrimination_params = list(mu_log = 0, sigma_log = 0.3, rho = -0.3),
+  seed = 42
+)
+```
+
+## 16.2 For controlled experiments
+
+```{r practical-controlled, eval = FALSE}
+items <- sim_item_params(
+  n_items = 25, model = "2pl",
+  source = "parametric",
+  difficulty_params = list(mu = 0, sigma = 1),
+  method = "conditional",
+  discrimination_params = list(mu_log = 0, sigma_log = 0.25, rho = 0),
+  seed = 42
+)
+```
+
+## 16.3 For Bayesian frameworks
+
+```{r practical-bayesian, eval = FALSE}
+items <- sim_item_params(
+  n_items = 25, model = "2pl",
+  source = "hierarchical",
+  hierarchical_params = list(mu = c(0, 0), tau = c(0.3, 1), rho = -0.3),
+  seed = 42
+)
+```
+
+
+# References
+
+Lee, J. (2025). Reliability-targeted simulation of item response data: Solving
+the inverse design problem. *arXiv preprint*, arXiv:2512.16012.
+
+Glas, C. A. W., & van der Linden, W. J. (2003). Computerized adaptive testing
+with item cloning. *Applied Psychological Measurement, 27*(4), 247--261.
+
+Sweeney, S. M., et al. (2022). An investigation of the nature and consequence
+of the relationship between IRT difficulty and discrimination.
+*Educational Measurement: Issues and Practice, 41*(4), 50--67.
+
+Zhang, L., Fellinghauer, C., Geerlings, H., & Sijtsma, K. (2025). Realistic
+simulation of item difficulties using the Item Response Warehouse. *PsyArXiv*.
+https://doi.org/10.31234/osf.io/r5mxv

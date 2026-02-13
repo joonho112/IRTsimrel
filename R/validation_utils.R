@@ -1,12 +1,13 @@
 # =============================================================================
 # validation_utils.R
 # =============================================================================
-# Validation and Comparison Utilities for EQC/SPC Calibration
+# Validation and Comparison Utilities for EQC/SAC Calibration
 #
 # Contents:
 #   - compute_reliability_tam(): Compute WLE/EAP reliability using TAM
-#   - simulate_response_data(): Generate item response data from EQC results
-#   - compare_eqc_spc(): Compare EQC and SPC calibration results
+#   - simulate_response_data(): Generate item response data from calibration results
+#   - compare_eqc_sac(): Compare EQC and SAC calibration results (primary)
+#   - compare_eqc_spc(): Deprecated alias for compare_eqc_sac
 #
 # Author: JoonHo Lee
 # Date: December 2025
@@ -46,8 +47,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Simulate response data from EQC results
-#' sim_data <- simulate_response_data(eqc_result, n_persons = 500)
+#' # Simulate response data from calibration results
+#' sim_data <- simulate_response_data(result = eqc_result, n_persons = 500)
 #'
 #' # Compute TAM reliability
 #' tam_rel <- compute_reliability_tam(sim_data$response_matrix, model = "rasch")
@@ -101,12 +102,16 @@ compute_reliability_tam <- function(resp,
 }
 
 
-#' Simulate Item Response Data from EQC Results
+#' Simulate Item Response Data from Calibration Results
 #'
 #' @description
-#' Generates item response data using the calibrated parameters from EQC.
+#' Generates item response data using the calibrated parameters from
+#' \code{eqc_calibrate()} or \code{sac_calibrate()} (formerly
+#' \code{spc_calibrate()}).
 #'
-#' @param eqc_result An \code{eqc_result} object from \code{eqc_calibrate()}.
+#' @param result A calibration result object of class \code{"eqc_result"},
+#'   \code{"sac_result"}, or \code{"spc_result"} (for backward compatibility),
+#'   as returned by \code{eqc_calibrate()} or \code{sac_calibrate()}.
 #' @param n_persons Integer. Number of persons to simulate.
 #' @param latent_shape Character. Shape argument for \code{sim_latentG()}.
 #' @param latent_params List. Additional arguments for \code{sim_latentG()}.
@@ -122,7 +127,7 @@ compute_reliability_tam <- function(resp,
 #'
 #' @examples
 #' \dontrun{
-#' # First, run EQC calibration
+#' # Example 1: Using EQC calibration result
 #' eqc_result <- eqc_calibrate(
 #'   target_rho = 0.80,
 #'   n_items = 25,
@@ -130,9 +135,24 @@ compute_reliability_tam <- function(resp,
 #'   seed = 42
 #' )
 #'
-#' # Generate response data
 #' sim_data <- simulate_response_data(
-#'   eqc_result = eqc_result,
+#'   result = eqc_result,
+#'   n_persons = 1000,
+#'   latent_shape = "normal",
+#'   seed = 123
+#' )
+#'
+#' # Example 2: Using SAC calibration result
+#' sac_result <- sac_calibrate(
+#'   target_rho = 0.80,
+#'   n_items = 25,
+#'   model = "rasch",
+#'   n_iter = 200,
+#'   seed = 42
+#' )
+#'
+#' sim_data2 <- simulate_response_data(
+#'   result = sac_result,
 #'   n_persons = 1000,
 #'   latent_shape = "normal",
 #'   seed = 123
@@ -143,20 +163,35 @@ compute_reliability_tam <- function(resp,
 #' }
 #'
 #' @seealso
-#' \code{\link{eqc_calibrate}}, \code{\link{compute_reliability_tam}}
+#' \code{\link{eqc_calibrate}}, \code{\link{sac_calibrate}},
+#' \code{\link{compute_reliability_tam}}
 #'
 #' @export
-simulate_response_data <- function(eqc_result,
+simulate_response_data <- function(result,
                                    n_persons,
                                    latent_shape = "normal",
                                    latent_params = list(),
                                    seed = NULL) {
 
-  if (!inherits(eqc_result, "eqc_result")) {
-    stop("eqc_result must be an object of class 'eqc_result'")
+  if (!inherits(result, c("eqc_result", "sac_result", "spc_result"))) {
+    stop("'result' must be an 'eqc_result' or 'sac_result' object from eqc_calibrate() or sac_calibrate().")
   }
 
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
+    set.seed(as.integer(seed))
+  }
 
   # Generate theta
   latent_args <- modifyList(
@@ -165,8 +200,8 @@ simulate_response_data <- function(eqc_result,
   )
   theta <- do.call(sim_latentG, latent_args)$theta
 
-  beta   <- eqc_result$beta_vec
-  lambda <- eqc_result$lambda_scaled
+  beta   <- result$beta_vec
+  lambda <- result$lambda_scaled
   I <- length(beta)
 
   # Generate responses (vectorized)
@@ -191,22 +226,23 @@ simulate_response_data <- function(eqc_result,
 
 
 # =============================================================================
-# Comparison Function for EQC and SPC Results
+# Comparison Function for EQC and SAC Results
 # =============================================================================
 
-#' Compare EQC and SPC Calibration Results
+#' Compare EQC and SAC Calibration Results
 #'
 #' @description
-#' Compares the calibration results from EQC and SPC algorithms.
+#' Compares the calibration results from EQC and SAC algorithms.
 #'
 #' @param eqc_result An object of class \code{"eqc_result"}.
-#' @param spc_result An object of class \code{"spc_result"}.
+#' @param sac_result An object of class \code{"sac_result"} (or \code{"spc_result"}
+#'   for backward compatibility).
 #' @param verbose Logical. If TRUE, print comparison summary.
 #'
 #' @return A list with comparison statistics (invisibly):
 #' \describe{
 #'   \item{\code{c_eqc}}{Calibrated c* from EQC.}
-#'   \item{\code{c_spc}}{Calibrated c* from SPC.}
+#'   \item{\code{c_sac}}{Calibrated c* from SAC.}
 #'   \item{\code{diff_abs}}{Absolute difference between c* values.}
 #'   \item{\code{diff_pct}}{Percent difference relative to EQC.}
 #'   \item{\code{agreement}}{Logical. TRUE if difference is < 5%.}
@@ -217,57 +253,93 @@ simulate_response_data <- function(eqc_result,
 #' \dontrun{
 #' # Run both algorithms
 #' eqc_result <- eqc_calibrate(target_rho = 0.80, n_items = 25, seed = 42)
-#' spc_result <- spc_calibrate(target_rho = 0.80, n_items = 25,
+#' sac_result <- sac_calibrate(target_rho = 0.80, n_items = 25,
 #'                             c_init = eqc_result, seed = 42)
 #'
 #' # Compare results
-#' compare_eqc_spc(eqc_result, spc_result)
+#' compare_eqc_sac(eqc_result, sac_result)
 #' }
 #'
 #' @seealso
-#' \code{\link{eqc_calibrate}}, \code{\link{spc_calibrate}}
+#' \code{\link{eqc_calibrate}}, \code{\link{sac_calibrate}}
 #'
 #' @export
-compare_eqc_spc <- function(eqc_result, spc_result, verbose = TRUE) {
+compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
 
   if (!inherits(eqc_result, "eqc_result")) {
     stop("eqc_result must be an object of class 'eqc_result'.")
   }
-  if (!inherits(spc_result, "spc_result")) {
-    stop("spc_result must be an object of class 'spc_result'.")
+  if (!inherits(sac_result, c("sac_result", "spc_result"))) {
+    stop("sac_result must be an object of class 'sac_result' (or 'spc_result' for backward compatibility).")
+  }
+
+  # Configuration validation
+  if (!isTRUE(all.equal(eqc_result$target_rho, sac_result$target_rho))) {
+    stop(sprintf(
+      "target_rho differs between EQC (%.4f) and SAC (%.4f). Results are not comparable.",
+      eqc_result$target_rho, sac_result$target_rho
+    ))
+  }
+  if (!identical(eqc_result$model, sac_result$model)) {
+    warning(sprintf(
+      "Model differs between EQC ('%s') and SAC ('%s').",
+      eqc_result$model, sac_result$model
+    ))
+  }
+  if (!identical(eqc_result$n_items, sac_result$n_items)) {
+    warning(sprintf(
+      "n_items differs between EQC (%d) and SAC (%d).",
+      eqc_result$n_items, sac_result$n_items
+    ))
+  }
+  if (!identical(eqc_result$metric, sac_result$metric)) {
+    warning(sprintf(
+      "Reliability metric differs between EQC ('%s') and SAC ('%s').",
+      eqc_result$metric, sac_result$metric
+    ))
   }
 
   # Extract key values
   c_eqc <- eqc_result$c_star
-  c_spc <- spc_result$c_star
+  c_sac <- sac_result$c_star
 
-  diff_abs <- abs(c_eqc - c_spc)
+  diff_abs <- abs(c_eqc - c_sac)
   diff_pct <- 100 * diff_abs / c_eqc
 
   agreement <- diff_pct < 5  # Within 5%
 
   comparison <- list(
     c_eqc = c_eqc,
-    c_spc = c_spc,
+    c_sac = c_sac,
     diff_abs = diff_abs,
     diff_pct = diff_pct,
     agreement = agreement,
-    target_rho = spc_result$target_rho
+    target_rho = sac_result$target_rho
   )
 
   if (verbose) {
-    cat("\n")
-    cat("=======================================================\n")
-    cat("  EQC vs SPC Comparison\n")
-    cat("=======================================================\n\n")
-    cat(sprintf("  Target reliability  : %.4f\n", comparison$target_rho))
-    cat(sprintf("  EQC c*              : %.6f\n", c_eqc))
-    cat(sprintf("  SPC c*              : %.6f\n", c_spc))
-    cat(sprintf("  Absolute difference : %.6f\n", diff_abs))
-    cat(sprintf("  Percent difference  : %.2f%%\n", diff_pct))
-    cat(sprintf("  Agreement (< 5%%)    : %s\n", ifelse(agreement, "YES", "NO")))
-    cat("\n")
+    message("")
+    message("=======================================================")
+    message("  EQC vs SAC Comparison")
+    message("=======================================================")
+    message("")
+    message(sprintf("  Target reliability  : %.4f", comparison$target_rho))
+    message(sprintf("  EQC c*              : %.6f", c_eqc))
+    message(sprintf("  SAC c*              : %.6f", c_sac))
+    message(sprintf("  Absolute difference : %.6f", diff_abs))
+    message(sprintf("  Percent difference  : %.2f%%", diff_pct))
+    message(sprintf("  Agreement (< 5%%)    : %s", ifelse(agreement, "YES", "NO")))
+    message("")
   }
 
   invisible(comparison)
+}
+
+
+#' @rdname compare_eqc_sac
+#' @param ... Arguments passed to \code{compare_eqc_sac()}.
+#' @export
+compare_eqc_spc <- function(...) {
+  .Deprecated("compare_eqc_sac")
+  compare_eqc_sac(...)
 }

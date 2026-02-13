@@ -2,10 +2,10 @@
 % Please edit documentation in R/validation_utils.R
 \name{simulate_response_data}
 \alias{simulate_response_data}
-\title{Simulate Item Response Data from EQC Results}
+\title{Simulate Item Response Data from Calibration Results}
 \usage{
 simulate_response_data(
-  eqc_result,
+  result,
   n_persons,
   latent_shape = "normal",
   latent_params = list(),
@@ -13,7 +13,9 @@ simulate_response_data(
 )
 }
 \arguments{
-\item{eqc_result}{An \code{eqc_result} object from \code{eqc_calibrate()}.}
+\item{result}{A calibration result object of class \code{"eqc_result"},
+\code{"sac_result"}, or \code{"spc_result"} (for backward compatibility),
+as returned by \code{eqc_calibrate()} or \code{sac_calibrate()}.}
 
 \item{n_persons}{Integer. Number of persons to simulate.}
 
@@ -33,11 +35,13 @@ A list containing:
 }
 }
 \description{
-Generates item response data using the calibrated parameters from EQC.
+Generates item response data using the calibrated parameters from
+\code{eqc_calibrate()} or \code{sac_calibrate()} (formerly
+\code{spc_calibrate()}).
 }
 \examples{
 \dontrun{
-# First, run EQC calibration
+# Example 1: Using EQC calibration result
 eqc_result <- eqc_calibrate(
   target_rho = 0.80,
   n_items = 25,
@@ -45,9 +49,24 @@ eqc_result <- eqc_calibrate(
   seed = 42
 )
 
-# Generate response data
 sim_data <- simulate_response_data(
-  eqc_result = eqc_result,
+  result = eqc_result,
+  n_persons = 1000,
+  latent_shape = "normal",
+  seed = 123
+)
+
+# Example 2: Using SAC calibration result
+sac_result <- sac_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
+  n_iter = 200,
+  seed = 42
+)
+
+sim_data2 <- simulate_response_data(
+  result = sac_result,
   n_persons = 1000,
   latent_shape = "normal",
   seed = 123
@@ -59,5 +78,6 @@ tam_rel <- compute_reliability_tam(sim_data$response_matrix, model = "rasch")
 
 }
 \seealso{
-\code{\link{eqc_calibrate}}, \code{\link{compute_reliability_tam}}
+\code{\link{eqc_calibrate}}, \code{\link{sac_calibrate}},
+\code{\link{compute_reliability_tam}}
 }

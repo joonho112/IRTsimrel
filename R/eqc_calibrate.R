@@ -52,7 +52,10 @@
 #'   (e.g. \code{"normal"}, \code{"bimodal"}, \code{"heavy_tail"}, ...).
 #'
 #' @param item_source Character. Source argument passed to \code{sim_item_params()}
-#'   (e.g. \code{"irw"}, \code{"parametric"}, \code{"hierarchical"}, \code{"custom"}).
+#'   (e.g. \code{"parametric"}, \code{"irw"}, \code{"hierarchical"}, \code{"custom"}).
+#'   Defaults to \code{"parametric"} since the \pkg{irw} package is an optional
+#'   dependency (listed in Suggests). Use \code{"irw"} for empirically-grounded
+#'   difficulties when the \pkg{irw} package is installed.
 #'
 #' @param latent_params List. Additional arguments passed to \code{sim_latentG()}.
 #'
@@ -60,10 +63,12 @@
 #'
 #' @param reliability_metric Character. Reliability definition used inside EQC:
 #'   \describe{
-#'     \item{\code{"msem"}}{MSEM-based marginal reliability (default, theoretically exact).}
-#'     \item{\code{"info"}}{Average-information reliability (faster, more stable).}
+#'     \item{\code{"info"}}{Average-information reliability (default, recommended for EQC).
+#'       Targets \eqn{\tilde{\rho}}, which is guaranteed to be monotone in \eqn{c}.}
+#'     \item{\code{"msem"}}{MSEM-based marginal reliability (theoretically exact, but may
+#'       have a non-monotone objective for EQC; see Details).}
 #'   }
-#'   Synonyms: \code{"bar"} for \code{"msem"}, \code{"tilde"} for \code{"info"}.
+#'   Synonyms: \code{"tilde"} for \code{"info"}, \code{"bar"} for \code{"msem"}.
 #'
 #' @param M Integer. Size of the empirical quadrature sample (default: 10000).
 #'
@@ -92,14 +97,19 @@
 #'
 #' The function supports two reliability definitions:
 #'
-#' - **MSEM-based** (\code{"msem"}/\code{"bar"}): Uses the harmonic mean of test information,
-#'   \eqn{\bar{w}(c) = \sigma^2_\theta / (\sigma^2_\theta + E[1/\mathcal{J}(\theta;c)])}.
-#'   This is theoretically exact but may have a lower ceiling for high reliability.
-#'
-#' - **Average-information** (\code{"info"}/\code{"tilde"}): Uses the arithmetic mean,
+#' - **Average-information** (\code{"info"}/\code{"tilde"}, **default**): Uses the arithmetic mean,
 #'   \eqn{\tilde{\rho}(c) = \sigma^2_\theta \bar{\mathcal{J}}(c) / (\sigma^2_\theta \bar{\mathcal{J}}(c) + 1)}.
 #'   By Jensen's inequality, \eqn{\tilde{\rho} \geq \bar{w}}, so this metric typically
-#'   yields higher reliability values.
+#'   yields higher reliability values. **This is the recommended default for EQC** because
+#'   the objective function \eqn{\tilde{\rho}(c) - \rho^*} is guaranteed to be monotone
+#'   in \eqn{c}, ensuring that \code{uniroot()} will find the unique root.
+#'
+#' - **MSEM-based** (\code{"msem"}/\code{"bar"}): Uses the harmonic mean of test information,
+#'   \eqn{\bar{w}(c) = \sigma^2_\theta / (\sigma^2_\theta + E[1/\mathcal{J}(\theta;c)])}.
+#'   This is theoretically exact but the objective \eqn{\bar{w}(c) - \rho^*} may be
+#'   non-monotone (see Lee, 2025, Section 4.3), which can cause \code{uniroot()} to
+#'   fail or find an incorrect root. Use \code{\link{sac_calibrate}} if you need
+#'   to target \eqn{\bar{w}} directly.
 #'
 #' ## WLE vs EAP Reliability Interpretation
 #'
@@ -110,24 +120,36 @@
 #' as an upper bound for true measurement precision.
 #'
 #' @seealso
-#' \code{\link{spc_calibrate}} for the stochastic approximation alternative,
+#' \code{\link{sac_calibrate}} for the stochastic approximation alternative,
 #' \code{\link{compute_rho_bar}} and \code{\link{compute_rho_tilde}} for
 #' reliability computation utilities,
 #' \code{\link{compute_reliability_tam}} for TAM validation.
 #'
 #' @examples
-#' \dontrun{
-#' # Basic EQC calibration
+#' # Basic EQC calibration with parametric items (fast)
+#' \donttest{
 #' eqc_result <- eqc_calibrate(
 #'   target_rho = 0.80,
 #'   n_items = 25,
 #'   model = "rasch",
 #'   latent_shape = "normal",
+#'   item_source = "parametric",
+#'   M = 5000L,
+#'   seed = 42
+#' )
+#' print(eqc_result)
+#' }
+#'
+#' \dontrun{
+#' # EQC with IRW difficulties (requires irw package)
+#' eqc_result2 <- eqc_calibrate(
+#'   target_rho = 0.80,
+#'   n_items = 25,
+#'   model = "rasch",
 #'   item_source = "irw",
 #'   seed = 42,
 #'   verbose = TRUE
 #' )
-#' print(eqc_result)
 #' }
 #'
 #' @export
@@ -135,10 +157,10 @@ eqc_calibrate <- function(target_rho,
                           n_items,
                           model = c("rasch", "2pl"),
                           latent_shape = "normal",
-                          item_source = "irw",
+                          item_source = "parametric",
                           latent_params = list(),
                           item_params = list(),
-                          reliability_metric = c("msem", "info", "bar", "tilde"),
+                          reliability_metric = c("info", "tilde", "msem", "bar"),
                           M = 10000L,
                           c_bounds = c(0.3, 3),
                           tol = 1e-4,
@@ -164,6 +186,15 @@ eqc_calibrate <- function(target_rho,
   reliability_metric <- match.arg(reliability_metric)
   metric_internal <- if (reliability_metric %in% c("msem", "bar")) "msem" else "info"
 
+  # Warn about non-monotone MSEM objective for EQC (Lee, 2025, Section 4.3)
+  if (metric_internal == "msem") {
+    warning(
+      "MSEM-based reliability (w-bar) may have a non-monotone objective for EQC ",
+      "(see Lee, 2025, Section 4.3). Consider using 'info' (rho-tilde) for EQC, ",
+      "or use sac_calibrate() which handles w-bar targeting correctly."
+    )
+  }
+
   if (!is.numeric(M) || length(M) != 1L || M <= 0) {
     stop("`M` must be a positive integer.")
   }
@@ -175,6 +206,18 @@ eqc_calibrate <- function(target_rho,
   }
 
   if (!is.null(seed)) {
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
     set.seed(as.integer(seed))
   }
 
@@ -182,7 +225,25 @@ eqc_calibrate <- function(target_rho,
   # Step 1: Generate Quadrature Samples from G and H
   # ===========================================================================
 
-  if (verbose) cat("Step 1: Generating quadrature samples...\n")
+  # ===========================================================================
+  # Convenience parsing: auto-wrap shape params in latent_params
+  # ===========================================================================
+  known_shape_params <- c("delta", "df", "k", "mu_mix", "sigma_mix", "weights",
+                          "w0", "m", "m1", "m2", "w_inner",
+                          "w_floor", "m_floor", "w_ceil", "m_ceil")
+  top_level_shape <- intersect(names(latent_params), known_shape_params)
+  if (length(top_level_shape) > 0 && is.null(latent_params$shape_params)) {
+    shape_vals <- latent_params[top_level_shape]
+    latent_params[top_level_shape] <- NULL
+    latent_params$shape_params <- shape_vals
+    message(
+      "Auto-wrapping shape parameter(s) {",
+      paste(top_level_shape, collapse = ", "),
+      "} into latent_params$shape_params."
+    )
+  }
+
+  if (verbose) message("Step 1: Generating quadrature samples...")
 
   # --- Latent abilities ---
   latent_args <- modifyList(
@@ -223,15 +284,15 @@ eqc_calibrate <- function(target_rho,
   }
 
   if (verbose) {
-    cat(sprintf("  M (quad persons) = %d\n", M))
-    cat(sprintf("  I (items)        = %d\n", n_items))
-    cat(sprintf("  theta: mean = %.3f, sd = %.3f, var = %.3f\n",
+    message(sprintf("  M (quad persons) = %d", M))
+    message(sprintf("  I (items)        = %d", n_items))
+    message(sprintf("  theta: mean = %.3f, sd = %.3f, var = %.3f",
                 mean(theta_quad), sd(theta_quad), theta_var))
-    cat(sprintf("  beta:  mean = %.3f, sd = %.3f\n",
+    message(sprintf("  beta:  mean = %.3f, sd = %.3f",
                 mean(beta_vec), sd(beta_vec)))
-    cat(sprintf("  lambda_base: mean = %.3f, sd = %.3f\n",
+    message(sprintf("  lambda_base: mean = %.3f, sd = %.3f",
                 mean(lambda_base), sd(lambda_base)))
-    cat(sprintf("  metric = %s\n", metric_internal))
+    message(sprintf("  metric = %s", metric_internal))
   }
 
   # Precompute theta - beta grid (M x I)
@@ -272,7 +333,7 @@ eqc_calibrate <- function(target_rho,
   # Step 3: Root-Finding with Bracket Checks
   # ===========================================================================
 
-  if (verbose) cat("Step 2: Running root-finding algorithm...\n")
+  if (verbose) message("Step 2: Running root-finding algorithm...")
 
   val_low  <- objective_fn(c_bounds[1])
   val_high <- objective_fn(c_bounds[2])
@@ -281,8 +342,8 @@ eqc_calibrate <- function(target_rho,
   rho_at_high <- val_high + target_rho
 
   if (verbose) {
-    cat(sprintf("  At c = %.3f: rho = %.4f, g = %.4f\n", c_bounds[1], rho_at_low, val_low))
-    cat(sprintf("  At c = %.3f: rho = %.4f, g = %.4f\n", c_bounds[2], rho_at_high, val_high))
+    message(sprintf("  At c = %.3f: rho = %.4f, g = %.4f", c_bounds[1], rho_at_low, val_low))
+    message(sprintf("  At c = %.3f: rho = %.4f, g = %.4f", c_bounds[2], rho_at_high, val_high))
   }
 
   root_status <- "ok"
@@ -326,6 +387,7 @@ eqc_calibrate <- function(target_rho,
     # Normal case: root exists within bounds
     root_res <- uniroot(objective_fn, interval = c_bounds, tol = tol)
     c_star   <- root_res$root
+    uniroot_result <- root_res
     root_status <- "uniroot_success"
   }
 
@@ -340,10 +402,10 @@ eqc_calibrate <- function(target_rho,
   }
 
   if (verbose) {
-    cat(sprintf("  c* = %.6f\n", c_star))
-    cat(sprintf("  Target rho    = %.4f\n", target_rho))
-    cat(sprintf("  Achieved rho  = %.4f\n", achieved_rho))
-    cat(sprintf("  Root status   = %s\n", root_status))
+    message(sprintf("  c* = %.6f", c_star))
+    message(sprintf("  Target rho    = %.4f", target_rho))
+    message(sprintf("  Achieved rho  = %.4f", achieved_rho))
+    message(sprintf("  Root status   = %s", root_status))
   }
 
   # ===========================================================================
@@ -380,7 +442,8 @@ eqc_calibrate <- function(target_rho,
       root_status = root_status,
       val_low     = val_low,
       val_high    = val_high,
-      rho_bounds  = c(rho_L = rho_at_low, rho_U = rho_at_high)
+      rho_bounds  = c(rho_L = rho_at_low, rho_U = rho_at_high),
+      uniroot_result = if (exists("uniroot_result", inherits = FALSE)) uniroot_result else NULL
     )
   )
 
@@ -393,6 +456,11 @@ eqc_calibrate <- function(target_rho,
 # S3 Methods for eqc_result
 # =============================================================================
 
+#' @rdname eqc_calibrate
+#' @param x An object of class \code{"eqc_result"}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @param ... Additional arguments passed to or from other methods.
+#' @return The input object, invisibly.
 #' @export
 print.eqc_result <- function(x, digits = 4, ...) {
   cat("\n")
@@ -439,7 +507,135 @@ print.eqc_result <- function(x, digits = 4, ...) {
 }
 
 
+#' @rdname eqc_calibrate
+#' @param object An object of class \code{"eqc_result"}.
+#' @return An object of class \code{"summary.eqc_result"} containing key
+#'   calibration results.
 #' @export
 summary.eqc_result <- function(object, ...) {
-  print(object, ...)
+  out <- list(
+    c_star       = object$c_star,
+    target_rho   = object$target_rho,
+    achieved_rho = object$achieved_rho,
+    metric       = object$metric,
+    model        = object$model,
+    n_items      = object$n_items,
+    M            = object$M,
+    root_status  = object$misc$root_status,
+    theta_var    = object$theta_var
+  )
+  class(out) <- "summary.eqc_result"
+  out
+}
+
+
+#' Print Method for summary.eqc_result Objects
+#'
+#' @param x A \code{summary.eqc_result} object from \code{summary.eqc_result()}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return The input object, invisibly.
+#'
+#' @export
+print.summary.eqc_result <- function(x, digits = 4, ...) {
+  cat("Summary: Empirical Quadrature Calibration (EQC)\n")
+  cat("================================================\n")
+  cat(sprintf("  Model            : %s\n", toupper(x$model)))
+  cat(sprintf("  Metric           : %s\n",
+              ifelse(x$metric == "info", "Average-information (tilde)", "MSEM-based (bar/w)")))
+  cat(sprintf("  Number of items  : %d\n", x$n_items))
+  cat(sprintf("  Quadrature (M)   : %d\n", x$M))
+  cat(sprintf("  Latent variance  : %.*f\n", digits, x$theta_var))
+  cat("\nCalibration Results:\n")
+  cat(sprintf("  Target rho*      : %.*f\n", digits, x$target_rho))
+  cat(sprintf("  Achieved rho     : %.*f\n", digits, x$achieved_rho))
+  cat(sprintf("  Absolute error   : %.2e\n", abs(x$achieved_rho - x$target_rho)))
+  cat(sprintf("  Scaling factor c*: %.*f\n", digits, x$c_star))
+  cat(sprintf("  Root status      : %s\n", x$root_status))
+  invisible(x)
+}
+
+
+#' Extract Calibrated Item Parameters from EQC Results
+#'
+#' @description
+#' Returns the calibrated item parameters as a data frame.
+#'
+#' @param object An object of class \code{"eqc_result"}.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return A data frame with columns:
+#' \describe{
+#'   \item{\code{item_id}}{Item identifier (1 to I).}
+#'   \item{\code{beta}}{Item difficulty.}
+#'   \item{\code{lambda_base}}{Baseline (unscaled) discrimination.}
+#'   \item{\code{lambda_scaled}}{Scaled discrimination (\code{lambda_base * c*}).}
+#'   \item{\code{c_star}}{Calibrated scaling factor (same for all items).}
+#' }
+#'
+#' @examples
+#' \donttest{
+#' eqc_res <- eqc_calibrate(target_rho = 0.80, n_items = 25,
+#'                           model = "rasch", seed = 42, M = 5000)
+#' coef(eqc_res)
+#' }
+#'
+#' @export
+coef.eqc_result <- function(object, ...) {
+  data.frame(
+    item_id = seq_len(object$n_items),
+    beta = object$beta_vec,
+    lambda_base = object$lambda_base,
+    lambda_scaled = object$lambda_scaled,
+    c_star = rep(object$c_star, object$n_items)
+  )
+}
+
+
+#' Predict Reliability at New Scaling Factor Values (EQC)
+#'
+#' @description
+#' If \code{newdata} is NULL, returns the achieved reliability from calibration.
+#' If \code{newdata} is a numeric vector of scaling factor values, computes
+#' the reliability at each value using the stored quadrature sample and item
+#' parameters.
+#'
+#' @param object An object of class \code{"eqc_result"}.
+#' @param newdata Optional numeric vector of scaling factor values.
+#'   If NULL, returns \code{object$achieved_rho}.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return If \code{newdata} is NULL, a single numeric value (achieved reliability).
+#'   If \code{newdata} is a numeric vector, a named numeric vector of reliability
+#'   values at each scaling factor.
+#'
+#' @examples
+#' \donttest{
+#' eqc_res <- eqc_calibrate(target_rho = 0.80, n_items = 25,
+#'                           model = "rasch", seed = 42, M = 5000)
+#' predict(eqc_res)
+#' predict(eqc_res, newdata = c(0.5, 1.0, 1.5, 2.0))
+#' }
+#'
+#' @export
+predict.eqc_result <- function(object, newdata = NULL, ...) {
+  if (is.null(newdata)) {
+    return(object$achieved_rho)
+  }
+
+  c_values <- as.numeric(newdata)
+  if (any(c_values <= 0)) {
+    stop("All values in `newdata` must be positive.")
+  }
+
+  rho_fn <- if (object$metric == "info") compute_rho_tilde else compute_rho_bar
+
+  result <- vapply(c_values, function(c_val) {
+    rho_fn(c_val, object$theta_quad, object$beta_vec,
+           object$lambda_base, theta_var = object$theta_var)
+  }, numeric(1))
+
+  names(result) <- paste0("c=", format(c_values, digits = 4))
+  result
 }

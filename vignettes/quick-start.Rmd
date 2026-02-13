@@ -1,0 +1,353 @@
+---
+title: "Quick Start: Your First Calibration in 5 Minutes"
+author: "JoonHo Lee"
+date: "`r Sys.Date()`"
+description: >
+  Learn to calibrate item parameters for target reliability, generate response
+  data, and extract results in just 5 minutes.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Quick Start: Your First Calibration in 5 Minutes}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(IRTsimrel)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  fig.align = "center",
+  out.width = "85%"
+)
+set.seed(42)
+```
+
+## 1. Overview
+
+This vignette walks you through a complete IRTsimrel workflow in about five
+minutes. By the end you will know how to:
+
+1. **Calibrate** item parameters to hit a target marginal reliability.
+2. **Check feasibility** and visualize the reliability curve.
+3. **Generate** a simulated binary response dataset.
+4. **Extract and inspect** calibrated parameters using S3 methods.
+
+**Estimated time:** 5 minutes.
+
+**Prerequisites:** Only the IRTsimrel package is needed. All code chunks in
+this vignette use `eval = TRUE` and will run on any system with IRTsimrel
+installed.
+
+
+## 2. Calibrate
+
+The core function is `eqc_calibrate()`. Give it a target reliability, the
+number of items, and a measurement model, and it returns a calibrated scaling
+factor $c^*$ that makes the population reliability match your target.
+
+```{r calibrate}
+result <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items    = 20,
+  model      = "rasch",
+  seed       = 42,
+  M          = 5000L
+)
+```
+
+Print the result to see the key quantities:
+
+```{r print-result}
+result
+```
+
+There are two numbers to focus on in the output:
+
+- **`c*`** (scaling factor): All baseline discriminations are multiplied by
+  this value. In a Rasch model the baseline discriminations are all 1, so
+  the calibrated discriminations equal $c^*$ directly. A larger $c^*$ means
+  the test needs more discriminating items to reach the target.
+
+- **`achieved_rho`**: The empirical reliability at the calibrated $c^*$,
+  computed over the Monte Carlo quadrature sample. This should be very close
+  to the target of 0.80 --- typically the absolute error is less than
+  $10^{-4}$.
+
+The `model` argument accepts `"rasch"` (all discriminations equal) or
+`"2pl"` (log-normal discrimination distribution). For this quick start we
+use the Rasch model; see `vignette("applied-guide")` for 2PL examples.
+
+
+## 3. Check Feasibility
+
+Before committing to a particular simulation design, it is good practice to
+verify that your target reliability is actually achievable. Not all
+combinations of test length, model, and latent distribution can produce
+every reliability level.
+
+`check_feasibility()` reports the range of achievable reliabilities for a
+given configuration:
+
+```{r feasibility}
+feas <- check_feasibility(
+  n_items = 20,
+  model   = "rasch",
+  seed    = 42,
+  M       = 5000L
+)
+```
+
+The output shows two ranges --- one for each reliability metric. If your
+target falls within the `rho_tilde (info)` range, EQC can calibrate for it.
+If it falls within the `rho_bar (msem)` range, SAC can calibrate for it.
+
+You can also visualize how reliability varies continuously with the scaling
+factor by using `rho_curve()`. This plot shows both the average-information
+metric ($\tilde{\rho}$, blue) and the MSEM-based metric ($\bar{w}$, red):
+
+```{r rho-curve, fig.cap="Reliability curve for a 20-item Rasch test. The average-information metric (blue) always lies at or above the MSEM-based metric (red) due to Jensen's inequality."}
+curve_data <- rho_curve(
+  n_items = 20,
+  model   = "rasch",
+  metric  = "both",
+  M       = 5000L,
+  seed    = 42,
+  plot    = TRUE
+)
+```
+
+The two curves are close together for this configuration. The gap widens for
+shorter tests or non-normal latent distributions.
+
+
+## 4. Generate Data
+
+Once you have a calibration result, `simulate_response_data()` generates a
+binary response matrix using the calibrated item parameters. The function
+draws fresh latent abilities from the specified distribution and produces
+responses according to the 2PL (or Rasch) model with the calibrated
+discriminations:
+
+```{r simulate}
+sim <- simulate_response_data(
+  result    = result,
+  n_persons = 500,
+  seed      = 123
+)
+```
+
+The result is a list with four components:
+
+- `response_matrix`: an $N \times I$ matrix of binary (0/1) responses
+- `theta`: the true latent abilities for each person
+- `beta`: the item difficulties
+- `lambda`: the scaled item discriminations
+
+```{r dim-check}
+# Dimensions: 500 persons x 20 items
+dim(sim$response_matrix)
+```
+
+```{r head-responses}
+# First 6 persons, first 8 items
+sim$response_matrix[1:6, 1:8]
+```
+
+You can verify that the item parameters match what you expect:
+
+```{r check-params}
+# All scaled discriminations should equal c*
+summary(sim$lambda)
+
+# Difficulty distribution
+summary(sim$beta)
+```
+
+A quick diagnostic: plot the proportion of correct responses per item. Items
+with extreme difficulties should have very high or very low proportions:
+
+```{r item-difficulty-plot, fig.cap="Proportion correct per item, ordered by difficulty. Items near the center of the difficulty distribution have proportions near 0.50, while extreme items show floor or ceiling effects."}
+p_correct <- colMeans(sim$response_matrix)
+item_order <- order(sim$beta)
+
+barplot(
+  p_correct[item_order],
+  names.arg = item_order,
+  col  = "steelblue",
+  xlab = "Item (ordered by difficulty)",
+  ylab = "Proportion Correct",
+  main = "Proportion Correct per Item",
+  ylim = c(0, 1),
+  las  = 2,
+  cex.names = 0.7
+)
+abline(h = 0.5, lty = 2, col = "gray50")
+```
+
+
+## 5. Extract and Inspect
+
+IRTsimrel result objects support standard S3 generics, so you can interact
+with them the same way you would with `lm` or `glm` objects.
+
+### 5.1 Summary
+
+`summary()` returns a compact overview of the calibration:
+
+```{r summary}
+summary(result)
+```
+
+
+### 5.2 Extract Coefficients
+
+`coef()` returns a tidy data frame of calibrated item parameters --- one
+row per item:
+
+```{r coef}
+item_pars <- coef(result)
+head(item_pars)
+```
+
+For a Rasch model, `lambda_base` is always 1 and `lambda_scaled` equals
+$c^*$ for every item. For a 2PL model, `lambda_base` would vary across
+items and `lambda_scaled` would be `lambda_base * c*`.
+
+
+### 5.3 Predict Reliability at New Scaling Factors
+
+`predict()` evaluates the reliability function at new scaling factor values.
+With no arguments, it returns the achieved reliability at the calibrated
+$c^*$:
+
+```{r predict-default}
+# Achieved reliability at c*
+predict(result)
+```
+
+With `newdata`, it computes reliability at each specified value of $c$:
+
+```{r predict-new}
+# Reliability at several scaling factors
+predict(result, newdata = c(0.5, 1.0, 1.5, 2.0))
+```
+
+This is useful for understanding how sensitive reliability is to the
+discrimination level. For instance, at $c = 0.5$ the test is substantially
+less reliable, while at $c = 2.0$ it is more reliable than needed.
+
+
+## 6. Validate (Optional)
+
+For added confidence in your calibration, you can run SAC (Stochastic
+Approximation Calibration) as an independent check. SAC uses a completely
+different algorithm (Robbins-Monro stochastic approximation) to solve the
+same calibration problem, so agreement between EQC and SAC is strong
+evidence that both found the correct $c^*$.
+
+Passing the EQC result as `c_init` provides a warm start that makes SAC
+converge in very few iterations:
+
+```{r sac-validate}
+sac_result <- sac_calibrate(
+  target_rho = 0.80,
+  n_items    = 20,
+  model      = "rasch",
+  c_init     = result,
+  n_iter     = 100L,
+  M_per_iter = 500L,
+  seed       = 42
+)
+```
+
+Compare the two algorithms side by side:
+
+```{r compare}
+comp <- compare_eqc_sac(result, sac_result)
+```
+
+The comparison reports the absolute and percent difference between the two
+$c^*$ values. If the percent difference is below 5%, the two algorithms are
+in agreement (and typically the difference is below 1%).
+
+You can also visualize the SAC convergence trajectory to verify that the
+iterations stabilized near the EQC warm start:
+
+```{r sac-plot, fig.cap="SAC convergence trajectory. The top panel shows the scaling factor c across iterations, and the bottom panel shows the per-iteration reliability estimates. The warm start from EQC ensures rapid convergence."}
+plot(sac_result, type = "both")
+```
+
+The top panel shows the scaling factor trajectory, which should stabilize
+quickly when initialized from EQC. The bottom panel shows the noisy
+per-iteration reliability estimates oscillating around the target value
+(dashed red line). The Polyak-Ruppert average (reported as $c^*$) smooths
+out the iteration-to-iteration noise.
+
+
+## 7. Putting It All Together
+
+Here is the complete workflow in a single code block, from calibration to
+validated data generation:
+
+```{r full-workflow, eval=FALSE}
+library(IRTsimrel)
+
+# Step 1: Check feasibility
+feas <- check_feasibility(n_items = 20, model = "rasch", seed = 42)
+
+# Step 2: Calibrate with EQC
+eqc_res <- eqc_calibrate(
+  target_rho = 0.80, n_items = 20, model = "rasch",
+  seed = 42, M = 5000L
+)
+
+# Step 3: Validate with SAC (optional but recommended)
+sac_res <- sac_calibrate(
+  target_rho = 0.80, n_items = 20, model = "rasch",
+  c_init = eqc_res, n_iter = 100L, seed = 42
+)
+compare_eqc_sac(eqc_res, sac_res)
+
+# Step 4: Generate response data
+sim_data <- simulate_response_data(
+  result = eqc_res, n_persons = 1000, seed = 123
+)
+
+# Step 5: Use the data in your analysis
+dim(sim_data$response_matrix)  # 1000 x 20
+```
+
+
+## 8. What's Next?
+
+You have now completed a full calibrate-generate-validate cycle. Here are
+some directions for deeper exploration:
+
+- **`vignette("applied-guide")`**: Comprehensive applied tutorial covering
+  2PL models, non-normal latent distributions, IRW-based item sources, and
+  factorial simulation designs with multiple reliability levels.
+
+- **`vignette("latent-distributions")`**: Explore all 12 latent distribution
+  shapes available in `sim_latentG()` and learn when to use each one for
+  different research scenarios.
+
+- **`vignette("item-parameters")`**: Parametric, IRW, hierarchical, and
+  custom item generation methods, including correlated difficulty-discrimination
+  parameters.
+
+- **`vignette("theory-reliability")`**: Mathematical foundations of the two
+  reliability metrics ($\tilde{\rho}$ and $\bar{w}$), Jensen's inequality,
+  and the theoretical justification for the calibration approach.
+
+- **`vignette("api-reference")`**: Full function reference with complete
+  signatures, all arguments, return values, and runnable examples for every
+  exported function.
+
+
+## References
+
+Lee, J. (2025). Reliability-targeted simulation of item response data: Solving
+the inverse design problem. *arXiv preprint*, arXiv:2512.16012.

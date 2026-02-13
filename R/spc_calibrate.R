@@ -1,14 +1,14 @@
 # =============================================================================
 # spc_calibrate.R
 # =============================================================================
-# Stochastic Approximation Calibration (Algorithm 2: SPC/SAC)
+# Stochastic Approximation Calibration (Algorithm 2: SAC)
 #
 # Contents:
-#   - spc_calibrate(): Main calibration function
-#   - sac_calibrate(): Alias for spc_calibrate
-#   - print.spc_result(): Print method
-#   - summary.spc_result(): Summary method
-#   - plot.spc_result(): Plot method
+#   - sac_calibrate(): Main calibration function (primary)
+#   - spc_calibrate(): Deprecated alias for sac_calibrate
+#   - print.sac_result(): Print method
+#   - summary.sac_result(): Summary method
+#   - plot.sac_result(): Plot method
 #
 # Dependencies:
 #   - sim_latentG() from sim_latentG.R
@@ -21,11 +21,11 @@
 # =============================================================================
 
 
-#' Stochastic Approximation Calibration (Algorithm 2: SPC/SAC)
+#' Stochastic Approximation Calibration (Algorithm 2: SAC)
 #'
 #' @description
-#' `spc_calibrate()` implements Algorithm 2 (Stochastic Approximation
-#' Calibration, SPC/SAC) for reliability-targeted IRT simulation using the
+#' `sac_calibrate()` implements Algorithm 2 (Stochastic Approximation
+#' Calibration, SAC) for reliability-targeted IRT simulation using the
 #' Robbins-Monro stochastic approximation algorithm.
 #'
 #' Given a target marginal reliability \eqn{\rho^*}, a latent distribution
@@ -35,7 +35,7 @@
 #' reliability \eqn{\rho(c)} of the Rasch/2PL model is approximately equal to
 #' \eqn{\rho^*}.
 #'
-#' SPC complements EQC (Algorithm 1) by:
+#' SAC complements EQC (Algorithm 1) by:
 #' \enumerate{
 #'   \item Providing an independent validation of EQC calibration results.
 #'   \item Enabling calibration to the exact marginal reliability \eqn{\bar{w}}
@@ -61,13 +61,16 @@
 #'   (e.g. \code{"normal"}, \code{"bimodal"}, \code{"heavy_tail"}, ...).
 #'
 #' @param item_source Character. Source argument passed to \code{sim_item_params()}
-#'   (e.g. \code{"irw"}, \code{"parametric"}, \code{"hierarchical"}, \code{"custom"}).
+#'   (e.g. \code{"parametric"}, \code{"irw"}, \code{"hierarchical"}, \code{"custom"}).
+#'   Defaults to \code{"parametric"} since the \pkg{irw} package is an optional
+#'   dependency (listed in Suggests). Use \code{"irw"} for empirically-grounded
+#'   difficulties when the \pkg{irw} package is installed.
 #'
 #' @param latent_params List. Additional arguments passed to \code{sim_latentG()}.
 #'
 #' @param item_params List. Additional arguments passed to \code{sim_item_params()}.
 #'
-#' @param reliability_metric Character. Reliability definition used inside SPC:
+#' @param reliability_metric Character. Reliability definition used inside SAC:
 #'   \describe{
 #'     \item{\code{"msem"}}{MSEM-based marginal reliability (theoretically exact, targets \eqn{\bar{w}}).}
 #'     \item{\code{"info"}}{Average-information reliability (faster, targets \eqn{\tilde{\rho}}).}
@@ -116,7 +119,7 @@
 #' @param verbose Logical or integer. If TRUE or >= 1, print progress messages.
 #'   If >= 2, print detailed iteration-level output.
 #'
-#' @return An object of class \code{"spc_result"} (a list) with elements:
+#' @return An object of class \code{"sac_result"} (a list) with elements:
 #' \describe{
 #'   \item{\code{c_star}}{Calibrated discrimination scale (Polyak-Ruppert average).}
 #'   \item{\code{c_final}}{Final iterate \eqn{c_{n_{iter}}}.}
@@ -128,13 +131,19 @@
 #'   \item{\code{init_method}}{Character indicating initialization method.}
 #'   \item{\code{metric}}{Reliability metric used.}
 #'   \item{\code{convergence}}{List with convergence diagnostics.}
+#'   \item{\code{beta_vec}}{Item difficulties from the final post-calibration draw.}
+#'   \item{\code{lambda_base}}{Baseline (unscaled) item discriminations.}
+#'   \item{\code{lambda_scaled}}{Scaled item discriminations (\code{lambda_base * c_star}).}
+#'   \item{\code{items_base}}{Baseline item_params object (scale = 1).}
+#'   \item{\code{items_calib}}{Calibrated item_params object (discriminations scaled by c_star).}
+#'   \item{\code{theta_quad}}{Theta sample used for post-calibration reliability estimate.}
 #' }
 #'
 #' @seealso
 #' \code{\link{eqc_calibrate}} for the faster deterministic Algorithm 1,
 #' \code{\link{compute_rho_bar}} and \code{\link{compute_rho_tilde}} for
 #' reliability computation utilities,
-#' \code{\link{compare_eqc_spc}} for comparing EQC and SPC results.
+#' \code{\link{compare_eqc_sac}} for comparing EQC and SAC results.
 #'
 #' @references
 #' Robbins, H., & Monro, S. (1951). A stochastic approximation method.
@@ -146,8 +155,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Example 1: Basic SPC calibration
-#' spc_result <- spc_calibrate(
+#' # Example 1: Basic SAC calibration
+#' sac_result <- sac_calibrate(
 #'   target_rho = 0.75,
 #'   n_items = 20,
 #'   model = "rasch",
@@ -155,8 +164,8 @@
 #'   seed = 12345,
 #'   verbose = TRUE
 #' )
-#' print(spc_result)
-#' plot(spc_result)
+#' print(sac_result)
+#' plot(sac_result)
 #'
 #' # Example 2: Warm start from EQC (RECOMMENDED)
 #' eqc_result <- eqc_calibrate(
@@ -167,7 +176,7 @@
 #'   seed = 42
 #' )
 #'
-#' spc_result <- spc_calibrate(
+#' sac_result <- sac_calibrate(
 #'   target_rho = 0.80,
 #'   n_items = 25,
 #'   model = "2pl",
@@ -176,17 +185,17 @@
 #'   seed = 42
 #' )
 #'
-#' # Compare EQC and SPC results
-#' cat(sprintf("EQC c* = %.4f, SPC c* = %.4f\n",
-#'             eqc_result$c_star, spc_result$c_star))
+#' # Compare EQC and SAC results
+#' cat(sprintf("EQC c* = %.4f, SAC c* = %.4f\n",
+#'             eqc_result$c_star, sac_result$c_star))
 #' }
 #'
 #' @export
-spc_calibrate <- function(target_rho,
+sac_calibrate <- function(target_rho,
                           n_items,
                           model = c("rasch", "2pl"),
                           latent_shape = "normal",
-                          item_source = "irw",
+                          item_source = "parametric",
                           latent_params = list(),
                           item_params = list(),
                           reliability_metric = c("msem", "info", "bar", "tilde"),
@@ -267,6 +276,18 @@ spc_calibrate <- function(target_rho,
   }
 
   if (!is.null(seed)) {
+    old_seed <- if (exists(".Random.seed", envir = globalenv())) {
+      get(".Random.seed", envir = globalenv())
+    } else {
+      NULL
+    }
+    on.exit({
+      if (is.null(old_seed)) {
+        rm(".Random.seed", envir = globalenv(), inherits = FALSE)
+      } else {
+        assign(".Random.seed", old_seed, envir = globalenv())
+      }
+    }, add = TRUE)
     set.seed(as.integer(seed))
   }
 
@@ -274,25 +295,44 @@ spc_calibrate <- function(target_rho,
   # Step 0: Pre-Calculate Latent Variance (CRITICAL for stability)
   # ===========================================================================
 
+  # ===========================================================================
+  # Convenience parsing: auto-wrap shape params in latent_params
+  # ===========================================================================
+  known_shape_params <- c("delta", "df", "k", "mu_mix", "sigma_mix", "weights",
+                          "w0", "m", "m1", "m2", "w_inner",
+                          "w_floor", "m_floor", "w_ceil", "m_ceil")
+  top_level_shape <- intersect(names(latent_params), known_shape_params)
+  if (length(top_level_shape) > 0 && is.null(latent_params$shape_params)) {
+    shape_vals <- latent_params[top_level_shape]
+    latent_params[top_level_shape] <- NULL
+    latent_params$shape_params <- shape_vals
+    message(
+      "Auto-wrapping shape parameter(s) {",
+      paste(top_level_shape, collapse = ", "),
+      "} into latent_params$shape_params."
+    )
+  }
+
   if (verbose_level >= 1) {
-    cat("\n")
-    cat("================================================================\n")
-    cat("  Stochastic Approximation Calibration (SPC/SAC)\n")
-    cat("================================================================\n\n")
-    cat("Configuration:\n")
-    cat(sprintf("  Target reliability    : %.4f\n", target_rho))
-    cat(sprintf("  Number of items       : %d\n", n_items))
-    cat(sprintf("  Model                 : %s\n", toupper(model)))
-    cat(sprintf("  Reliability metric    : %s\n", metric_internal))
-    cat(sprintf("  M per iteration       : %d\n", M_per_iter))
-    cat(sprintf("  M for variance pre-calc: %d\n", M_pre))
-    cat(sprintf("  Total iterations      : %d\n", n_iter))
-    cat(sprintf("  Burn-in               : %d\n", burn_in))
-    cat(sprintf("  Resample items        : %s\n", ifelse(resample_items, "Yes", "No")))
-    cat(sprintf("  Step params: a=%.2f, A=%.0f, gamma=%.2f\n",
+    message("")
+    message("================================================================")
+    message("  Stochastic Approximation Calibration (SAC)")
+    message("================================================================")
+    message("")
+    message("Configuration:")
+    message(sprintf("  Target reliability    : %.4f", target_rho))
+    message(sprintf("  Number of items       : %d", n_items))
+    message(sprintf("  Model                 : %s", toupper(model)))
+    message(sprintf("  Reliability metric    : %s", metric_internal))
+    message(sprintf("  M per iteration       : %d", M_per_iter))
+    message(sprintf("  M for variance pre-calc: %d", M_pre))
+    message(sprintf("  Total iterations      : %d", n_iter))
+    message(sprintf("  Burn-in               : %d", burn_in))
+    message(sprintf("  Resample items        : %s", ifelse(resample_items, "Yes", "No")))
+    message(sprintf("  Step params: a=%.2f, A=%.0f, gamma=%.2f",
                 step_params$a, step_params$A, step_params$gamma))
-    cat("\n")
-    cat("Step 0: Pre-calculating latent variance...\n")
+    message("")
+    message("Step 0: Pre-calculating latent variance...")
   }
 
   # Generate large sample for stable variance estimation
@@ -304,7 +344,7 @@ spc_calibrate <- function(target_rho,
   theta_var <- var(theta_pre)
 
   if (verbose_level >= 1) {
-    cat(sprintf("  Estimated theta_var = %.4f (from M_pre = %d samples)\n", theta_var, M_pre))
+    message(sprintf("  Estimated theta_var = %.4f (from M_pre = %d samples)", theta_var, M_pre))
   }
 
   # ===========================================================================
@@ -312,7 +352,7 @@ spc_calibrate <- function(target_rho,
   # ===========================================================================
 
   if (verbose_level >= 1) {
-    cat("\nStep 1: Initializing c_0...\n")
+    message("\nStep 1: Initializing c_0...")
   }
 
   # Handle different c_init types
@@ -321,21 +361,21 @@ spc_calibrate <- function(target_rho,
     c_init_val <- compute_apc_init(target_rho, n_items)
     init_method <- "apc_warm_start"
     if (verbose_level >= 1) {
-      cat(sprintf("  c_0 = %.4f (APC warm start)\n", c_init_val))
+      message(sprintf("  c_0 = %.4f (APC warm start)", c_init_val))
     }
   } else if (inherits(c_init, "eqc_result")) {
     # EQC object warm start (NEW FEATURE)
     c_init_val <- c_init$c_star
     init_method <- "eqc_warm_start"
     if (verbose_level >= 1) {
-      cat(sprintf("  c_0 = %.4f (EQC warm start from eqc_result object)\n", c_init_val))
+      message(sprintf("  c_0 = %.4f (EQC warm start from eqc_result object)", c_init_val))
     }
   } else if (is.numeric(c_init) && length(c_init) == 1L && c_init > 0) {
     # User-specified numeric value
     c_init_val <- c_init
     init_method <- "user_specified"
     if (verbose_level >= 1) {
-      cat(sprintf("  c_0 = %.4f (user specified)\n", c_init_val))
+      message(sprintf("  c_0 = %.4f (user specified)", c_init_val))
     }
   } else {
     stop("c_init must be NULL, a positive scalar, or an eqc_result object.")
@@ -350,7 +390,7 @@ spc_calibrate <- function(target_rho,
 
   fixed_items <- NULL
   if (!resample_items) {
-    if (verbose_level >= 1) cat("Step 2: Generating fixed item parameters...\n")
+    if (verbose_level >= 1) message("Step 2: Generating fixed item parameters...")
 
     item_args <- modifyList(
       list(
@@ -369,7 +409,7 @@ spc_calibrate <- function(target_rho,
   # ===========================================================================
 
   if (verbose_level >= 1) {
-    cat(sprintf("Step 3: Running %d Robbins-Monro iterations...\n", n_iter))
+    message(sprintf("Step 3: Running %d Robbins-Monro iterations...", n_iter))
   }
 
   c_current <- c_init_val
@@ -444,11 +484,11 @@ spc_calibrate <- function(target_rho,
 
     # Verbose output
     if (verbose_level >= 2) {
-      cat(sprintf("  Iter %4d: c = %.6f, rho = %.4f, grad = %+.4f, a_n = %.4f\n",
+      message(sprintf("  Iter %4d: c = %.6f, rho = %.4f, grad = %+.4f, a_n = %.4f",
                   n, c_new, rho_hat, gradient, a_n))
     } else if (verbose_level >= 1 && n %in% progress_checkpoints) {
       pct <- round(100 * n / n_iter)
-      cat(sprintf("  [%3d%%] Iter %4d: c = %.4f, rho = %.4f\n", pct, n, c_new, rho_hat))
+      message(sprintf("  [%3d%%] Iter %4d: c = %.4f, rho = %.4f", pct, n, c_new, rho_hat))
     }
 
     c_current <- c_new
@@ -458,7 +498,7 @@ spc_calibrate <- function(target_rho,
   # Step 4: Polyak-Ruppert Averaging
   # ===========================================================================
 
-  if (verbose_level >= 1) cat("\nStep 4: Computing Polyak-Ruppert average...\n")
+  if (verbose_level >= 1) message("\nStep 4: Computing Polyak-Ruppert average...")
 
   # Average over post-burn-in iterates
   avg_indices <- (burn_in + 1):n_iter
@@ -468,7 +508,7 @@ spc_calibrate <- function(target_rho,
   c_star <- max(c_bounds[1], min(c_bounds[2], c_star))
 
   if (verbose_level >= 1) {
-    cat(sprintf("  Polyak-Ruppert c* = %.6f (averaging %d iterates)\n",
+    message(sprintf("  Polyak-Ruppert c* = %.6f (averaging %d iterates)",
                 c_star, length(avg_indices)))
   }
 
@@ -476,7 +516,7 @@ spc_calibrate <- function(target_rho,
   # Step 5: Post-Calibration Reliability Estimate
   # ===========================================================================
 
-  if (verbose_level >= 1) cat("\nStep 5: Computing post-calibration reliability...\n")
+  if (verbose_level >= 1) message("\nStep 5: Computing post-calibration reliability...")
 
   # Use larger sample for final estimate
   M_final <- max(M_per_iter * 5, 5000)
@@ -520,10 +560,18 @@ spc_calibrate <- function(target_rho,
   )
 
   # ===========================================================================
+  # Step 5b: Store Calibrated Item Parameters
+  # ===========================================================================
+
+  items_calib_final <- items_final
+  items_calib_final$scale <- items_final$scale * c_star
+  items_calib_final$data$lambda <- lambda_base_final * c_star
+
+  # ===========================================================================
   # Step 6: Convergence Diagnostics
   # ===========================================================================
 
-  if (verbose_level >= 1) cat("\nStep 6: Computing convergence diagnostics...\n")
+  if (verbose_level >= 1) message("\nStep 6: Computing convergence diagnostics...")
 
   # Split post-burn-in trajectory for convergence check
   n_post_burn <- length(avg_indices)
@@ -546,7 +594,7 @@ spc_calibrate <- function(target_rho,
   if (!convergence$converged) {
     warning(sprintf(
       paste0(
-        "SPC may not have fully converged.\n",
+        "SAC may not have fully converged.\n",
         "  First half mean:  %.4f\n",
         "  Second half mean: %.4f\n",
         "  Difference:       %.4f\n",
@@ -571,18 +619,18 @@ spc_calibrate <- function(target_rho,
   # ===========================================================================
 
   if (verbose_level >= 1) {
-    cat("\n")
-    cat("================================================================\n")
-    cat("  SPC Calibration Complete\n")
-    cat("================================================================\n")
-    cat(sprintf("  Target reliability   : %.4f\n", target_rho))
-    cat(sprintf("  Achieved reliability : %.4f\n", achieved_rho))
-    cat(sprintf("  Absolute error       : %.4f\n", abs(achieved_rho - target_rho)))
-    cat(sprintf("  Calibrated c*        : %.6f\n", c_star))
-    cat(sprintf("  Final iterate c_n    : %.6f\n", c_current))
-    cat(sprintf("  Init method          : %s\n", init_method))
-    cat(sprintf("  Converged            : %s\n", ifelse(convergence$converged, "Yes", "No")))
-    cat("\n")
+    message("")
+    message("================================================================")
+    message("  SAC Calibration Complete")
+    message("================================================================")
+    message(sprintf("  Target reliability   : %.4f", target_rho))
+    message(sprintf("  Achieved reliability : %.4f", achieved_rho))
+    message(sprintf("  Absolute error       : %.4f", abs(achieved_rho - target_rho)))
+    message(sprintf("  Calibrated c*        : %.6f", c_star))
+    message(sprintf("  Final iterate c_n    : %.6f", c_current))
+    message(sprintf("  Init method          : %s", init_method))
+    message(sprintf("  Converged            : %s", ifelse(convergence$converged, "Yes", "No")))
+    message("")
   }
 
   res <- list(
@@ -605,32 +653,46 @@ spc_calibrate <- function(target_rho,
     c_init         = c_init_val,
     init_method    = init_method,
     convergence    = convergence,
+    beta_vec       = beta_final,
+    lambda_base    = lambda_base_final,
+    lambda_scaled  = lambda_base_final * c_star,
+    items_base     = items_final,
+    items_calib    = items_calib_final,
+    theta_quad     = theta_final,
     call           = match.call()
   )
 
-  class(res) <- c("spc_result", "list")
+  class(res) <- c("sac_result", "list")
   res
 }
 
 
 # =============================================================================
-# SAC Alias (for nomenclature consistency)
+# SPC Deprecated Alias
 # =============================================================================
 
-#' @rdname spc_calibrate
+#' @rdname sac_calibrate
+#' @param ... Arguments passed to \code{sac_calibrate()}.
 #' @export
-sac_calibrate <- spc_calibrate
+spc_calibrate <- function(...) {
+  .Deprecated("sac_calibrate")
+  sac_calibrate(...)
+}
 
 
 # =============================================================================
-# S3 Methods for spc_result
+# S3 Methods for sac_result
 # =============================================================================
 
+#' @rdname sac_calibrate
+#' @param x An object of class \code{"sac_result"}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @return The input object, invisibly.
 #' @export
-print.spc_result <- function(x, digits = 4, ...) {
+print.sac_result <- function(x, digits = 4, ...) {
   cat("\n")
   cat("=======================================================\n")
-  cat("  Stochastic Approximation Calibration (SPC) Results\n")
+  cat("  Stochastic Approximation Calibration (SAC) Results\n")
   cat("=======================================================\n\n")
 
   cat("Calibration Summary:\n")
@@ -675,26 +737,79 @@ print.spc_result <- function(x, digits = 4, ...) {
 }
 
 
+#' @rdname sac_calibrate
+#' @param object An object of class \code{"sac_result"}.
+#' @return An object of class \code{"summary.sac_result"} containing key
+#'   calibration results.
 #' @export
-summary.spc_result <- function(object, ...) {
-  print(object, ...)
+summary.sac_result <- function(object, ...) {
+  out <- list(
+    c_star       = object$c_star,
+    target_rho   = object$target_rho,
+    achieved_rho = object$achieved_rho,
+    metric       = object$metric,
+    model        = object$model,
+    n_items      = object$n_items,
+    n_iter       = object$n_iter,
+    M_per_iter   = object$M_per_iter,
+    M_pre        = object$M_pre,
+    init_method  = object$init_method,
+    convergence  = object$convergence,
+    burn_in      = object$burn_in
+  )
+  class(out) <- "summary.sac_result"
+  out
 }
 
 
-#' Plot SPC Convergence Trajectory
+#' Print Method for summary.sac_result Objects
+#'
+#' @param x A \code{summary.sac_result} object from \code{summary.sac_result()}.
+#' @param digits Integer. Number of decimal places for printing.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return The input object, invisibly.
+#'
+#' @export
+print.summary.sac_result <- function(x, digits = 4, ...) {
+  cat("Summary: Stochastic Approximation Calibration (SAC)\n")
+  cat("====================================================\n")
+  cat(sprintf("  Model            : %s\n", toupper(x$model)))
+  cat(sprintf("  Metric           : %s\n",
+              ifelse(x$metric == "info", "Average-information (tilde)", "MSEM-based (bar/w)")))
+  cat(sprintf("  Number of items  : %d\n", x$n_items))
+  cat(sprintf("  Iterations       : %d\n", x$n_iter))
+  cat(sprintf("  Burn-in          : %d\n", x$burn_in))
+  cat(sprintf("  M per iteration  : %d\n", x$M_per_iter))
+  cat(sprintf("  M pre-calc       : %d\n", x$M_pre))
+  cat(sprintf("  Init method      : %s\n", x$init_method))
+  cat("\nCalibration Results:\n")
+  cat(sprintf("  Target rho*      : %.*f\n", digits, x$target_rho))
+  cat(sprintf("  Achieved rho     : %.*f\n", digits, x$achieved_rho))
+  cat(sprintf("  Absolute error   : %.2e\n", abs(x$achieved_rho - x$target_rho)))
+  cat(sprintf("  Scaling factor c*: %.*f\n", digits, x$c_star))
+  cat(sprintf("  Converged        : %s\n",
+              ifelse(x$convergence$converged, "Yes", "No")))
+  cat(sprintf("  Post-burn-in SD  : %.*f\n", digits, x$convergence$sd_post_burn))
+  invisible(x)
+}
+
+
+#' Plot SAC Convergence Trajectory
 #'
 #' @description
 #' Visualizes the Robbins-Monro iteration trajectory.
 #'
-#' @param x An \code{spc_result} object.
+#' @param x An \code{sac_result} object from \code{\link{sac_calibrate}}.
 #' @param type Character. Plot type: \code{"trajectory"}, \code{"rho"},
 #'   \code{"c"}, or \code{"both"}.
-#' @param ... Additional arguments (unused).
+#' @param ... Additional arguments (currently unused).
 #'
-#' @return A ggplot object (if ggplot2 is available) or NULL (base R fallback).
+#' @return A \code{ggplot} object if \pkg{ggplot2} is available, or
+#'   \code{NULL} invisibly when using base R graphics fallback.
 #'
 #' @export
-plot.spc_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) {
+plot.sac_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) {
 
   type <- match.arg(type)
 
@@ -707,14 +822,15 @@ plot.spc_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     # Base R fallback
     if (type == "both") {
-      par(mfrow = c(2, 1))
+      oldpar <- par(mfrow = c(2, 1))
+      on.exit(par(oldpar))
     }
 
     if (type %in% c("both", "c")) {
       # Trajectory plot
       plot(1:n_iter, x$trajectory, type = "l", col = "steelblue",
            xlab = "Iteration", ylab = "c",
-           main = "SPC Convergence Trajectory")
+           main = "SAC Convergence Trajectory")
       abline(h = x$c_star, col = "red", lty = 2, lwd = 2)
       abline(v = burn_in, col = "gray", lty = 3)
       legend("topright", legend = c("Trajectory", "c* (average)", "Burn-in"),
@@ -730,15 +846,10 @@ plot.spc_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) 
       abline(v = burn_in, col = "gray", lty = 3)
     }
 
-    if (type == "both") {
-      par(mfrow = c(1, 1))
-    }
     return(invisible(NULL))
   }
 
   # ggplot2 implementation
-  library(ggplot2)
-
   df <- data.frame(
     iteration = 1:n_iter,
     c = x$trajectory,
@@ -748,42 +859,42 @@ plot.spc_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) 
   )
 
   # Trajectory plot
-  p1 <- ggplot(df, aes(x = iteration, y = c, color = phase)) +
-    geom_line(alpha = 0.7) +
-    geom_hline(yintercept = x$c_star, color = "red", linetype = "dashed", linewidth = 1) +
-    geom_vline(xintercept = burn_in, color = "gray50", linetype = "dotted") +
-    scale_color_manual(values = c("Burn-in" = "steelblue", "Averaging" = "darkblue")) +
-    labs(
-      title = "SPC Convergence Trajectory",
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x = iteration, y = c, color = phase)) +
+    ggplot2::geom_line(alpha = 0.7) +
+    ggplot2::geom_hline(yintercept = x$c_star, color = "red", linetype = "dashed", linewidth = 1) +
+    ggplot2::geom_vline(xintercept = burn_in, color = "gray50", linetype = "dotted") +
+    ggplot2::scale_color_manual(values = c("Burn-in" = "steelblue", "Averaging" = "darkblue")) +
+    ggplot2::labs(
+      title = "SAC Convergence Trajectory",
       subtitle = sprintf("Target rho* = %.3f | c* = %.4f | Init: %s",
                          x$target_rho, x$c_star, x$init_method),
       x = "Iteration", y = "Scaling Factor c",
       color = "Phase"
     ) +
-    annotate("text", x = n_iter * 0.95, y = x$c_star,
+    ggplot2::annotate("text", x = n_iter * 0.95, y = x$c_star,
              label = sprintf("c* = %.3f", x$c_star),
              vjust = -0.5, color = "red", size = 3.5) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "bottom")
 
   # Reliability plot
-  p2 <- ggplot(df, aes(x = iteration, y = rho, color = phase)) +
-    geom_line(alpha = 0.7) +
-    geom_hline(yintercept = x$target_rho, color = "red", linetype = "dashed", linewidth = 1) +
-    geom_vline(xintercept = burn_in, color = "gray50", linetype = "dotted") +
-    scale_color_manual(values = c("Burn-in" = "darkorange", "Averaging" = "darkred")) +
-    labs(
+  p2 <- ggplot2::ggplot(df, ggplot2::aes(x = iteration, y = rho, color = phase)) +
+    ggplot2::geom_line(alpha = 0.7) +
+    ggplot2::geom_hline(yintercept = x$target_rho, color = "red", linetype = "dashed", linewidth = 1) +
+    ggplot2::geom_vline(xintercept = burn_in, color = "gray50", linetype = "dotted") +
+    ggplot2::scale_color_manual(values = c("Burn-in" = "darkorange", "Averaging" = "darkred")) +
+    ggplot2::labs(
       title = "Reliability Estimates Across Iterations",
       subtitle = sprintf("Target rho* = %.3f | Achieved = %.3f",
                          x$target_rho, x$achieved_rho),
       x = "Iteration", y = expression(hat(rho)),
       color = "Phase"
     ) +
-    annotate("text", x = n_iter * 0.95, y = x$target_rho,
+    ggplot2::annotate("text", x = n_iter * 0.95, y = x$target_rho,
              label = sprintf("rho* = %.3f", x$target_rho),
              vjust = -0.5, color = "red", size = 3.5) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "bottom")
 
   if (type == "c") {
     return(p1)
@@ -792,12 +903,106 @@ plot.spc_result <- function(x, type = c("both", "trajectory", "c", "rho"), ...) 
   } else {
     # Combine with patchwork if available
     if (requireNamespace("patchwork", quietly = TRUE)) {
-      library(patchwork)
-      return(p1 / p2)
+      return(patchwork::wrap_plots(p1, p2, ncol = 1))
     } else {
       print(p1)
       print(p2)
       return(invisible(list(p1 = p1, p2 = p2)))
     }
   }
+}
+
+
+#' Extract Calibrated Item Parameters from SAC Results
+#'
+#' @description
+#' Returns the calibrated item parameters as a data frame.
+#'
+#' @param object An object of class \code{"sac_result"}.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return A data frame with columns:
+#' \describe{
+#'   \item{\code{item_id}}{Item identifier (1 to I).}
+#'   \item{\code{beta}}{Item difficulty.}
+#'   \item{\code{lambda_base}}{Baseline (unscaled) discrimination.}
+#'   \item{\code{lambda_scaled}}{Scaled discrimination (\code{lambda_base * c*}).}
+#'   \item{\code{c_star}}{Calibrated scaling factor (same for all items).}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' sac_res <- sac_calibrate(target_rho = 0.75, n_items = 20,
+#'                           model = "rasch", n_iter = 200, seed = 42)
+#' coef(sac_res)
+#' }
+#'
+#' @export
+coef.sac_result <- function(object, ...) {
+  data.frame(
+    item_id = seq_len(object$n_items),
+    beta = object$beta_vec,
+    lambda_base = object$lambda_base,
+    lambda_scaled = object$lambda_scaled,
+    c_star = rep(object$c_star, object$n_items)
+  )
+}
+
+
+#' Predict Reliability at New Scaling Factor Values (SAC)
+#'
+#' @description
+#' If \code{newdata} is NULL, returns the achieved reliability from calibration.
+#' If \code{newdata} is a numeric vector of scaling factor values, computes
+#' the reliability at each value using the stored theta sample and item
+#' parameters.
+#'
+#' @param object An object of class \code{"sac_result"}.
+#' @param newdata Optional numeric vector of scaling factor values.
+#'   If NULL, returns \code{object$achieved_rho}.
+#' @param theta_vec Optional numeric vector of abilities. If not provided,
+#'   the stored \code{theta_quad} from the SAC result is used.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return If \code{newdata} is NULL, a single numeric value (achieved reliability).
+#'   If \code{newdata} is a numeric vector, a named numeric vector of reliability
+#'   values at each scaling factor.
+#'
+#' @examples
+#' \dontrun{
+#' sac_res <- sac_calibrate(target_rho = 0.75, n_items = 20,
+#'                           model = "rasch", n_iter = 200, seed = 42)
+#' predict(sac_res)
+#' predict(sac_res, newdata = c(0.5, 1.0, 1.5, 2.0))
+#' }
+#'
+#' @export
+predict.sac_result <- function(object, newdata = NULL, theta_vec = NULL, ...) {
+  if (is.null(newdata)) {
+    return(object$achieved_rho)
+  }
+
+  c_values <- as.numeric(newdata)
+  if (any(c_values <= 0)) {
+    stop("All values in `newdata` must be positive.")
+  }
+
+  # Use provided theta_vec or the stored theta_quad
+  if (is.null(theta_vec)) {
+    if (!is.null(object$theta_quad)) {
+      theta_vec <- object$theta_quad
+    } else {
+      stop("No theta sample available. Provide `theta_vec` argument.")
+    }
+  }
+
+  rho_fn <- if (object$metric == "info") compute_rho_tilde else compute_rho_bar
+
+  result <- vapply(c_values, function(c_val) {
+    rho_fn(c_val, theta_vec, object$beta_vec,
+           object$lambda_base, theta_var = object$theta_var)
+  }, numeric(1))
+
+  names(result) <- paste0("c=", format(c_values, digits = 4))
+  result
 }

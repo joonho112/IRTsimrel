@@ -5,6 +5,7 @@
 # License and README source
 ^LICENSE\.md$
 ^README\.Rmd$
+^README\.html$
 
 # Git and GitHub
 ^\.git$
@@ -32,3 +33,8 @@
 ^data-raw$
 ^vignettes/.*_cache$
 ^vignettes/.*_files$
+
+# Development directory and lock file
+^dev$
+^pkg\.lock$
+^\.claude$

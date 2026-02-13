@@ -4,10 +4,12 @@
 \alias{as.numeric.latent_G}
 \title{Extract theta values from latent_G object}
 \usage{
-\method{as.numeric}{latent_G}(x)
+\method{as.numeric}{latent_G}(x, ...)
 }
 \arguments{
 \item{x}{A \code{latent_G} object.}
+
+\item{...}{Additional arguments (ignored).}
 }
 \value{
 Numeric vector of latent abilities.

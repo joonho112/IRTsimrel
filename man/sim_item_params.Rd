@@ -2,6 +2,8 @@
 % Please edit documentation in R/sim_item_params.R
 \name{sim_item_params}
 \alias{sim_item_params}
+\alias{print.item_params}
+\alias{summary.item_params}
 \title{Simulate Item Parameters for IRT Studies}
 \usage{
 sim_item_params(
@@ -18,6 +20,10 @@ sim_item_params(
   center_difficulties = TRUE,
   seed = NULL
 )
+
+\method{print}{item_params}(x, ...)
+
+\method{summary}{item_params}(object, ...)
 }
 \arguments{
 \item{n_items}{Integer. Number of items to generate per form.}
@@ -75,6 +81,12 @@ Final discriminations are \eqn{\lambda_i^* = c \cdot \lambda_i}. Default is 1.}
 for identification. Default is TRUE.}
 
 \item{seed}{Integer. Random seed for reproducibility.}
+
+\item{x}{An object of class \code{"item_params"}.}
+
+\item{...}{Additional arguments passed to or from other methods.}
+
+\item{object}{An object of class \code{"item_params"}.}
 }
 \value{
 An object of class \code{"item_params"} containing:
@@ -90,6 +102,11 @@ An object of class \code{"item_params"} containing:
 \item{\code{params}}{Parameters used for generation}
 \item{\code{achieved}}{Achieved statistics (correlations, moments)}
 }
+
+The input object, invisibly.
+
+An object of class \code{"summary.item_params"} containing key
+parameter summaries.
 }
 \description{
 \code{sim_item_params()} generates item parameters (difficulty \eqn{\beta} and
@@ -139,27 +156,35 @@ The \code{scale} parameter implements "separation of structure and scale":
 }
 }
 \examples{
-# Example 1: Rasch with IRW difficulties
-items1 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+# Example 1: Rasch with parametric difficulties
+items1 <- sim_item_params(n_items = 25, model = "rasch",
+                          source = "parametric", seed = 42)
 
 # Example 2: 2PL with copula method (recommended)
 items2 <- sim_item_params(
-  n_items = 30, model = "2pl", source = "irw",
+  n_items = 30, model = "2pl", source = "parametric",
   method = "copula",
-  discrimination_params = list(rho = -0.3)
+  discrimination_params = list(rho = -0.3),
+  seed = 42
 )
 
-# Example 3: Multiple forms
+# Example 3: Hierarchical 2PL
 items3 <- sim_item_params(
+  n_items = 25, model = "2pl", source = "hierarchical",
+  hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3),
+  seed = 42
+)
+
+\dontrun{
+# Example 4: Using IRW difficulty pool (requires irw package)
+items4 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+
+# Example 5: Multiple forms with IRW
+items5 <- sim_item_params(
   n_items = 20, model = "2pl", n_forms = 5,
   source = "irw", method = "copula"
 )
-
-# Example 4: Hierarchical 2PL
-items4 <- sim_item_params(
-  n_items = 25, model = "2pl", source = "hierarchical",
-  hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3)
-)
+}
 
 }
 \references{
