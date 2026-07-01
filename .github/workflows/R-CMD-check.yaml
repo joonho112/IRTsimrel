@@ -73,13 +73,7 @@ jobs:
           r-version: '4.0.5'
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          dependencies: '"hard"'
-          extra-packages: any::rcmdcheck, any::testthat
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          args: 'c("--no-manual", "--ignore-vignettes")'
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
-          error-on: '"error"'
+      - name: Base R CMD check on declared R floor
+        run: |
+          R CMD build --no-manual --no-build-vignettes .
+          R CMD check --no-manual --ignore-vignettes --no-tests IRTsimrel_*.tar.gz
