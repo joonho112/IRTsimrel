@@ -1,0 +1,96 @@
+# Compute WLE and EAP Reliability Using TAM
+
+Fits a Rasch or 2PL model using TAM and computes WLE and EAP reliability
+using the official `WLErel()` and `EAPrel()` functions.
+
+## Usage
+
+``` r
+compute_reliability_tam(resp, model = c("rasch", "2pl"), verbose = FALSE, ...)
+```
+
+## Arguments
+
+- resp:
+
+  Matrix or data.frame of item responses (0/1).
+
+- model:
+
+  Character. `"rasch"` or `"2pl"`.
+
+- verbose:
+
+  Logical. If TRUE, print fitting messages.
+
+- ...:
+
+  Additional arguments passed to TAM fitting functions.
+
+## Value
+
+A list with components:
+
+- `rel_wle`:
+
+  WLE reliability.
+
+- `rel_eap`:
+
+  EAP reliability.
+
+- `mod`:
+
+  Fitted TAM model object.
+
+- `wle`:
+
+  Output from
+  [`TAM::tam.wle()`](https://rdrr.io/pkg/TAM/man/tam.wle.html).
+
+## Details
+
+### WLE vs EAP Reliability
+
+TAM defines these reliability coefficients differently:
+
+- **WLE reliability**: \\1 - \bar{s}^2 / V\_{WLE}\\, based on design
+  effect
+
+- **EAP reliability**: \\V\_{EAP} / (V\_{EAP} + \bar{\sigma}^2)\\, based
+  on posterior variance
+
+In many practical TAM fits, EAP reliability is greater than or equal to
+WLE reliability, but the two coefficients use different estimators and
+variance bases. EAP reliability more closely corresponds to MSEM-based
+population reliability. For conservative inference, inspect WLE
+alongside EAP.
+
+## See also
+
+[`simulate_response_data`](https://joonho112.github.io/IRTsimrel/reference/simulate_response_data.md)
+for generating test data,
+[`eqc_calibrate`](https://joonho112.github.io/IRTsimrel/reference/eqc_calibrate.md)
+for calibration.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Simulate response data from calibration results
+eqc_result <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "rasch",
+  seed = 42
+)
+sim_data <- simulate_response_data(result = eqc_result, n_persons = 500)
+
+# Compute TAM reliability if TAM is installed
+if (requireNamespace("TAM", quietly = TRUE)) {
+  tam_rel <- compute_reliability_tam(sim_data$response_matrix, model = "rasch")
+  cat(sprintf("WLE reliability: %.4f\n", tam_rel$rel_wle))
+  cat(sprintf("EAP reliability: %.4f\n", tam_rel$rel_eap))
+}
+} # }
+```

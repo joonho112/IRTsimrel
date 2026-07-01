@@ -1,0 +1,324 @@
+# Simulate Item Parameters for IRT Studies
+
+`sim_item_params()` generates item parameters (difficulty \\\beta\\ and
+discrimination \\\lambda\\) for Item Response Theory (IRT) simulation
+studies. It provides parametric, hierarchical, custom, and optional Item
+Response Warehouse (IRW) sources, plus multiple methods for generating
+correlated discriminations.
+
+The function is designed with five key principles:
+
+1.  **Portable defaults:** Parametric item generation works without
+    external item-pool data.
+
+2.  **Empirical integration:** Optional IRW integration is available
+    when the Item Response Warehouse package is installed.
+
+3.  **Correlated parameters:** Support for the empirically observed
+    negative correlation between difficulty and discrimination (Sweeney
+    et al., 2022).
+
+4.  **Marginal preservation:** Copula method preserves exact marginal
+    distributions while achieving target correlation.
+
+5.  **Reliability targeting:** Scale factor for subsequent calibration.
+
+## Usage
+
+``` r
+sim_item_params(
+  n_items,
+  model = c("rasch", "2pl"),
+  source = c("parametric", "irw", "hierarchical", "custom"),
+  method = c("copula", "conditional", "independent"),
+  n_forms = 1L,
+  difficulty_params = list(),
+  discrimination_params = list(),
+  hierarchical_params = list(),
+  custom_params = list(),
+  scale = 1,
+  center_difficulties = TRUE,
+  seed = NULL
+)
+
+# S3 method for class 'item_params'
+print(x, digits = 4, ...)
+
+# S3 method for class 'item_params'
+summary(object, ...)
+```
+
+## Arguments
+
+- n_items:
+
+  Integer. Number of items to generate per form.
+
+- model:
+
+  Character. The data-generating model: "rasch" or "2pl".
+
+- source:
+
+  Character. Source for generating difficulties:
+
+  `"parametric"`
+
+  :   Generate from a parametric difficulty distribution (default).
+
+  `"irw"`
+
+  :   Use an IRW difficulty pool when the external IRW package is
+      installed.
+
+  `"hierarchical"`
+
+  :   Joint MVN for both parameters (Glas & van der Linden)
+
+  `"custom"`
+
+  :   User-supplied parameters or function
+
+- method:
+
+  Character. Method for generating discriminations (when model = "2pl"):
+
+  `"copula"`
+
+  :   Gaussian copula - preserves marginals exactly (RECOMMENDED)
+
+  `"conditional"`
+
+  :   Conditional normal regression on difficulty
+
+  `"independent"`
+
+  :   Independent generation (no correlation)
+
+- n_forms:
+
+  Integer. Number of test forms to generate. Default is 1. When \> 1,
+  returns a data frame with form_id column.
+
+- difficulty_params:
+
+  List. Parameters for difficulty generation:
+
+  For `source = "irw"`:
+
+  :   `pool` - optional difficulty pool data frame.
+
+  For `source = "parametric"`:
+
+  :   `mu` - finite mean (default 0), `sigma` - positive finite SD
+      (default 1), and `distribution` - `"normal"` or `"uniform"`
+      (default `"normal"`).
+
+- discrimination_params:
+
+  List. Parameters for discrimination generation:
+
+  `mu_log`
+
+  :   Finite mean of log-discrimination (default: 0).
+
+  `sigma_log`
+
+  :   Positive finite SD of log-discrimination (default: 0.3).
+
+  `rho`
+
+  :   Finite target correlation between \\\beta\\ and \\\log(\lambda)\\
+      in the closed interval from -1 to 1 (default: -0.3).
+
+- hierarchical_params:
+
+  List. For source = "hierarchical":
+
+  `mu`
+
+  :   Finite 2-vector: means of \\(\log\lambda, \beta)\\.
+
+  `tau`
+
+  :   Positive finite 2-vector of SDs.
+
+  `rho`
+
+  :   Finite correlation in (-1, 1).
+
+- custom_params:
+
+  List. For source = "custom":
+
+  `beta`
+
+  :   Finite numeric vector of length `n_items`, or function returning
+      one.
+
+  `lambda`
+
+  :   Positive finite numeric vector of length `n_items`, or function
+      returning one; required for `model = "2pl"`.
+
+- scale:
+
+  Numeric. Global discrimination scaling factor for reliability
+  targeting. Final discriminations are \\\lambda_i^\* = c \cdot
+  \lambda_i\\. Default is 1.
+
+- center_difficulties:
+
+  Logical. If TRUE, center difficulties to sum to zero for
+  identification. Default is TRUE.
+
+- seed:
+
+  Integer. Random seed for reproducibility.
+
+- x:
+
+  An object of class `"item_params"`.
+
+- digits:
+
+  Integer. Number of decimal places for printing.
+
+- ...:
+
+  Additional arguments passed to or from other methods.
+
+- object:
+
+  An object of class `"item_params"`.
+
+## Value
+
+An object of class `"item_params"` containing:
+
+- `data`:
+
+  Data frame with columns: form_id, item_id, beta, lambda,
+  lambda_unscaled
+
+- `model`:
+
+  Model type used
+
+- `source`:
+
+  Source used for generation
+
+- `method`:
+
+  Method used for discrimination generation
+
+- `n_items`:
+
+  Number of items per form
+
+- `n_forms`:
+
+  Number of forms generated
+
+- `scale`:
+
+  Scale factor applied
+
+- `centered`:
+
+  Whether difficulties were centered
+
+- `params`:
+
+  Parameters used for generation
+
+- `achieved`:
+
+  Achieved statistics (correlations, moments)
+
+The input object, invisibly.
+
+An object of class `"summary.item_params"` containing key parameter
+summaries.
+
+## Details
+
+### Why the Copula Method is Recommended
+
+When difficulties come from realistic or otherwise non-normal marginal
+distributions, the conditional normal method can distort the achieved
+correlation because it assumes linearity. The Gaussian copula method:
+
+1.  Transforms difficulties to uniform scale via empirical CDF
+
+2.  Generates correlated uniforms through Gaussian copula
+
+3.  Transforms back to desired marginals (log-normal for discrimination)
+
+This guarantees:
+
+- Exact preservation of the sampled difficulty marginal
+
+- Exact log-normal marginal for discriminations
+
+- Spearman correlation \\\approx \rho\\ (rank-based, robust to
+  non-normality)
+
+### Connection to Reliability-Targeted Framework
+
+The `scale` parameter implements "separation of structure and scale":
+
+- **Structure**: Item characteristics and optional
+  difficulty-discrimination correlation
+
+- **Scale**: Global factor \\c\\ calibrated for target reliability
+
+## References
+
+Glas, C. A. W., & van der Linden, W. J. (2003). Computerized adaptive
+testing with item cloning. *Applied Psychological Measurement, 27*(4),
+247-261.
+
+Sweeney, S. M., et al. (2022). An investigation of the nature and
+consequence of the relationship between IRT difficulty and
+discrimination. *EM:IP, 41*(4), 50-67.
+
+Zhang, L., et al. (2025). Realistic simulation of item difficulties.
+*PsyArXiv*.
+
+## Examples
+
+``` r
+# Example 1: Rasch with parametric difficulties
+items1 <- sim_item_params(n_items = 25, model = "rasch",
+                          source = "parametric", seed = 42)
+
+# Example 2: 2PL with copula method (recommended)
+items2 <- sim_item_params(
+  n_items = 30, model = "2pl", source = "parametric",
+  method = "copula",
+  discrimination_params = list(rho = -0.3),
+  seed = 42
+)
+
+# Example 3: Hierarchical 2PL
+items3 <- sim_item_params(
+  n_items = 25, model = "2pl", source = "hierarchical",
+  hierarchical_params = list(mu = c(0, 0), tau = c(0.25, 1), rho = -0.3),
+  seed = 42
+)
+
+if (FALSE) { # \dontrun{
+# Example 4: Using IRW difficulty pool (requires irw package)
+if (requireNamespace("irw", quietly = TRUE)) {
+  items4 <- sim_item_params(n_items = 25, model = "rasch", source = "irw")
+
+  # Example 5: Multiple forms with IRW
+  items5 <- sim_item_params(
+    n_items = 20, model = "2pl", n_forms = 5,
+    source = "irw", method = "copula"
+  )
+}
+} # }
+```
