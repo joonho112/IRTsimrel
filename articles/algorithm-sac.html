@@ -87,7 +87,7 @@
             
             <h4 data-toc-skip class="date">2026-07-01</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/HEAD/vignettes/algorithm-sac.Rmd" class="external-link"><code>vignettes/algorithm-sac.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/main/vignettes/algorithm-sac.Rmd" class="external-link"><code>vignettes/algorithm-sac.Rmd</code></a></small>
       <div class="d-none name"><code>algorithm-sac.Rmd</code></div>
     </div>
 
@@ -167,7 +167,7 @@ Kushner and Yin (2003).</p>
 </h3>
 <p>SAC targets the same root-finding problem as EQC, but uses a
 fundamentally different approach. The goal is to solve:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi mathvariant="double-struck">𝔼</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">[</mo><mover><mi>ρ</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="true" form="postfix">]</mo></mrow><mo>−</mo><msup><mi>ρ</mi><mo>*</mo></msup><mo>=</mo><mn>0</mn><mspace width="2.0em"></mspace><mtext mathvariant="normal">(1)</mtext></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>𝔼</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">[</mo><mover><mi>ρ</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="true" form="postfix">]</mo></mrow><mo>−</mo><msup><mi>ρ</mi><mo>*</mo></msup><mo>=</mo><mn>0</mn><mspace width="2.0em"></mspace><mtext mathvariant="normal">(1)</mtext></mrow><annotation encoding="application/x-tex">
 g(c) = \mathbb{E}\!\left[\hat{\rho}(c)\right] - \rho^* = 0
 \qquad \text{(1)}
 </annotation></semantics></math></p>
@@ -188,9 +188,9 @@ Y_n = \hat{\rho}_n(c_n) = \rho(c_n) + \varepsilon_n
 is computed from fresh Monte Carlo samples at each step, and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ε</mi><mi>n</mi></msub><annotation encoding="application/x-tex">\varepsilon_n</annotation></semantics></math>
 is zero-mean noise with bounded variance:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><msub><mi>ε</mi><mi>n</mi></msub><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n \mid c_n] = 0</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><msub><mi>ε</mi><mi>n</mi></msub><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n \mid c_n] = 0</annotation></semantics></math>
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><msubsup><mi>ε</mi><mi>n</mi><mn>2</mn></msubsup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>≤</mo><msubsup><mi>σ</mi><mi>ε</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon</annotation></semantics></math>.</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><msubsup><mi>ε</mi><mi>n</mi><mn>2</mn></msubsup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>≤</mo><msubsup><mi>σ</mi><mi>ε</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon</annotation></semantics></math>.</p>
 </div>
 <div class="section level3">
 <h3 id="the-robbins-monro-update-rule">The Robbins-Monro Update Rule<a class="anchor" aria-label="anchor" href="#the-robbins-monro-update-rule"></a>
@@ -353,7 +353,7 @@ through the convergence trajectory.</p>
 <span><span class="co">#&gt; Warning in sac_calibrate(target_rho = 0.8, n_items = 25, model = "rasch", : SAC may not have fully converged.</span></span>
 <span><span class="co">#&gt;   First half mean:  0.7002</span></span>
 <span><span class="co">#&gt;   Second half mean: 0.7208</span></span>
-<span><span class="co">#&gt;   Difference:       0.0206</span></span>
+<span><span class="co">#&gt;   Difference:       0.0206 (tolerance 0.0355)</span></span>
 <span><span class="co">#&gt;   Achieved gap:     -0.0748 (tolerance 0.0500)</span></span>
 <span><span class="co">#&gt; Consider increasing n_iter or adjusting step_params.</span></span>
 <span></span>
@@ -548,7 +548,7 @@ and the logistic-normal convolution constant is approximated by:</p>
 </annotation></semantics></math></p>
 <p><strong>Derivation sketch</strong>: Under the Gaussian Rasch model,
 the expected item information at a single item is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><msup><mi>λ</mi><mn>2</mn></msup><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo><mo>=</mo><msup><mi>c</mi><mn>2</mn></msup><mi>κ</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}[\lambda^2 p(1-p)] = c^2 \kappa(\sigma^2)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><msup><mi>λ</mi><mn>2</mn></msup><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo><mo>=</mo><msup><mi>c</mi><mn>2</mn></msup><mi>κ</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}[\lambda^2 p(1-p)] = c^2 \kappa(\sigma^2)</annotation></semantics></math>.
 With
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>I</mi><annotation encoding="application/x-tex">I</annotation></semantics></math>
 items, the average test information is approximately
@@ -658,9 +658,9 @@ in
 <li>The noise
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ε</mi><mi>n</mi></msub><annotation encoding="application/x-tex">\varepsilon_n</annotation></semantics></math>
 satisfies
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><msub><mi>ε</mi><mi>n</mi></msub><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n \mid c_n] = 0</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><msub><mi>ε</mi><mi>n</mi></msub><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n \mid c_n] = 0</annotation></semantics></math>
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><msubsup><mi>ε</mi><mi>n</mi><mn>2</mn></msubsup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>≤</mo><msubsup><mi>σ</mi><mi>ε</mi><mn>2</mn></msubsup><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon &lt; \infty</annotation></semantics></math>.</li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><msubsup><mi>ε</mi><mi>n</mi><mn>2</mn></msubsup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo><mo>≤</mo><msubsup><mi>σ</mi><mi>ε</mi><mn>2</mn></msubsup><mo>&lt;</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon &lt; \infty</annotation></semantics></math>.</li>
 </ol>
 <p>Then the projected SAC iterates converge almost surely:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mi>n</mi></msub><mover><mo>→</mo><mtext mathvariant="normal">a.s.</mtext></mover><msup><mi>c</mi><mo>*</mo></msup><mspace width="1.0em"></mspace><mrow><mtext mathvariant="normal">as </mtext><mspace width="0.333em"></mspace></mrow><mi>n</mi><mo>→</mo><mi>∞</mi><mspace width="2.0em"></mspace><mtext mathvariant="normal">(9)</mtext></mrow><annotation encoding="application/x-tex">
@@ -677,7 +677,7 @@ Compute the conditional expectation of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">V(c_{n+1})</annotation></semantics></math>
 given
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>n</mi></msub><annotation encoding="application/x-tex">c_n</annotation></semantics></math>:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right; padding-right: 0"><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo></mtd><mtd columnalign="left" style="text-align: left; padding-left: 0"><mo>=</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>2</mn><msub><mi>a</mi><mi>n</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo>−</mo><msup><mi>c</mi><mo>*</mo></msup><mo stretchy="false" form="postfix">)</mo><mi>g</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msubsup><mi>a</mi><mi>n</mi><mn>2</mn></msubsup><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>ρ</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><msup><mi>ρ</mi><mo>*</mo></msup><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo></mtd></mtr></mtable><annotation encoding="application/x-tex">
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right; padding-right: 0"><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo></mtd><mtd columnalign="left" style="text-align: left; padding-left: 0"><mo>=</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>2</mn><msub><mi>a</mi><mi>n</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo>−</mo><msup><mi>c</mi><mo>*</mo></msup><mo stretchy="false" form="postfix">)</mo><mi>g</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msubsup><mi>a</mi><mi>n</mi><mn>2</mn></msubsup><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>ρ</mi><mo accent="true">̂</mo></mover><mi>n</mi></msub><mo>−</mo><msup><mi>ρ</mi><mo>*</mo></msup><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>∣</mo><msub><mi>c</mi><mi>n</mi></msub><mo stretchy="false" form="postfix">]</mo></mtd></mtr></mtable><annotation encoding="application/x-tex">
 \begin{aligned}
 \mathbb{E}[V(c_{n+1}) \mid c_n]
 &amp;= V(c_n) - 2a_n(c_n - c^*) g(c_n) + a_n^2 \mathbb{E}[(\hat{\rho}_n - \rho^*)^2 \mid c_n]

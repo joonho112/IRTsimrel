@@ -87,7 +87,7 @@
             
             <h4 data-toc-skip class="date">2026-07-01</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/HEAD/vignettes/item-parameters.Rmd" class="external-link"><code>vignettes/item-parameters.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/main/vignettes/item-parameters.Rmd" class="external-link"><code>vignettes/item-parameters.Rmd</code></a></small>
       <div class="d-none name"><code>item-parameters.Rmd</code></div>
     </div>
 
@@ -196,7 +196,7 @@ has important implications:</p>
 <span><span class="co">#&gt;   Centered       : Yes</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Difficulty (beta):</span></span>
-<span><span class="co">#&gt;   Mean: -0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]</span></span></code></pre></div>
+<span><span class="co">#&gt;   Mean: 0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="two-parameter-logistic-2pl-model">3.2 Two-parameter logistic (2PL) model<a class="anchor" aria-label="anchor" href="#two-parameter-logistic-2pl-model"></a>
@@ -532,7 +532,7 @@ distribution of discriminations:</p>
 <td align="left">0</td>
 <td align="left">Mean of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>λ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\lambda)</annotation></semantics></math>.
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="double-struck">𝔼</mi><mo stretchy="false" form="prefix">[</mo><mi>λ</mi><mo stretchy="false" form="postfix">]</mo><mo>≈</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>μ</mi><mi mathvariant="normal">log</mi></msub><mo>+</mo><msubsup><mi>σ</mi><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>2</mn></msubsup><mi>/</mi><mn>2</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}[\lambda] \approx \exp(\mu_{\log} + \sigma_{\log}^2/2)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">[</mo><mi>λ</mi><mo stretchy="false" form="postfix">]</mo><mo>≈</mo><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>μ</mi><mi mathvariant="normal">log</mi></msub><mo>+</mo><msubsup><mi>σ</mi><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>2</mn></msubsup><mi>/</mi><mn>2</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathbb{E}[\lambda] \approx \exp(\mu_{\log} + \sigma_{\log}^2/2)</annotation></semantics></math>
 </td>
 </tr>
 <tr class="even">
@@ -600,7 +600,7 @@ and
 <span><span class="op">}</span></span>
 <span><span class="co">#&gt; Form 1: beta_mean=-0.000, lambda_mean=0.992, cor=-0.382</span></span>
 <span><span class="co">#&gt; Form 2: beta_mean=-0.000, lambda_mean=1.063, cor=-0.356</span></span>
-<span><span class="co">#&gt; Form 3: beta_mean=-0.000, lambda_mean=1.031, cor=-0.463</span></span></code></pre></div>
+<span><span class="co">#&gt; Form 3: beta_mean=0.000, lambda_mean=1.031, cor=-0.463</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -677,7 +677,7 @@ identification):</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Centered mean:   %.6f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">items_centered</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Centered mean:   -0.000000</span></span>
+<span><span class="co">#&gt; Centered mean:   0.000000</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Uncentered mean: %.6f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">items_uncentered</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Uncentered mean: 0.187536</span></span></code></pre></div>
 </div>
@@ -781,7 +781,7 @@ items)</td>
 <span>            <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">item_table</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">item_table</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Difficulty range:      [-2.170, 1.450]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Difficulty mean:       %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">item_table</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Difficulty mean:       -0.0000</span></span>
+<span><span class="co">#&gt; Difficulty mean:       0.0000</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Difficulty SD:         %.4f\n"</span>, <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">item_table</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Difficulty SD:         0.8606</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Calibrated c*:         %.4f\n"</span>, <span class="va">item_table</span><span class="op">$</span><span class="va">c_star</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
@@ -996,7 +996,7 @@ reliably.</p>
 <span><span class="co">#&gt; [1] 25</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $beta_mean</span></span>
-<span><span class="co">#&gt; [1] -1.065814e-16</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $beta_sd</span></span>
 <span><span class="co">#&gt; [1] 1.306365</span></span>

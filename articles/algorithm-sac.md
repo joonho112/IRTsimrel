@@ -205,7 +205,7 @@ for (k in seq_along(decays)) {
 #> Warning in sac_calibrate(target_rho = 0.8, n_items = 25, model = "rasch", : SAC may not have fully converged.
 #>   First half mean:  0.7002
 #>   Second half mean: 0.7208
-#>   Difference:       0.0206
+#>   Difference:       0.0206 (tolerance 0.0355)
 #>   Achieved gap:     -0.0748 (tolerance 0.0500)
 #> Consider increasing n_iter or adjusting step_params.
 

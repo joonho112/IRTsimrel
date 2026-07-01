@@ -211,7 +211,7 @@ print(feas)
 #>   info status      : feasible
 #>   msem status      : feasible
 #> 
-#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#> Note: rho_tilde >= rho_bar on the same information grid (Jensen's inequality).
 #>   Use rho_tilde range for EQC targets.
 #>   Use rho_bar range for SAC targets.
 #> 

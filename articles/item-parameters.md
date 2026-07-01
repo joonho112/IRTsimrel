@@ -90,7 +90,7 @@ print(items_rasch)
 #>   Centered       : Yes
 #> 
 #> Difficulty (beta):
-#>   Mean: -0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]
+#>   Mean: 0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]
 ```
 
 ### 3.2 Two-parameter logistic (2PL) model
@@ -483,7 +483,7 @@ for (f in 1:3) {
 }
 #> Form 1: beta_mean=-0.000, lambda_mean=0.992, cor=-0.382
 #> Form 2: beta_mean=-0.000, lambda_mean=1.063, cor=-0.356
-#> Form 3: beta_mean=-0.000, lambda_mean=1.031, cor=-0.463
+#> Form 3: beta_mean=0.000, lambda_mean=1.031, cor=-0.463
 ```
 
 ## 8. The Scale Parameter
@@ -564,7 +564,7 @@ items_uncentered <- sim_item_params(
 )
 
 cat(sprintf("Centered mean:   %.6f\n", mean(items_centered$data$beta)))
-#> Centered mean:   -0.000000
+#> Centered mean:   0.000000
 cat(sprintf("Uncentered mean: %.6f\n", mean(items_uncentered$data$beta)))
 #> Uncentered mean: 0.187536
 ```
@@ -654,7 +654,7 @@ cat(sprintf("Difficulty range:      [%.3f, %.3f]\n",
             min(item_table$beta), max(item_table$beta)))
 #> Difficulty range:      [-2.170, 1.450]
 cat(sprintf("Difficulty mean:       %.4f\n", mean(item_table$beta)))
-#> Difficulty mean:       -0.0000
+#> Difficulty mean:       0.0000
 cat(sprintf("Difficulty SD:         %.4f\n", sd(item_table$beta)))
 #> Difficulty SD:         0.8606
 cat(sprintf("Calibrated c*:         %.4f\n", item_table$c_star[1]))
@@ -890,7 +890,7 @@ items$achieved$overall
 #> [1] 25
 #> 
 #> $beta_mean
-#> [1] -1.065814e-16
+#> [1] 0
 #> 
 #> $beta_sd
 #> [1] 1.306365

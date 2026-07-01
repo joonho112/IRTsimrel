@@ -89,7 +89,7 @@ feas <- check_feasibility(
 #>   info status      : feasible
 #>   msem status      : feasible
 #> 
-#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#> Note: rho_tilde >= rho_bar on the same information grid (Jensen's inequality).
 #>   Use rho_tilde range for EQC targets.
 #>   Use rho_bar range for SAC targets.
 ```
@@ -253,7 +253,7 @@ eqc_result <- eqc_calibrate(
 #>   M (quad persons) = 5000
 #>   I (items)        = 25
 #>   theta: mean = -0.014, sd = 1.005, var = 1.010
-#>   beta:  mean = -0.000, sd = 0.861
+#>   beta:  mean = 0.000, sd = 0.861
 #>   lambda_base: mean = 1.000, sd = 0.000
 #>   metric = info
 #> Step 2: Running root-finding algorithm...
@@ -293,7 +293,7 @@ print(eqc_result)
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.014, sd = 1.005
-#>   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]
+#>   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]
 #>   lambda_base:  mean = 1.000, sd = 0.000
 #>   lambda_scaled: mean = 1.120, sd = 0.000
 ```

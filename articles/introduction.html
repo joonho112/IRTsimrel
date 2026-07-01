@@ -87,7 +87,7 @@
             
             <h4 data-toc-skip class="date">2026-07-01</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/HEAD/vignettes/introduction.Rmd" class="external-link"><code>vignettes/introduction.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/main/vignettes/introduction.Rmd" class="external-link"><code>vignettes/introduction.Rmd</code></a></small>
       <div class="d-none name"><code>introduction.Rmd</code></div>
     </div>
 
@@ -194,17 +194,17 @@ achieve.</p></li>
 </h3>
 <p>To fix ideas, consider the <strong>average-information marginal
 reliability</strong>, which IRTsimrel targets by default:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover></mrow><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><mo>+</mo><mn>1</mn></mrow></mfrac></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover></mrow><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo>+</mo><mn>1</mn></mrow></mfrac></mrow><annotation encoding="application/x-tex">
 \tilde{\rho} \;=\; \frac{\sigma_\theta^2 \,\bar{\mathcal{J}}}
   {\sigma_\theta^2 \,\bar{\mathcal{J}} + 1}
 </annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_\theta^2</annotation></semantics></math>
 is the latent trait variance and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><mo>=</mo><msub><mi mathvariant="double-struck">𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">[</mo><mi mathvariant="script">𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">\bar{\mathcal{J}} = \mathbb{E}_\theta[\mathcal{J}(\theta)]</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo>=</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">[</mo><mi>𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">\bar{\mathcal{J}} = \mathbb{E}_\theta[\mathcal{J}(\theta)]</annotation></semantics></math>
 is the marginal (average) test information. The test information at a
 given ability level is the sum of item information functions:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>I</mi></munderover><msubsup><mi>λ</mi><mi>i</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><mo stretchy="false" form="prefix">[</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>I</mi></munderover><msubsup><mi>λ</mi><mi>i</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><mo stretchy="false" form="prefix">[</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">
 \mathcal{J}(\theta) \;=\; \sum_{i=1}^{I} \lambda_i^2 \, p_i(\theta) \,
   [1 - p_i(\theta)]
 </annotation></semantics></math></p>
@@ -214,7 +214,7 @@ is the probability of a correct response to item
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>.
 This formula makes explicit that reliability depends on both the
 <strong>item parameters</strong> (through
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>)
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>)
 and the <strong>latent distribution</strong> (through
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><annotation encoding="application/x-tex">\sigma_\theta^2</annotation></semantics></math>
 and the expectation over
@@ -224,12 +224,12 @@ why it must be actively controlled.</p>
 <p>The reliability formula has an intuitive interpretation: it is a
 ratio of signal to total variance, just like ICC. When average test
 information
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>
 is large (high discrimination, many items), most of the variance in
 observed scores is due to true differences in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>.
 When
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{\mathcal{J}}</annotation></semantics></math>
 is small, measurement error dominates.</p>
 </div>
 </div>
@@ -367,7 +367,7 @@ matches your target.</p></li>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Parameter Summaries:</span></span>
 <span><span class="co">#&gt;   theta:        mean = -0.014, sd = 1.005</span></span>
-<span><span class="co">#&gt;   beta:         mean = 0.000, sd = 0.758, range = [-2.15, 1.12]</span></span>
+<span><span class="co">#&gt;   beta:         mean = -0.000, sd = 0.758, range = [-2.15, 1.12]</span></span>
 <span><span class="co">#&gt;   lambda_base:  mean = 1.000, sd = 0.000</span></span>
 <span><span class="co">#&gt;   lambda_scaled: mean = 1.018, sd = 0.000</span></span></code></pre></div>
 <p>The output reports the calibrated scaling factor <code>c*</code>, the
@@ -578,7 +578,7 @@ right algorithm and interpreting results.</p>
 <h3 id="average-information-reliability-tilderho">5.1 Average-Information Reliability
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{\rho}</annotation></semantics></math>)<a class="anchor" aria-label="anchor" href="#average-information-reliability-tilderho"></a>
 </h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mn>1</mn></mrow></mfrac><mspace width="2.0em"></mspace><mtext mathvariant="normal">where</mtext><mspace width="1.0em"></mspace><mover><mi mathvariant="script">𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi mathvariant="double-struck">𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">[</mo><mi mathvariant="script">𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo>;</mo><mspace width="0.167em"></mspace><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ρ</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mspace width="0.167em"></mspace><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mn>1</mn></mrow></mfrac><mspace width="2.0em"></mspace><mtext mathvariant="normal">where</mtext><mspace width="1.0em"></mspace><mover><mi>𝒥</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">[</mo><mi>𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo>;</mo><mspace width="0.167em"></mspace><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">
 \tilde{\rho}(c) \;=\;
   \frac{\sigma_\theta^2 \,\bar{\mathcal{J}}(c)}
        {\sigma_\theta^2 \,\bar{\mathcal{J}}(c) + 1}
@@ -605,7 +605,7 @@ Inside <code><a href="../reference/eqc_calibrate.html">eqc_calibrate()</a></code
 <h3 id="msem-based-reliability-barw">5.2 MSEM-Based Reliability
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>w</mi><mo accent="true">‾</mo></mover><annotation encoding="application/x-tex">\bar{w}</annotation></semantics></math>)<a class="anchor" aria-label="anchor" href="#msem-based-reliability-barw"></a>
 </h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>w</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mo>+</mo><mtext mathvariant="normal">MSEM</mtext><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mspace width="2.0em"></mspace><mtext mathvariant="normal">where</mtext><mspace width="1.0em"></mspace><mtext mathvariant="normal">MSEM</mtext><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi mathvariant="double-struck">𝔼</mi><mi>θ</mi></msub><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">[</mo><mfrac><mn>1</mn><mrow><mi mathvariant="script">𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo>;</mo><mspace width="0.167em"></mspace><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>w</mi><mo accent="true">‾</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mrow><msubsup><mi>σ</mi><mi>θ</mi><mn>2</mn></msubsup><mo>+</mo><mtext mathvariant="normal">MSEM</mtext><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mspace width="2.0em"></mspace><mtext mathvariant="normal">where</mtext><mspace width="1.0em"></mspace><mtext mathvariant="normal">MSEM</mtext><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>𝔼</mi><mi>θ</mi></msub><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">[</mo><mfrac><mn>1</mn><mrow><mi>𝒥</mi><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo>;</mo><mspace width="0.167em"></mspace><mi>c</mi><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">
 \bar{w}(c) \;=\;
   \frac{\sigma_\theta^2}
        {\sigma_\theta^2 + \text{MSEM}(c)}
@@ -966,7 +966,7 @@ as a deprecated alias.</p></li>
 <span><span class="co">#&gt;   info status      : feasible</span></span>
 <span><span class="co">#&gt;   msem status      : feasible</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Note: rho_tilde &gt;= rho_bar always (Jensen's inequality).</span></span>
+<span><span class="co">#&gt; Note: rho_tilde &gt;= rho_bar on the same information grid (Jensen's inequality).</span></span>
 <span><span class="co">#&gt;   Use rho_tilde range for EQC targets.</span></span>
 <span><span class="co">#&gt;   Use rho_bar range for SAC targets.</span></span></code></pre></div>
 <p>The <code>target_status_info</code> and
@@ -1176,7 +1176,7 @@ each specific case.</li>
 <p>The current development version can be installed from GitHub:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"joonho112/IRTsimrel"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"joonho112/IRTsimrel"</span><span class="op">)</span></span></code></pre></div>
 <p>After a CRAN release is available, the package can also be installed
 with:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">

@@ -146,7 +146,7 @@ eqc_res
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.014, sd = 1.005
-#>   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]
+#>   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]
 #>   lambda_base:  mean = 1.000, sd = 0.000
 #>   lambda_scaled: mean = 0.899, sd = 0.000
 ```
@@ -628,7 +628,7 @@ items_rasch
 #>   Centered       : Yes
 #> 
 #> Difficulty (beta):
-#>   Mean: -0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]
+#>   Mean: 0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]
 ```
 
 ``` r
@@ -1308,7 +1308,7 @@ print(eqc_res)
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.014, sd = 1.005
-#>   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]
+#>   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]
 #>   lambda_base:  mean = 1.000, sd = 0.000
 #>   lambda_scaled: mean = 0.899, sd = 0.000
 ```
@@ -1841,7 +1841,7 @@ print(feas)
 #>   info status      : feasible
 #>   msem status      : feasible
 #> 
-#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#> Note: rho_tilde >= rho_bar on the same information grid (Jensen's inequality).
 #>   Use rho_tilde range for EQC targets.
 #>   Use rho_bar range for SAC targets.
 ```
@@ -2318,19 +2318,22 @@ alphabetically.
 ``` r
 
 sessionInfo()
-#> R version 4.6.0 (2026-04-24)
-#> Platform: aarch64-apple-darwin23
-#> Running under: macOS Tahoe 26.2
+#> R version 4.6.1 (2026-06-24)
+#> Platform: x86_64-pc-linux-gnu
+#> Running under: Ubuntu 24.04.4 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib 
-#> LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#> [1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: America/Chicago
-#> tzcode source: internal
+#> time zone: UTC
+#> tzcode source: system (glibc)
 #> 
 #> attached base packages:
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
@@ -2339,17 +2342,15 @@ sessionInfo()
 #> [1] IRTsimrel_0.2.0
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] Matrix_1.7-5       gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1       
-#>  [5] compiler_4.6.0     tidyselect_1.2.1   dichromat_2.0-0.1  jquerylib_0.1.4   
-#>  [9] splines_4.6.0      systemfonts_1.3.2  scales_1.4.0       textshaping_1.0.5 
-#> [13] yaml_2.3.12        fastmap_1.2.0      lattice_0.22-9     ggplot2_4.0.3     
-#> [17] R6_2.6.1           labeling_0.4.3     generics_0.1.4     knitr_1.51        
-#> [21] htmlwidgets_1.6.4  MASS_7.3-65        tibble_3.3.1       desc_1.4.3        
-#> [25] bslib_0.11.0       pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.2.0       
-#> [29] cachem_1.1.0       xfun_0.57          fs_2.1.0           sass_0.4.10       
-#> [33] S7_0.2.2           otel_0.2.0         cli_3.6.6          mgcv_1.9-4        
-#> [37] withr_3.0.2        pkgdown_2.2.0      magrittr_2.0.5     digest_0.6.39     
-#> [41] grid_4.6.0         nlme_3.1-169       lifecycle_1.0.5    vctrs_0.7.3       
-#> [45] evaluate_1.0.5     glue_1.8.1         farver_2.1.2       ragg_1.5.2        
-#> [49] rmarkdown_2.31     tools_4.6.0        pkgconfig_2.0.3    htmltools_0.5.9
+#>  [1] vctrs_0.7.3        nlme_3.1-169       cli_3.6.6          knitr_1.51        
+#>  [5] rlang_1.2.0        xfun_0.59          otel_0.2.0         textshaping_1.0.5 
+#>  [9] S7_0.2.2           jsonlite_2.0.0     labeling_0.4.3     glue_1.8.1        
+#> [13] htmltools_0.5.9    ragg_1.5.2         sass_0.4.10        scales_1.4.0      
+#> [17] rmarkdown_2.31     grid_4.6.1         evaluate_1.0.5     jquerylib_0.1.4   
+#> [21] MASS_7.3-65        fastmap_1.2.0      yaml_2.3.12        lifecycle_1.0.5   
+#> [25] compiler_4.6.1     fs_2.1.0           RColorBrewer_1.1-3 mgcv_1.9-4        
+#> [29] lattice_0.22-9     systemfonts_1.3.2  farver_2.1.2       digest_0.6.39     
+#> [33] R6_2.6.1           splines_4.6.1      Matrix_1.7-5       bslib_0.11.0      
+#> [37] withr_3.0.3        tools_4.6.1        gtable_0.3.6       pkgdown_2.2.0     
+#> [41] ggplot2_4.0.3      cachem_1.1.0       desc_1.4.3
 ```

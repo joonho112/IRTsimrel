@@ -732,7 +732,7 @@ feas <- check_feasibility(
 #>   rho_tilde (info) : [0.0363, 0.9797]
 #>   rho_bar   (msem) : [0.0000, 0.8513]
 #> 
-#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#> Note: rho_tilde >= rho_bar on the same information grid (Jensen's inequality).
 #>   Use rho_tilde range for EQC targets.
 #>   Use rho_bar range for SAC targets.
 ```

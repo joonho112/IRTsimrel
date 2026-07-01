@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/joonho112/IRTsimrel/blob/HEAD/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/joonho112/IRTsimrel/blob/main/DESCRIPTION)
 
 Lee J (2026). *IRTsimrel: Reliability-Targeted Simulation for Item
 Response Data*. R package version 0.2.0,

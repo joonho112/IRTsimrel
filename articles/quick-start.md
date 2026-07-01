@@ -67,7 +67,7 @@ result
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.014, sd = 1.005
-#>   beta:         mean = 0.000, sd = 0.758, range = [-2.15, 1.12]
+#>   beta:         mean = -0.000, sd = 0.758, range = [-2.15, 1.12]
 #>   lambda_base:  mean = 1.000, sd = 0.000
 #>   lambda_scaled: mean = 1.018, sd = 0.000
 ```
@@ -132,7 +132,7 @@ feas
 #>   info status      : feasible
 #>   msem status      : feasible
 #> 
-#> Note: rho_tilde >= rho_bar always (Jensen's inequality).
+#> Note: rho_tilde >= rho_bar on the same information grid (Jensen's inequality).
 #>   Use rho_tilde range for EQC targets.
 #>   Use rho_bar range for SAC targets.
 ```

@@ -311,7 +311,7 @@ print(eqc_result)
 #> 
 #> Parameter Summaries:
 #>   theta:        mean = -0.014, sd = 1.005
-#>   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]
+#>   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]
 #>   lambda_base:  mean = 1.000, sd = 0.000
 #>   lambda_scaled: mean = 0.899, sd = 0.000
 #> 

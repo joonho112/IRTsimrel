@@ -595,7 +595,7 @@ eqc_v <- eqc_calibrate(
 #>   M (quad persons) = 5000
 #>   I (items)        = 25
 #>   theta: mean = -0.014, sd = 1.005, var = 1.010
-#>   beta:  mean = -0.000, sd = 0.861
+#>   beta:  mean = 0.000, sd = 0.861
 #>   lambda_base: mean = 1.000, sd = 0.000
 #>   metric = info
 #> Step 2: Running root-finding algorithm...

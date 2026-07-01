@@ -87,7 +87,7 @@
             
             <h4 data-toc-skip class="date">2026-07-01</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/HEAD/vignettes/api-reference.Rmd" class="external-link"><code>vignettes/api-reference.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/joonho112/IRTsimrel/blob/main/vignettes/api-reference.Rmd" class="external-link"><code>vignettes/api-reference.Rmd</code></a></small>
       <div class="d-none name"><code>api-reference.Rmd</code></div>
     </div>
 
@@ -391,7 +391,7 @@ discriminations.</td>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Parameter Summaries:</span></span>
 <span><span class="co">#&gt;   theta:        mean = -0.014, sd = 1.005</span></span>
-<span><span class="co">#&gt;   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]</span></span>
+<span><span class="co">#&gt;   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]</span></span>
 <span><span class="co">#&gt;   lambda_base:  mean = 1.000, sd = 0.000</span></span>
 <span><span class="co">#&gt;   lambda_scaled: mean = 0.899, sd = 0.000</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -1500,7 +1500,7 @@ hierarchical).</td>
 <span><span class="co">#&gt;   Centered       : Yes</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Difficulty (beta):</span></span>
-<span><span class="co">#&gt;   Mean: -0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]</span></span></code></pre></div>
+<span><span class="co">#&gt;   Mean: 0.0000, SD: 1.3064, Range: [-2.8440, 2.0991]</span></span></code></pre></div>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 2PL items with copula-induced correlation</span></span>
 <span><span class="va">items_2pl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_item_params.html">sim_item_params</a></span><span class="op">(</span></span>
@@ -2589,7 +2589,7 @@ invisibly.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Parameter Summaries:</span></span>
 <span><span class="co">#&gt;   theta:        mean = -0.014, sd = 1.005</span></span>
-<span><span class="co">#&gt;   beta:         mean = -0.000, sd = 0.861, range = [-2.17, 1.45]</span></span>
+<span><span class="co">#&gt;   beta:         mean = 0.000, sd = 0.861, range = [-2.17, 1.45]</span></span>
 <span><span class="co">#&gt;   lambda_base:  mean = 1.000, sd = 0.000</span></span>
 <span><span class="co">#&gt;   lambda_scaled: mean = 0.899, sd = 0.000</span></span></code></pre></div>
 </div>
@@ -3085,7 +3085,7 @@ Difficulty vs. discrimination scatter plot.
 <span><span class="co">#&gt;   info status      : feasible</span></span>
 <span><span class="co">#&gt;   msem status      : feasible</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Note: rho_tilde &gt;= rho_bar always (Jensen's inequality).</span></span>
+<span><span class="co">#&gt; Note: rho_tilde &gt;= rho_bar on the same information grid (Jensen's inequality).</span></span>
 <span><span class="co">#&gt;   Use rho_tilde range for EQC targets.</span></span>
 <span><span class="co">#&gt;   Use rho_bar range for SAC targets.</span></span></code></pre></div>
 <hr>
@@ -3720,19 +3720,22 @@ alphabetically.</p>
 </h2>
 <div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; R version 4.6.0 (2026-04-24)</span></span>
-<span><span class="co">#&gt; Platform: aarch64-apple-darwin23</span></span>
-<span><span class="co">#&gt; Running under: macOS Tahoe 26.2</span></span>
+<span><span class="co">#&gt; R version 4.6.1 (2026-06-24)</span></span>
+<span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
+<span><span class="co">#&gt; Running under: Ubuntu 24.04.4 LTS</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Matrix products: default</span></span>
-<span><span class="co">#&gt; BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dylib </span></span>
-<span><span class="co">#&gt; LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1</span></span>
+<span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 </span></span>
+<span><span class="co">#&gt; LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; locale:</span></span>
-<span><span class="co">#&gt; [1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8</span></span>
+<span><span class="co">#&gt;  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span></span>
+<span><span class="co">#&gt;  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span></span>
+<span><span class="co">#&gt;  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span></span>
+<span><span class="co">#&gt; [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; time zone: America/Chicago</span></span>
-<span><span class="co">#&gt; tzcode source: internal</span></span>
+<span><span class="co">#&gt; time zone: UTC</span></span>
+<span><span class="co">#&gt; tzcode source: system (glibc)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; attached base packages:</span></span>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
@@ -3741,19 +3744,17 @@ alphabetically.</p>
 <span><span class="co">#&gt; [1] IRTsimrel_0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span><span class="co">#&gt;  [1] Matrix_1.7-5       gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1       </span></span>
-<span><span class="co">#&gt;  [5] compiler_4.6.0     tidyselect_1.2.1   dichromat_2.0-0.1  jquerylib_0.1.4   </span></span>
-<span><span class="co">#&gt;  [9] splines_4.6.0      systemfonts_1.3.2  scales_1.4.0       textshaping_1.0.5 </span></span>
-<span><span class="co">#&gt; [13] yaml_2.3.12        fastmap_1.2.0      lattice_0.22-9     ggplot2_4.0.3     </span></span>
-<span><span class="co">#&gt; [17] R6_2.6.1           labeling_0.4.3     generics_0.1.4     knitr_1.51        </span></span>
-<span><span class="co">#&gt; [21] htmlwidgets_1.6.4  MASS_7.3-65        tibble_3.3.1       desc_1.4.3        </span></span>
-<span><span class="co">#&gt; [25] bslib_0.11.0       pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.2.0       </span></span>
-<span><span class="co">#&gt; [29] cachem_1.1.0       xfun_0.57          fs_2.1.0           sass_0.4.10       </span></span>
-<span><span class="co">#&gt; [33] S7_0.2.2           otel_0.2.0         cli_3.6.6          mgcv_1.9-4        </span></span>
-<span><span class="co">#&gt; [37] withr_3.0.2        pkgdown_2.2.0      magrittr_2.0.5     digest_0.6.39     </span></span>
-<span><span class="co">#&gt; [41] grid_4.6.0         nlme_3.1-169       lifecycle_1.0.5    vctrs_0.7.3       </span></span>
-<span><span class="co">#&gt; [45] evaluate_1.0.5     glue_1.8.1         farver_2.1.2       ragg_1.5.2        </span></span>
-<span><span class="co">#&gt; [49] rmarkdown_2.31     tools_4.6.0        pkgconfig_2.0.3    htmltools_0.5.9</span></span></code></pre></div>
+<span><span class="co">#&gt;  [1] vctrs_0.7.3        nlme_3.1-169       cli_3.6.6          knitr_1.51        </span></span>
+<span><span class="co">#&gt;  [5] rlang_1.2.0        xfun_0.59          otel_0.2.0         textshaping_1.0.5 </span></span>
+<span><span class="co">#&gt;  [9] S7_0.2.2           jsonlite_2.0.0     labeling_0.4.3     glue_1.8.1        </span></span>
+<span><span class="co">#&gt; [13] htmltools_0.5.9    ragg_1.5.2         sass_0.4.10        scales_1.4.0      </span></span>
+<span><span class="co">#&gt; [17] rmarkdown_2.31     grid_4.6.1         evaluate_1.0.5     jquerylib_0.1.4   </span></span>
+<span><span class="co">#&gt; [21] MASS_7.3-65        fastmap_1.2.0      yaml_2.3.12        lifecycle_1.0.5   </span></span>
+<span><span class="co">#&gt; [25] compiler_4.6.1     fs_2.1.0           RColorBrewer_1.1-3 mgcv_1.9-4        </span></span>
+<span><span class="co">#&gt; [29] lattice_0.22-9     systemfonts_1.3.2  farver_2.1.2       digest_0.6.39     </span></span>
+<span><span class="co">#&gt; [33] R6_2.6.1           splines_4.6.1      Matrix_1.7-5       bslib_0.11.0      </span></span>
+<span><span class="co">#&gt; [37] withr_3.0.3        tools_4.6.1        gtable_0.3.6       pkgdown_2.2.0     </span></span>
+<span><span class="co">#&gt; [41] ggplot2_4.0.3      cachem_1.1.0       desc_1.4.3</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
