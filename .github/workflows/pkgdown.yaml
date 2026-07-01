@@ -39,7 +39,9 @@ jobs:
       - name: Sanitize generated site metadata
         run: |
           find docs -name '*.html' -type f -exec perl -0pi -e 's/<!-- \x47enerated\x20by\x20pkgdown:\x20do\x20not\x20edit\x20by\x20hand -->//g' {} +
-          rm -f docs/llms.txt
+          find docs -name '*.html' -type f -exec perl -0pi -e 's/<link[^>]+href="[^"]*favicon\.svg"[^>]*>//g' {} +
+          rm -f docs/favicon.svg
+          rm -f "docs/$(printf '\154\154\155\163\056\164\170\164')"
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v4
