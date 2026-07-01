@@ -1,0 +1,45 @@
+# RStudio project files
+^IRTsimrel\.Rproj$
+^\.Rproj\.user$
+
+# License and README source
+^LICENSE\.md$
+^README\.Rmd$
+^README\.html$
+
+# Git and GitHub
+^\.git$
+^\.gitignore$
+^\.github$
+
+# Development files
+^\.lintr$
+^\.editorconfig$
+^codecov\.yml$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
+^.*\.tar\.gz$
+^release-checklist\.md$
+^Rplots\.pdf$
+
+# pkgdown
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+
+# Dev tools
+^revdep$
+^\.Rhistory$
+^.*\.Rproj$
+
+# Misc
+^.*\.DS_Store$
+^vignettes/.*\.html$
+^data-raw$
+^vignettes/.*_cache$
+^vignettes/.*_files$
+
+# Development directory and lock file
+^dev$
+^log$
+^pkg\.lock$

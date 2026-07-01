@@ -1,0 +1,263 @@
+% Please edit documentation in R/spc_calibrate.R
+\name{sac_calibrate}
+\alias{sac_calibrate}
+\alias{print.sac_result}
+\alias{summary.sac_result}
+\title{Stochastic Approximation Calibration (Algorithm 2: SAC)}
+\usage{
+sac_calibrate(
+  target_rho,
+  n_items,
+  model = c("rasch", "2pl"),
+  latent_shape = "normal",
+  item_source = "parametric",
+  latent_params = list(),
+  item_params = list(),
+  reliability_metric = c("msem", "info", "bar", "tilde"),
+  c_init = NULL,
+  M_per_iter = 500L,
+  M_pre = 10000L,
+  n_iter = 300L,
+  burn_in = NULL,
+  step_params = list(),
+  c_bounds = c(0.01, 20),
+  resample_items = TRUE,
+  seed = NULL,
+  verbose = FALSE
+)
+
+\method{print}{sac_result}(x, digits = 4, ...)
+
+\method{summary}{sac_result}(object, ...)
+}
+\arguments{
+\item{target_rho}{Numeric in (0, 1). Target marginal reliability \eqn{\rho^*}.}
+
+\item{n_items}{Integer. Number of items in the test form.}
+
+\item{model}{Character. Measurement model: \code{"rasch"} or \code{"2pl"}.
+For \code{"rasch"}, all baseline discriminations are set to 1 before scaling.}
+
+\item{latent_shape}{Character. Shape argument passed to \code{sim_latentG()}
+(e.g. \code{"normal"}, \code{"bimodal"}, \code{"heavy_tail"}, ...).}
+
+\item{item_source}{Character. Source argument passed to \code{sim_item_params()}
+(e.g. \code{"parametric"}, \code{"irw"}, \code{"hierarchical"}, \code{"custom"}).
+Defaults to \code{"parametric"} so core workflows do not require external
+item-pool data. Use \code{"irw"} for empirically-grounded difficulties
+when the Item Response Warehouse package is installed.}
+
+\item{latent_params}{List. Additional arguments passed to \code{sim_latentG()}.}
+
+\item{item_params}{List. Additional arguments passed to \code{sim_item_params()}.}
+
+\item{reliability_metric}{Character. Reliability definition used inside SAC:
+\describe{
+\item{\code{"msem"}}{MSEM-based reciprocal-information reliability (targets \eqn{\bar{w}}).}
+\item{\code{"info"}}{Average-information reliability (faster, targets \eqn{\tilde{\rho}}).}
+}
+Synonyms: \code{"bar"} for \code{"msem"}, \code{"tilde"} for \code{"info"}.}
+
+\item{c_init}{Numeric, \code{eqc_result} object, or NULL. Initial value for
+the scaling factor \eqn{c_0}.
+\itemize{
+\item If an \code{eqc_result} object is provided, its \code{c_star} is used (warm start).
+\item If a numeric value is provided, it is used directly.
+\item If NULL, initialized using Analytic Pre-Calibration (APC).
+}
+Providing a warm start from EQC greatly accelerates convergence.}
+
+\item{M_per_iter}{Integer. Number of Monte Carlo samples per iteration for
+estimating reliability. Default: 500. Larger values reduce variance but
+increase computation time.}
+
+\item{M_pre}{Integer. Number of Monte Carlo samples for pre-calculating the
+latent variance \eqn{\sigma^2_\theta}. Default: 10000. This variance is
+fixed throughout the iterations for stability. This is a CRITICAL parameter
+for numerical stability.}
+
+\item{n_iter}{Integer. Total number of Robbins-Monro iterations. Default: 300.}
+
+\item{burn_in}{Integer. Number of initial iterations to discard before
+Polyak-Ruppert averaging. Default: \code{floor(n_iter / 2)}.}
+
+\item{step_params}{List. Parameters controlling the step size sequence:
+\describe{
+\item{\code{a}}{Base step size (default: 1.0)}
+\item{\code{A}}{Stabilization constant (default: 50)}
+\item{\code{gamma}}{Decay exponent (default: 0.67, i.e., 2/3)}
+}}
+
+\item{c_bounds}{Numeric length-2 vector. Projection bounds for \eqn{c}.
+Iterates are clipped to this interval after each update. Default: c(0.01, 20).}
+
+\item{resample_items}{Logical. If TRUE (default), resample item parameters
+at each iteration. If FALSE, fix item parameters across all iterations
+(reduces variance but may introduce bias).}
+
+\item{seed}{Optional integer for reproducibility.}
+
+\item{verbose}{Logical or integer. If TRUE or >= 1, print progress messages.
+If >= 2, print detailed iteration-level output.}
+
+\item{x}{An object of class \code{"sac_result"}.}
+
+\item{digits}{Integer. Number of decimal places for printing.}
+
+\item{...}{Additional arguments passed to or from other methods.}
+
+\item{object}{An object of class \code{"sac_result"}.}
+}
+\value{
+An object of class \code{"sac_result"} (a list) with elements:
+\describe{
+\item{\code{c_star}}{Calibrated discrimination scale (Polyak-Ruppert average).}
+\item{\code{c_final}}{Final iterate \eqn{c_{n_{iter}}}.}
+\item{\code{target_rho}}{Target reliability \eqn{\rho^*}.}
+\item{\code{achieved_rho}}{Estimated reliability at \eqn{c^*} (post-calibration).}
+\item{\code{theta_var}}{Pre-calculated latent variance used throughout.}
+\item{\code{trajectory}}{Numeric vector of all iterates.}
+\item{\code{rho_trajectory}}{Numeric vector of reliability estimates.}
+\item{\code{raw_trajectory}}{Unprojected proposal values before clipping to
+\code{c_bounds}.}
+\item{\code{step_size_trajectory}}{Robbins-Monro step size \eqn{a_n} at
+each iteration.}
+\item{\code{gradient_trajectory}}{Stochastic gradient estimate
+\eqn{\hat{\rho}_n - \rho^*} at each iteration.}
+\item{\code{projected}}{Logical vector indicating whether projection was
+applied at each iteration.}
+\item{\code{projection_side}}{Character vector indicating lower/upper/no
+projection at each iteration.}
+\item{\code{projection_count}}{Number of iterations where projection onto
+\code{c_bounds} was applied.}
+\item{\code{projection_rate}}{Proportion of iterations where projection was
+applied.}
+\item{\code{M_final}}{Monte Carlo sample size used for the post-calibration
+reliability estimate.}
+\item{\code{metric}}{Reliability metric used.}
+\item{\code{calibration_status}}{Canonical status label copied from
+\code{convergence$status}.}
+\item{\code{model}}{Measurement model.}
+\item{\code{n_items}}{Number of items.}
+\item{\code{n_iter}}{Total number of Robbins-Monro iterations.}
+\item{\code{burn_in}}{Number of initial iterations excluded from averaging.}
+\item{\code{M_per_iter}}{Monte Carlo sample size per iteration.}
+\item{\code{M_pre}}{Monte Carlo sample size used to estimate latent variance.}
+\item{\code{step_params}}{Step-size parameters used by the run.}
+\item{\code{c_bounds}}{Projection bounds for \eqn{c}.}
+\item{\code{c_init}}{Initial scaling factor after any projection.}
+\item{\code{init_method}}{Character indicating initialization method.}
+\item{\code{convergence}}{List with convergence diagnostics.}
+\item{\code{item_design}}{Whether stored item fields are a
+\code{"post_calibration_draw"} or the \code{"fixed_iteration_items"}.}
+\item{\code{beta_vec}}{Item difficulties from the stored item design.}
+\item{\code{lambda_base}}{Baseline (unscaled) item discriminations.}
+\item{\code{lambda_scaled}}{Scaled item discriminations (\code{lambda_base * c_star}).}
+\item{\code{items_base}}{Baseline item_params object (scale = 1).}
+\item{\code{items_calib}}{Calibrated item_params object (discriminations scaled by c_star).}
+\item{\code{theta_quad}}{Theta sample used for post-calibration reliability estimate.}
+\item{\code{call}}{Matched function call.}
+}
+
+The stored item fields use the final post-calibration item draw at baseline
+scale 1 when \code{resample_items = TRUE}. When \code{resample_items = FALSE},
+they reuse the fixed item form used throughout the Robbins-Monro iterations.
+In both cases, the calibrated design applies the Polyak-Ruppert average
+\code{c_star}, not the last Robbins-Monro iterate \code{c_final}. Thus
+\code{lambda_scaled} and \code{items_calib$data$lambda} equal
+\code{lambda_base * c_star}.
+
+For same-estimand comparisons with an \code{eqc_result} warm start, set
+\code{reliability_metric = "info"} in \code{sac_calibrate()}. SAC defaults
+to direct MSEM targeting (\code{"msem"}), while EQC targets the
+average-information metric (\code{"info"}).
+
+\code{spc_calibrate()} is a deprecated backward-compatible alias for
+\code{sac_calibrate()}.
+
+The input object, invisibly.
+
+An object of class \code{"summary.sac_result"} containing key
+calibration results.
+}
+\description{
+\code{sac_calibrate()} implements Algorithm 2 (Stochastic Approximation
+Calibration, SAC) for reliability-targeted IRT simulation using the
+Robbins-Monro stochastic approximation algorithm.
+
+Given a target marginal reliability \eqn{\rho^*}, a latent distribution
+generator \code{sim_latentG()} (for \eqn{G}) and an item parameter generator
+\code{sim_item_params()} (for \eqn{H}), the function iteratively searches for a
+global discrimination scale \eqn{c^* > 0} such that the population
+reliability \eqn{\rho(c)} of the Rasch/2PL model is approximately equal to
+\eqn{\rho^*}.
+
+SAC complements EQC (Algorithm 1) by:
+\enumerate{
+\item Providing an independent validation of EQC calibration results.
+\item Enabling calibration to the MSEM-based reciprocal-information
+reliability \eqn{\bar{w}} (not just the average-information metric
+\eqn{\tilde{\rho}}).
+\item Handling complex data-generating processes where analytic information
+functions may be unavailable.
+}
+
+The algorithm uses the Robbins-Monro update rule:
+\deqn{c_{n+1} = c_n - a_n \cdot (\hat{\rho}_n - \rho^*)}
+
+where \eqn{a_n = a / (n + A)^\gamma} is a decreasing step size sequence
+satisfying \eqn{\sum a_n = \infty} and \eqn{\sum a_n^2 < \infty}.
+}
+\examples{
+\donttest{
+# Example 1: Basic SAC calibration
+sac_result <- sac_calibrate(
+  target_rho = 0.75,
+  n_items = 20,
+  model = "rasch",
+  n_iter = 200,
+  seed = 12345,
+  verbose = TRUE
+)
+print(sac_result)
+plot(sac_result)
+
+# Example 2: Warm start from EQC (RECOMMENDED)
+eqc_result <- eqc_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "2pl",
+  M = 10000,
+  seed = 42
+)
+
+sac_result <- sac_calibrate(
+  target_rho = 0.80,
+  n_items = 25,
+  model = "2pl",
+  reliability_metric = "info",
+  c_init = eqc_result,  # Direct EQC object passing!
+  n_iter = 100,
+  seed = 42
+)
+
+# Compare EQC and SAC results
+cat(sprintf("EQC c* = \%.4f, SAC c* = \%.4f\n",
+            eqc_result$c_star, sac_result$c_star))
+}
+
+}
+\references{
+Robbins, H., & Monro, S. (1951). A stochastic approximation method.
+\emph{The Annals of Mathematical Statistics, 22}(3), 400--407.
+
+Polyak, B. T., & Juditsky, A. B. (1992). Acceleration of stochastic
+approximation by averaging. \emph{SIAM Journal on Control and Optimization,
+30}(4), 838--855.
+}
+\seealso{
+\code{\link{eqc_calibrate}} for the faster deterministic Algorithm 1,
+\code{\link{compute_rho_bar}} and \code{\link{compute_rho_tilde}} for
+reliability computation utilities,
+\code{\link{compare_eqc_sac}} for comparing EQC and SAC results.
+}

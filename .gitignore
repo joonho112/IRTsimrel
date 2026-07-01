@@ -1,0 +1,50 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# R package build artifacts
+inst/doc
+/doc/
+/Meta/
+*.tar.gz
+*.Rcheck/
+pkg.lock
+
+# Compiled code
+*.o
+*.so
+*.dll
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Local config
+.Renviron
+.Rprofile
+
+# pkgdown site
+docs/
+
+# Development files (large reference packages, manuscripts, logs)
+dev/
+log/
+
+# Temporary/generated files
+*.bak
+*.tmp
+Rplots.pdf
+README.html

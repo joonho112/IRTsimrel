@@ -1,0 +1,21 @@
+% Please edit documentation in R/sim_item_params.R
+\name{plot.item_params}
+\alias{plot.item_params}
+\title{Plot method for item_params objects}
+\usage{
+\method{plot}{item_params}(x, type = c("scatter", "density", "both"), ...)
+}
+\arguments{
+\item{x}{An \code{item_params} object from \code{sim_item_params()}.}
+
+\item{type}{Character. Type of plot: \code{"scatter"}, \code{"density"}, or \code{"both"}.}
+
+\item{...}{Additional arguments (currently ignored).}
+}
+\value{
+A \code{ggplot} object if \pkg{ggplot2} is available, or
+\code{NULL} invisibly when using base R graphics fallback.
+}
+\description{
+Plot method for item_params objects
+}

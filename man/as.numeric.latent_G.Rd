@@ -1,0 +1,21 @@
+% Please edit documentation in R/sim_latentG.R
+\name{as.numeric.latent_G}
+\alias{as.numeric.latent_G}
+\alias{as.double.latent_G}
+\title{Extract theta values from latent_G object}
+\usage{
+\method{as.numeric}{latent_G}(x, ...)
+
+\method{as.double}{latent_G}(x, ...)
+}
+\arguments{
+\item{x}{A \code{latent_G} object.}
+
+\item{...}{Additional arguments (ignored).}
+}
+\value{
+Numeric vector of latent abilities.
+}
+\description{
+Convenience function to extract the theta vector for use with other functions.
+}

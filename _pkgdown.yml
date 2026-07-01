@@ -1,0 +1,158 @@
+url: https://joonho112.github.io/IRTsimrel/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#0054AD"
+    border-radius: 0.5rem
+    btn-border-radius: 0.25rem
+
+home:
+  title: IRTsimrel
+  description: Reliability-Targeted Simulation for Item Response Data
+  links:
+    - text: arXiv paper (Lee, 2026)
+      href: https://arxiv.org/abs/2512.16012
+
+authors:
+  JoonHo Lee:
+    href: https://github.com/joonho112
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: articles/introduction.html
+    articles:
+      text: Articles
+      menu:
+        - text: "Getting Started"
+        - text: Introduction
+          href: articles/introduction.html
+        - text: Quick Start
+          href: articles/quick-start.html
+        - text: "---"
+        - text: "Applied Researchers Track"
+        - text: Applied Guide
+          href: articles/applied-guide.html
+        - text: Latent Distributions
+          href: articles/latent-distributions.html
+        - text: Item Parameters
+          href: articles/item-parameters.html
+        - text: Simulation Design
+          href: articles/simulation-design.html
+        - text: Case Studies
+          href: articles/case-studies.html
+        - text: "---"
+        - text: "Methodological Researchers Track"
+        - text: "Reliability Theory"
+          href: articles/theory-reliability.html
+        - text: "Algorithm 1: EQC"
+          href: articles/algorithm-eqc.html
+        - text: "Algorithm 2: SAC"
+          href: articles/algorithm-sac.html
+        - text: Validation
+          href: articles/validation.html
+        - text: API Reference
+          href: articles/api-reference.html
+
+reference:
+  - title: "Package Overview"
+    contents:
+      - IRTsimrel-package
+
+  - title: "Calibration Algorithms"
+    desc: >
+      Core functions for reliability-targeted calibration
+    contents:
+      - eqc_calibrate
+      - sac_calibrate
+
+  - title: "Simulation Functions"
+    desc: >
+      Generate latent abilities and item parameters
+    contents:
+      - sim_latentG
+      - sim_item_params
+      - simulate_response_data
+
+  - title: "Reliability Utilities"
+    desc: >
+      Compute reliability metrics and screening tools
+    contents:
+      - compute_rho_bar
+      - compute_rho_tilde
+      - compute_rho_both
+      - compute_apc_init
+      - compute_reliability_tam
+      - check_feasibility
+      - rho_curve
+
+  - title: "Comparison & Visualization"
+    desc: >
+      Compare distributions and calibration results
+    contents:
+      - compare_shapes
+      - compare_eqc_sac
+
+  - title: "S3 Helper Methods"
+    desc: >
+      Registered S3 methods with standalone reference topics
+    contents:
+      - as.data.frame.item_params
+      - as.numeric.latent_G
+      - coef.eqc_result
+      - coef.sac_result
+      - plot.item_params
+      - plot.latent_G
+      - plot.sac_result
+      - predict.eqc_result
+      - predict.sac_result
+      - print.latent_G
+      - print.summary.eqc_result
+      - print.summary.item_params
+      - print.summary.latent_G
+      - print.summary.sac_result
+      - summary.latent_G
+
+  - title: "Deprecated Aliases"
+    desc: >
+      Backward-compatible aliases retained for migration from v0.1.x naming
+    contents:
+      - spc_calibrate
+      - compare_eqc_spc
+
+articles:
+  - title: Getting Started
+    navbar: ~
+    contents:
+      - introduction
+      - quick-start
+
+  - title: Applied Researchers Track
+    contents:
+      - applied-guide
+      - latent-distributions
+      - item-parameters
+      - simulation-design
+      - case-studies
+
+  - title: Methodological Researchers Track
+    contents:
+      - theory-reliability
+      - algorithm-eqc
+      - algorithm-sac
+      - validation
+
+  - title: Reference
+    contents:
+      - api-reference
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with

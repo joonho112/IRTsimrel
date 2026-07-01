@@ -1,0 +1,31 @@
+% Please edit documentation in R/sim_latentG.R
+\name{plot.latent_G}
+\alias{plot.latent_G}
+\title{Plot Method for latent_G Objects}
+\usage{
+\method{plot}{latent_G}(
+  x,
+  type = c("both", "histogram", "density"),
+  show_normal = TRUE,
+  bins = 50,
+  ...
+)
+}
+\arguments{
+\item{x}{A \code{latent_G} object from \code{sim_latentG()}.}
+
+\item{type}{Character. Type of plot: "histogram", "density", or "both".}
+
+\item{show_normal}{Logical. Overlay a normal reference density?}
+
+\item{bins}{Integer. Number of histogram bins.}
+
+\item{...}{Additional arguments (currently ignored).}
+}
+\value{
+A \code{ggplot} object if \pkg{ggplot2} is available, or
+\code{NULL} invisibly when using base R graphics fallback.
+}
+\description{
+Plot Method for latent_G Objects
+}
