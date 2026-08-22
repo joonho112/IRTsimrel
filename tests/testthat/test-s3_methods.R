@@ -407,16 +407,27 @@ describe("sac_result S3 methods", {
   test_that("predict.sac_result uses custom theta_vec variance when supplied", {
     custom_theta <- seq(-2, 2, length.out = 101)
     pred <- predict(sac_obj, newdata = 1, theta_vec = custom_theta)
-    rho_fn <- if (sac_obj$metric == "info") compute_rho_tilde else compute_rho_bar
-    expected <- rho_fn(
-      1,
-      custom_theta,
-      sac_obj$beta_vec,
-      sac_obj$lambda_base,
-      theta_var = stats::var(custom_theta)
-    )
+    expected <- mean(vapply(
+      sac_obj$evaluation_design$item_banks,
+      function(bank) {
+        .compute_rho_generic(
+          c = 1,
+          theta_vec = custom_theta,
+          beta_vec = bank$beta,
+          lambda_base = bank$lambda_base,
+          theta_var = stats::var(custom_theta),
+          metric_internal = sac_obj$metric,
+          guessing = bank$guessing
+        )
+      },
+      numeric(1)
+    ))
 
-    expect_equal(unname(pred), expected, tolerance = 1e-12)
+    expect_equal(as.numeric(pred), expected, tolerance = 1e-12)
+    expect_identical(
+      attr(pred, "prediction_scope"),
+      "item_superpopulation"
+    )
   })
 })
 
@@ -479,8 +490,9 @@ describe("Cross-class integration", {
   test_that("eqc_result can be passed as c_init to sac_calibrate (warm start)", {
     sac2 <- suppressWarnings(suppressMessages(sac_calibrate(
       target_rho = 0.80, n_items = 15, model = "rasch",
-      item_source = "parametric",
       c_init = eqc_obj,
+      reliability_metric = "info",
+      resample_items = FALSE,
       n_iter = 50L, M_per_iter = 200L, M_pre = 2000L, seed = 99
     )))
     expect_s3_class(sac2, "sac_result")

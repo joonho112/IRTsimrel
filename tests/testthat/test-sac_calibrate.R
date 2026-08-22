@@ -44,8 +44,9 @@ test_that("SAC with EQC warm start sets init_method to 'eqc_warm_start'", {
     target_rho = 0.80,
     n_items = 20,
     model = "rasch",
-    item_source = "parametric",
+    reliability_metric = "info",
     c_init = eqc,
+    resample_items = FALSE,
     n_iter = 50L,
     M_per_iter = 200L,
     M_pre = 2000L,
@@ -163,7 +164,7 @@ test_that("SAC default metric is 'msem'", {
 
 test_that("SAC metric aliases are stored canonically", {
   sac_bar <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.70,
+    target_rho = 0.40,
     n_items = 6,
     model = "rasch",
     item_source = "parametric",
@@ -176,7 +177,7 @@ test_that("SAC metric aliases are stored canonically", {
   )))
 
   sac_tilde <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.70,
+    target_rho = 0.40,
     n_items = 6,
     model = "rasch",
     item_source = "parametric",
@@ -223,16 +224,23 @@ test_that("spc_calibrate triggers deprecation warning", {
   # We catch it with expect_warning; other warnings from SAC convergence
   # are allowed via the class argument
   expect_warning(
-    suppressMessages(spc_calibrate(
-      target_rho = 0.75,
-      n_items = 20,
-      model = "rasch",
-      item_source = "parametric",
-      n_iter = 50L,
-      M_per_iter = 200L,
-      M_pre = 2000L,
-      seed = 42
-    )),
+    withCallingHandlers(
+      suppressMessages(spc_calibrate(
+        target_rho = 0.75,
+        n_items = 20,
+        model = "rasch",
+        item_source = "parametric",
+        n_iter = 50L,
+        M_per_iter = 200L,
+        M_pre = 2000L,
+        seed = 42
+      )),
+      warning = function(w) {
+        if (!grepl("deprecated", conditionMessage(w), ignore.case = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    ),
     "deprecated"
   )
 })
@@ -302,7 +310,8 @@ test_that("SAC return object has correct class 'sac_result' and all fields", {
   expect_true("status" %in% names(sac$convergence))
   expect_equal(sac$calibration_status, sac$convergence$status)
   expect_true(sac$calibration_status %in% c(
-    "ok", "not_converged", "hit_lower_bound", "hit_upper_bound", "hit_both_bounds"
+    "ok", "not_converged", "hit_lower_bound", "hit_upper_bound",
+    "hit_both_bounds", "branch_lost"
   ))
 
   # Numerical checks
@@ -320,8 +329,15 @@ test_that("SAC return object has correct class 'sac_result' and all fields", {
   expect_equal(sac$c_final, utils::tail(sac$trajectory, 1))
   expect_true(all(sac$trajectory >= sac$c_bounds[1]))
   expect_true(all(sac$trajectory <= sac$c_bounds[2]))
-  expect_equal(length(sac$theta_quad), sac$M_final)
-  expect_equal(sac$M_final, max(sac$M_per_iter * 5, 5000))
+  expect_equal(
+    sac$M_final,
+    sac$evaluation_design$n_forms * sac$evaluation_design$M_per_form
+  )
+  if (identical(sac$item_scope, "item_superpopulation")) {
+    expect_equal(length(sac$theta_quad), sac$evaluation_design$M_per_form)
+  } else {
+    expect_equal(length(sac$theta_quad), sac$M_final)
+  }
   expect_equal(sac$projection_count, sum(sac$projected))
   expect_equal(sac$projection_rate, mean(sac$projected))
   expect_equal(sac$convergence$projection_count, sac$projection_count)
@@ -329,16 +345,16 @@ test_that("SAC return object has correct class 'sac_result' and all fields", {
   expect_true(all(sac$step_size_trajectory > 0))
   expect_true(all(diff(sac$step_size_trajectory) < 0))
   expect_equal(sac$gradient_trajectory,
-               sac$rho_trajectory - sac$target_rho)
+               sac$rho_update_trajectory - sac$target_rho)
   expect_true(sac$item_design %in% c(
     "post_calibration_draw", "fixed_iteration_items"
   ))
   expect_equal(sac$convergence$final_gradient,
-               utils::tail(sac$rho_trajectory, 1) - sac$target_rho)
+               utils::tail(sac$rho_update_trajectory, 1) - sac$target_rho)
   expect_equal(sac$convergence$final_pre_update_gradient,
                sac$convergence$final_gradient)
   expect_equal(sac$convergence$final_iter_gradient,
-               sac$convergence$final_gradient)
+               utils::tail(sac$rho_trajectory, 1) - sac$target_rho)
   expect_equal(sac$convergence$gradient_at_c_star,
                sac$achieved_rho - sac$target_rho)
   expect_equal(sac$convergence$post_calibration_gradient,
@@ -443,50 +459,48 @@ test_that("SAC step size defaults, overrides, and validation are explicit", {
   )
 })
 
-test_that("SAC projection diagnostics record initial clipping and bound hits", {
-  sac <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.75,
-    n_items = 10,
-    model = "rasch",
-    item_source = "parametric",
-    c_init = 100,
-    c_bounds = c(0.2, 0.3),
-    step_params = list(a = 2),
-    n_iter = 20L,
-    burn_in = 10L,
-    M_per_iter = 100L,
-    M_pre = 1000L,
-    seed = 42
-  )))
-
-  expect_equal(sac$c_init, 0.3)
-  expect_true(sac$convergence$c_init_projected)
-  expect_equal(sac$convergence$c_init_raw, 100)
-  expect_true(sac$convergence$hit_upper_bound)
-  expect_true(sac$projection_count > 0)
-  expect_equal(sac$projection_count, sac$convergence$projection_count)
-  expect_equal(sac$projection_rate, sac$convergence$projection_rate)
-  expect_true("projection_applied" %in% sac$convergence$status_flags)
-  expect_true(all(sac$raw_trajectory != sac$trajectory | !sac$projected))
-  expect_true(all(sac$projection_side %in% c("none", "lower", "upper")))
-})
-
-test_that("SAC emits non-convergence warning when achieved gap is large", {
-  sac <- NULL
-  expect_warning(
-    sac <- suppressMessages(sac_calibrate(
-      target_rho = 0.90,
-      n_items = 8,
+test_that("SAC rejects bounds without an admissible interior branch", {
+  expect_error(
+    sac_calibrate(
+      target_rho = 0.75,
+      n_items = 10,
       model = "rasch",
       item_source = "parametric",
-      c_init = 0.01,
-      step_params = list(a = 1e-8),
+      c_init = 100,
+      c_bounds = c(0.2, 0.3),
       n_iter = 20L,
       burn_in = 10L,
-      M_per_iter = 80L,
-      M_pre = 800L,
+      M_per_iter = 100L,
+      M_pre = 1000L,
       seed = 42
-    )),
+    ),
+    class = "irtsimrel_branch_unavailable"
+  )
+})
+
+test_that("SAC emits non-convergence warning for a feasible stalled update", {
+  sac <- NULL
+  expect_warning(
+    withCallingHandlers(
+      sac <- suppressMessages(sac_calibrate(
+        target_rho = 0.70,
+        n_items = 8,
+        model = "rasch",
+        item_source = "parametric",
+        c_init = 0.01,
+        step_params = list(a = 1e-8),
+        n_iter = 20L,
+        burn_in = 10L,
+        M_per_iter = 80L,
+        M_pre = 800L,
+        seed = 42
+      )),
+      warning = function(w) {
+        if (!grepl("not have fully converged", conditionMessage(w))) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    ),
     "SAC may not have fully converged"
   )
 
@@ -495,61 +509,29 @@ test_that("SAC emits non-convergence warning when achieved gap is large", {
   expect_equal(sac$projection_count, 0)
 })
 
-test_that("SAC emits upper projection warning when upper bound is active", {
-  sac <- NULL
-  expect_warning(
-    sac <- suppressMessages(sac_calibrate(
-      target_rho = 0.20,
-      n_items = 10,
-      model = "rasch",
-      item_source = "parametric",
-      c_init = 100,
-      c_bounds = c(0.2, 0.3),
-      step_params = list(a = 2),
-      n_iter = 20L,
-      burn_in = 10L,
-      M_per_iter = 100L,
-      M_pre = 1000L,
-      seed = 42
-    )),
-    "SAC projection hit the upper bound"
-  )
-
-  expect_false(sac$convergence$hit_lower_bound)
-  expect_true(sac$convergence$hit_upper_bound)
-  expect_equal(sac$projection_count, 20L)
-  expect_true("projection_applied" %in% sac$convergence$status_flags)
-})
-
-test_that("SAC emits lower projection warning when lower bound is active", {
-  sac <- NULL
-  expect_warning(
-    sac <- suppressMessages(sac_calibrate(
-      target_rho = 0.05,
-      n_items = 10,
-      model = "rasch",
-      item_source = "parametric",
-      c_init = 0.001,
-      c_bounds = c(0.2, 0.3),
-      step_params = list(a = 2),
-      n_iter = 20L,
-      burn_in = 10L,
-      M_per_iter = 100L,
-      M_pre = 1000L,
-      seed = 42
-    )),
-    "SAC projection hit the lower bound"
-  )
-
-  expect_true(sac$convergence$hit_lower_bound)
-  expect_false(sac$convergence$hit_upper_bound)
-  expect_equal(sac$projection_count, 20L)
-  expect_true("projection_applied" %in% sac$convergence$status_flags)
+test_that("SAC preflight rejects lower and upper boundary-only targets", {
+  for (target in c(0.05, 0.20)) {
+    expect_error(
+      sac_calibrate(
+        target_rho = target,
+        n_items = 10,
+        model = "rasch",
+        item_source = "parametric",
+        c_bounds = c(0.2, 0.3),
+        n_iter = 20L,
+        burn_in = 10L,
+        M_per_iter = 100L,
+        M_pre = 1000L,
+        seed = 42
+      ),
+      class = "irtsimrel_branch_unavailable"
+    )
+  }
 })
 
 test_that("SAC flags insufficient post-burn-in diagnostics", {
   sac <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.75,
+    target_rho = 0.70,
     n_items = 8,
     model = "rasch",
     item_source = "parametric",
@@ -575,7 +557,7 @@ test_that("SAC flags insufficient post-burn-in diagnostics", {
 
 test_that("SAC does not report ok when achieved reliability misses target", {
   sac <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.90,
+    target_rho = 0.70,
     n_items = 8,
     model = "rasch",
     item_source = "parametric",
@@ -626,11 +608,11 @@ test_that("SAC with resample_items=FALSE stores the fixed iteration item form", 
   beta_call_count <- 0L
   beta_fun <- function(n) {
     beta_call_count <<- beta_call_count + 1L
-    seq_len(n) + 100 * beta_call_count
+    seq(-1, 1, length.out = n) + 0.01 * beta_call_count
   }
 
   sac <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.75,
+    target_rho = 0.40,
     n_items = 6,
     model = "rasch",
     item_source = "custom",
@@ -638,6 +620,7 @@ test_that("SAC with resample_items=FALSE stores the fixed iteration item form", 
       custom_params = list(beta = beta_fun),
       center_difficulties = FALSE
     ),
+    reliability_metric = "info",
     resample_items = FALSE,
     n_iter = 30L,
     M_per_iter = 100L,
@@ -647,13 +630,13 @@ test_that("SAC with resample_items=FALSE stores the fixed iteration item form", 
 
   expect_equal(beta_call_count, 1L)
   expect_equal(sac$item_design, "fixed_iteration_items")
-  expect_equal(sac$beta_vec, seq_len(6) + 100)
+  expect_equal(sac$beta_vec, seq(-1, 1, length.out = 6) + 0.01)
   expect_equal(sac$items_base$data$beta, sac$beta_vec)
   expect_equal(sac$items_calib$data$beta, sac$beta_vec)
   expect_equal(sac$items_calib$data$lambda, sac$lambda_scaled)
 })
 
-test_that("SAC predict at c_star reproduces achieved_rho from stored final draw", {
+test_that("SAC predict at c_star reproduces the stored evaluation estimand", {
   sac <- suppressWarnings(suppressMessages(sac_calibrate(
     target_rho = 0.75,
     n_items = 12,
@@ -666,7 +649,7 @@ test_that("SAC predict at c_star reproduces achieved_rho from stored final draw"
   )))
 
   pred_at_cstar <- predict(sac, newdata = sac$c_star)
-  expect_equal(unname(pred_at_cstar), sac$achieved_rho, tolerance = 1e-12)
+  expect_equal(as.numeric(pred_at_cstar), sac$achieved_rho, tolerance = 1e-12)
 })
 
 

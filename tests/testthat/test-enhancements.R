@@ -60,14 +60,15 @@ test_that("compute_rho_both returns values in (0, 1)", {
   expect_lt(both$rho_bar, 1)
 })
 
-test_that("compute_rho_both returns zeros for c <= 0", {
+test_that("compute_rho_both returns zeros at c=0 and rejects negative c", {
   both <- compute_rho_both(0, theta_fix, beta_fix, lambda_fix)
   expect_equal(both$rho_tilde, 0)
   expect_equal(both$rho_bar, 0)
 
-  both_neg <- compute_rho_both(-1, theta_fix, beta_fix, lambda_fix)
-  expect_equal(both_neg$rho_tilde, 0)
-  expect_equal(both_neg$rho_bar, 0)
+  expect_error(
+    compute_rho_both(-1, theta_fix, beta_fix, lambda_fix),
+    "non-negative"
+  )
 })
 
 test_that("compute_rho_both validates inputs", {
@@ -100,7 +101,12 @@ test_that("check_feasibility returns correct class and structure", {
     "rho_range_info", "rho_range_msem",
     "rho_bounds_info", "rho_bounds_msem", "rho_info_max_c", "rho_msem_max_c",
     "target_rho", "target_status_info", "target_status_msem",
-    "n_items", "model", "latent_shape", "c_bounds", "M", "theta_var"
+    "n_items", "model", "latent_shape", "c_bounds", "M", "theta_var",
+    "topology_info", "topology_msem",
+    "target_status_info_canonical", "target_status_msem_canonical",
+    "root_count_info", "root_count_msem",
+    "admissible_root_count_info", "admissible_root_count_msem",
+    "best_achievable_info", "best_achievable_msem"
   ),
                ignore.order = TRUE)
 })
@@ -292,6 +298,35 @@ test_that("rho_curve with metric='msem' only has rho_bar", {
                   seed = 42, M = 2000, plot = FALSE)
   expect_true("rho_bar" %in% names(rc))
   expect_false("rho_tilde" %in% names(rc))
+})
+
+test_that("rho_curve metric='both' retains log-domain tail information", {
+  item_params <- list(
+    custom_params = list(beta = 0, lambda = 1e-47),
+    center_difficulties = FALSE
+  )
+  common_args <- list(
+    c_values = c(1, 1.01),
+    n_items = 1,
+    model = "2pl",
+    latent_shape = "normal",
+    latent_params = list(sigma = 1e50),
+    item_source = "custom",
+    item_params = item_params,
+    M = 2,
+    seed = 123,
+    plot = FALSE
+  )
+
+  both <- do.call(rho_curve, c(common_args, list(metric = "both")))
+  info <- do.call(rho_curve, c(common_args, list(metric = "info")))
+  msem <- do.call(rho_curve, c(common_args, list(metric = "msem")))
+
+  expect_true(all(is.finite(both$rho_tilde)))
+  expect_true(all(is.finite(both$rho_bar)))
+  expect_true(all(both$rho_bar > 0))
+  expect_equal(both$rho_tilde, info$rho_tilde, tolerance = 1e-15)
+  expect_equal(both$rho_bar, msem$rho_bar, tolerance = 1e-250)
 })
 
 test_that("rho_curve: rho_tilde is monotone increasing", {

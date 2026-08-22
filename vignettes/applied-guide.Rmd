@@ -4,8 +4,8 @@ author: "JoonHo Lee (jlee296@ua.edu)"
 date: "`r Sys.Date()`"
 description: >
   A comprehensive practical workflow guide for reliability-targeted IRT simulation
-  using IRTsimrel, covering the full 6-step pipeline from feasibility screening
-  through response data generation.
+  using IRTsimrel, covering Rasch, 2PL, and 3PL designs from feasibility
+  screening through response generation and validation.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Applied Guide: Reliability-Targeted IRT Simulation}
@@ -40,9 +40,10 @@ design parameter rather than an emergent property of the simulation.
 4. Optionally validate the calibration with SAC (Algorithm 2).
 5. Generate item response data at the target reliability.
 6. Extract, summarize, and export calibrated item parameters.
+7. Distinguish fixed-form from item-superpopulation targets in 3PL work.
 
-**Prerequisites.** Install IRTsimrel and (optionally) TAM for external
-validation:
+**Prerequisites.** Install IRTsimrel and, optionally, TAM for external
+Rasch/2PL validation and 3PL EAP diagnostics:
 
 ```{r install-packages, eval = FALSE}
 # install.packages("devtools")
@@ -50,8 +51,14 @@ devtools::install_github("joonho112/IRTsimrel")
 install.packages("TAM")
 ```
 
-Throughout this guide we use `seed = 42` and `M = 5000L` so that examples run
-quickly and reproduce exactly.
+In the TAM version used for the package's v0.3 validation, a 3PL fit supports
+EAP scoring but not `tam.wle()` on the `tam.mml.3pl` object. Do not coerce the
+object class or report a 3PL TAM WLE result through an unsupported path.
+
+Most baseline examples use `seed = 42` and `M = 5000L`; the compact 3PL
+workflow uses smaller documented settings and separate seeds so the vignette
+remains quick and reproducible. Treat these as tutorial settings, not automatic
+precision recommendations for a final study.
 
 
 # 2. The 6-Step Workflow
@@ -88,18 +95,25 @@ feas <- check_feasibility(
 )
 ```
 
-The output tells you the achievable range for both the average-information
-metric ($\tilde{\rho}$) and the MSEM-based metric ($\bar{w}$).  If your target
-falls outside the reported range, you must change the design (e.g., add items or
-switch to a 2PL model).
+The output reports the resolved range for both the average-information metric
+($\tilde{\rho}$) and the MSEM-based metric ($\bar{w}$) in one finite Monte
+Carlo design. If a target falls outside that range, it is infeasible within
+the configured bounds and sampled design. Inspect the topology and
+best-achievable record before deciding whether to justify wider bounds, add
+items, or change the item model. A finite heavy-tail MSEM range is sensitivity
+evidence only, not a population feasibility certificate.
 
 **Quick check for a specific target:**
 
 ```{r step1-check-target}
 target <- 0.85
-in_range <- identical(feas$target_status_info, "feasible")
+in_range <- identical(feas$target_status_info_canonical, "feasible")
+admissible <- feas$admissible_root_count_info > 0L
 cat(sprintf("Target rho = %.2f is %s for this design.\n",
-            target, ifelse(in_range, "FEASIBLE", "NOT feasible")))
+            target,
+            ifelse(in_range && admissible,
+                   "FEASIBLE WITH AN ADMISSIBLE ROOT",
+                   "NOT YET CALIBRATION-READY")))
 ```
 
 ### Comparing feasibility across designs
@@ -187,9 +201,11 @@ cat(sprintf("Approximate c for rho_tilde = 0.80: %.3f\n", curve_data$c[idx]))
 
 ## 2.3 Step 3: Calibrate with EQC --- `eqc_calibrate()`
 
-EQC (Empirical Quadrature Calibration) is Algorithm 1 from Lee (2026).  It uses
-deterministic root-finding (Brent's method via `uniroot()`) to solve the
-equation $\hat{\rho}_M(c^*) = \rho^*$.
+EQC (Empirical Quadrature Calibration) is Algorithm 1 from Lee (2026). It maps
+the empirical reliability topology on the requested log-scale interval,
+selects a branch under `root_policy`, and uses Brent's method via
+`uniroot()` only to polish ordinary sign-changing crossings of
+$\hat{\rho}_M(c^*) = \rho^*$.
 
 ### 2.3.1 Basic calibration (Rasch)
 
@@ -229,7 +245,7 @@ summary(eqc_result)
 |:----------|:--------|:------------|
 | `target_rho` | --- | Target marginal reliability $\rho^* \in (0, 1)$ |
 | `n_items` | --- | Number of items on the test form |
-| `model` | `"rasch"` | `"rasch"` or `"2pl"` |
+| `model` | `"rasch"` | `"rasch"`, `"2pl"`, or `"3pl"` |
 | `latent_shape` | `"normal"` | Latent distribution shape (see `vignette("latent-distributions")`) |
 | `item_source` | `"parametric"` | Item parameter source (see `vignette("item-parameters")`) |
 | `reliability_metric` | `"info"` | EQC supports `"info"` / `"tilde"`; use SAC for direct `"msem"` targeting |
@@ -285,7 +301,8 @@ $\tilde{\rho}$ or $\bar{w}$.  SAC is useful for:
 
 - **Independent validation** of EQC results.
 - **Targeting $\bar{w}$** directly (the MSEM-based reciprocal-information metric).
-- **Complex scenarios** where analytic information functions are unavailable.
+- **Item-superpopulation calibration** when forms, rather than only persons,
+  are part of the target distribution.
 
 ### 2.4.1 Warm-start from EQC (recommended)
 
@@ -297,9 +314,9 @@ sac_result <- sac_calibrate(
   n_items           = 25,
   model             = "rasch",
   latent_shape      = "normal",
-  item_source       = "parametric",
   reliability_metric = "info",
   c_init            = eqc_result,
+  resample_items    = FALSE,
   n_iter            = 200L,
   M_per_iter        = 500L,
   M_pre             = 5000L,
@@ -321,8 +338,8 @@ comparison <- compare_eqc_sac(eqc_result, sac_result)
 ```
 
 The comparison reports the absolute and percentage difference in $c^*$ between
-the two algorithms.  Agreement within 5% is typical for well-conditioned
-problems.
+the two algorithms and applies a 5% diagnostic threshold only after verifying
+that their estimand and item-design contracts are comparable.
 
 ### 2.4.4 SAC parameter reference
 
@@ -334,7 +351,17 @@ problems.
 | `M_pre` | `10000L` | MC samples for pre-calculating $\sigma^2_\theta$ |
 | `burn_in` | `floor(n_iter/2)` | Iterations to discard before averaging |
 | `step_params` | `list(a=1, A=50, gamma=0.67)` | Step-size sequence: $a_n = a/(n+A)^\gamma$ |
-| `resample_items` | `TRUE` | Re-draw item parameters each iteration |
+| `resample_items` | `TRUE` | `TRUE`: item-superpopulation target; `FALSE`: one fixed form |
+
+EQC always calibrates the one generated form. SAC has two explicit scopes:
+
+- With `resample_items = FALSE`, SAC reuses one form. When `c_init` is an EQC
+  object and `item_source`/`item_params` are omitted, it reuses the exact EQC
+  bank and verifies the same target, model, metric, item count, and form.
+- With `resample_items = TRUE`, SAC redraws forms and reports the mean
+  reliability over independent holdout forms. This is an item-superpopulation
+  estimand, so an EQC object is not a comparable warm start; use the automatic
+  initializer or a numeric starting value.
 
 
 ## 2.5 Step 5: Generate Response Data --- `simulate_response_data()`
@@ -399,7 +426,7 @@ par(mfrow = c(1, 1))
 ### 2.5.3 External validation with TAM
 
 If you have the TAM package installed, you can verify that the achieved
-reliability matches the target:
+reliability provides a useful external diagnostic for Rasch/2PL data:
 
 ```{r step5-tam-validation, eval = FALSE}
 if (requireNamespace("TAM", quietly = TRUE)) {
@@ -415,6 +442,13 @@ if (requireNamespace("TAM", quietly = TRUE)) {
 > reliability is higher than WLE reliability, but `EAPrel()` and `WLErel()` use
 > different estimators and variance bases. Inspect both as complementary
 > external diagnostics rather than formal lower/upper bounds.
+
+For 3PL data, fit `TAM::tam.mml.3pl()` directly and use its EAP person output
+or `EAP.rel` only. `compute_reliability_tam()` intentionally exposes the
+Rasch/2PL helper contract, and `TAM::tam.wle()` was unsupported for a
+`tam.mml.3pl` object in the validated TAM version. Moreover, EAP score
+reliability is estimator-, sample-, prior-, and fit-dependent; it is not the
+same estimand as IRTsimrel's analytic population information reliability.
 
 
 ## 2.6 Step 6: Extract and Use Results
@@ -477,38 +511,166 @@ cat(sprintf("theta_var = %.4f\n", eqc_result$theta_var))
 ```
 
 
+## 2.7 Compact End-to-End 3PL Workflow
+
+A 3PL form has lower asymptotes $g_i$ in addition to difficulty and
+discrimination:
+
+$$
+P(Y_i=1\mid\theta)=g_i+(1-g_i)
+\operatorname{logit}^{-1}\{c\lambda_{i,0}(\theta-\beta_i)\}.
+$$
+
+`guessing_params` controls $g_i$. The global scale $c$ multiplies only the
+baseline discriminations $\lambda_{i,0}$; it never multiplies the guessing
+parameters. The next executable example makes that separation explicit and
+freezes the generated form before calibration.
+
+```{r workflow-3pl-generate}
+generated_3pl <- sim_item_params(
+  n_items = 12,
+  model = "3pl",
+  source = "parametric",
+  method = "copula",
+  guessing_params = list(distribution = "fixed", value = 0.20),
+  scale = 1,
+  seed = 310
+)
+
+fixed_3pl_spec <- list(custom_params = list(
+  beta = generated_3pl$data$beta,
+  lambda = generated_3pl$data$lambda_unscaled,
+  guessing = generated_3pl$data$guessing
+))
+```
+
+EQC estimates a discrimination scale for that fixed form. The smaller
+quadrature setting below is suitable for documentation; increase `M` and use
+independent seeded holdouts for a final study.
+
+```{r workflow-3pl-eqc}
+eqc_3pl <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_source = "custom",
+  item_params = fixed_3pl_spec,
+  reliability_metric = "info",
+  M = 2000L,
+  seed = 310
+)
+
+coef(eqc_3pl)[1:6, c(
+  "beta", "lambda_base", "lambda_scaled", "guessing", "c_star"
+)]
+```
+
+For a same-estimand stochastic check, set `resample_items = FALSE` and omit
+item-generation arguments. SAC then reuses the exact EQC bank and rejects a
+mismatched metric or form instead of silently comparing unlike designs.
+
+```{r workflow-3pl-sac}
+sac_3pl <- sac_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  reliability_metric = "info",
+  c_init = eqc_3pl,
+  resample_items = FALSE,
+  n_iter = 60L,
+  M_per_iter = 250L,
+  M_pre = 1000L,
+  evaluation_controls = list(n_forms = 3L, M = 500L),
+  seed = 310
+)
+
+same_form_check <- compare_eqc_sac(eqc_3pl, sac_3pl)
+stopifnot(same_form_check$comparable)
+```
+
+Finally, generate responses from the calibrated form and verify its structural
+contract. `simulate_response_data()` preserves the calibrated discriminations,
+the fixed lower asymptotes, and provenance.
+
+```{r workflow-3pl-response}
+sim_3pl <- simulate_response_data(
+  result = eqc_3pl,
+  n_persons = 200,
+  seed = 311
+)
+
+stopifnot(
+  identical(dim(sim_3pl$response_matrix), c(200L, 12L)),
+  all(sim_3pl$response_matrix %in% 0:1),
+  all(sim_3pl$guessing == 0.20),
+  identical(sim_3pl$provenance$item_scope, "fixed_form")
+)
+c(
+  eqc_rho = eqc_3pl$achieved_rho,
+  sac_holdout_rho = sac_3pl$achieved_rho,
+  response_rate = mean(sim_3pl$response_matrix)
+)
+```
+
+For an item-superpopulation target, use SAC without an EQC-object warm start:
+
+```{r workflow-3pl-superpopulation, eval = FALSE}
+sac_3pl_population <- sac_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_params = list(
+    guessing_params = list(distribution = "fixed", value = 0.20)
+  ),
+  reliability_metric = "info",
+  c_init = NULL,
+  resample_items = TRUE,
+  n_iter = 300L,
+  M_per_iter = 1000L,
+  M_pre = 10000L,
+  seed = 310
+)
+```
+
+Its `achieved_rho` is the mean over independent holdout-form reliabilities,
+not the reliability of the single representative form stored for convenient
+response generation. Setting every $g_i=0$ recovers exact 2PL behavior in the
+shared probability and information kernels; existing Rasch/2PL calls remain
+valid without any new arguments.
+
+
 # 3. Choosing EQC vs SAC
 
 The following decision table helps you choose between the two algorithms.
 
 | Criterion | EQC (Algorithm 1) | SAC (Algorithm 2) |
 |:----------|:-------------------|:-------------------|
-| **Speed** | Fast (single root-find) | Slower (iterative) |
+| **Speed** | Fast (adaptive topology scan plus local root polishing) | Slower (preflight plus iterative updates) |
 | **Default metric** | $\tilde{\rho}$ (info) | $\bar{w}$ (msem) |
-| **Deterministic?** | Yes | No (stochastic) |
-| **Monotonicity** | Stable on practical search intervals; finite-grid saturation triggers an interior-maximum check | Not required |
+| **Deterministic?** | Conditional on the frozen Monte Carlo design | No (stochastic) |
+| **Topology contract** | Maps the full requested log-scale interval, enumerates crossings/extrema, and applies `root_policy`; no global monotonicity assumption | Preflight must resolve a feasible increasing branch before updates |
 | **Can target $\bar{w}$?** | No; use `"info"` / `"tilde"` | Yes, natively |
-| **Warm start** | Not needed | Recommended from EQC |
+| **Warm start** | Not needed | Compatible EQC object for a same-metric fixed-form run; numeric scale otherwise |
 | **Use for validation** | Primary calibration | Same-estimand check with `reliability_metric = "info"` |
-| **Convergence diagnostics** | Not applicable | Trajectory + Polyak avg |
+| **Diagnostics** | Root topology, selected branch, and empirical residual | Trajectory, branch, projection, holdout, and Polyak-average diagnostics |
 
 **Practical recommendation:**
 
-1. **Start with EQC** using `reliability_metric = "info"`.  This is fast and
-   deterministic.
+1. **Start with EQC** using `reliability_metric = "info"`. This is fast and
+   reproducible with a fixed seed and stored form/quadrature design.
 2. **Use SAC with `reliability_metric = "info"` to validate EQC** when you want
    a stochastic same-estimand check.
 3. **Use SAC with `reliability_metric = "msem"` separately** when your research
    question targets $\bar{w}$ directly.
-4. **Always warm-start SAC** from EQC for faster convergence when comparing to
-   an EQC result.
+4. **Warm-start fixed-form SAC** from EQC when comparing the same form and
+   metric. Do not use an EQC-object warm start for an item-superpopulation run.
 
 
 # 4. Choosing the Reliability Metric: info vs msem
 
 IRTsimrel supports two population reliability definitions.
 
-## 4.1 Average-information reliability ($\tilde{\rho}$)
+## 4.1 Average-information reliability (rho-tilde) {#average-information-reliability-tilderho}
 
 $$
 \tilde{\rho}(c) = \frac{\sigma^2_\theta \, \bar{\mathcal{J}}(c)}
@@ -520,13 +682,14 @@ average test information across the latent distribution.
 
 **Properties:**
 
-- Well behaved over practical EQC search intervals; for very wide finite
-  empirical quadrature bounds, the implementation checks an interior maximum
-  before declaring infeasibility.
+- Often well behaved on practical intervals, but saturation can create an
+  interior maximum, multiple crossings, or boundary-only feasibility. EQC maps
+  the requested interval adaptively and selects among detected roots with an
+  explicit `root_policy`.
 - Upper bound on $\bar{w}$ via Jensen's inequality.
 - Faster to compute than $\bar{w}$.
 
-## 4.2 MSEM-based marginal reliability ($\bar{w}$)
+## 4.2 MSEM-based marginal reliability (w-bar) {#msem-based-marginal-reliability-barw}
 
 $$
 \bar{w}(c) = \frac{\sigma^2_\theta}
@@ -558,9 +721,9 @@ information varies substantially (e.g., short tests, non-normal populations).
 
 | Scenario | Recommended metric | Reason |
 |:---------|:-------------------|:-------|
-| Standard simulation study | `"info"` | Stable on practical intervals; fast deterministic root-finding |
+| Standard simulation study | `"info"` | Stable on practical intervals; fast seeded root-finding |
 | MSEM-based marginal reliability needed | `"msem"` via SAC | Uses reciprocal-information error variance |
-| Non-normal latent distribution | `"info"` for EQC | Bracket-checked deterministic root-finding |
+| Non-normal latent distribution | `"info"` for EQC | Bracket-checked seeded root-finding |
 | EQC/SAC validation | `"info"` for both | Compare the same estimand via `compare_eqc_sac()` |
 
 ```{r metric-comparison}
@@ -623,7 +786,41 @@ cat(sprintf("lambda_scaled range: [%.3f, %.3f]\n",
             min(items_2pl$lambda_scaled), max(items_2pl$lambda_scaled)))
 ```
 
-## 5.3 Rasch vs 2PL comparison
+## 5.3 Three-parameter logistic (3PL) model
+
+The 3PL retains the varying baseline discrimination of the 2PL and adds a
+lower asymptote. Reliability calibration changes the common discrimination
+scale while preserving each item's difficulty and guessing parameter.
+
+```{r model-3pl}
+eqc_3pl_demo <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_source = "parametric",
+  item_params = list(
+    guessing_params = list(distribution = "uniform", min = 0.15, max = 0.25)
+  ),
+  reliability_metric = "info",
+  M = 2000L,
+  seed = 42
+)
+
+items_3pl_demo <- coef(eqc_3pl_demo)
+range(items_3pl_demo$guessing)
+stopifnot(all.equal(
+  items_3pl_demo$lambda_scaled,
+  eqc_3pl_demo$c_star * items_3pl_demo$lambda_base
+))
+```
+
+Because nonzero guessing changes the information curve topology, a 3PL
+calibration can have more than one candidate crossing on a wide scale range.
+IRTsimrel scans the bounded scale interval and, by default, selects the lowest
+increasing root. Inspect the stored topology/status instead of assuming that
+endpoint monotonicity is sufficient.
+
+## 5.4 Rasch vs 2PL comparison
 
 ```{r model-comparison}
 targets <- c(0.70, 0.75, 0.80, 0.85, 0.90)
@@ -647,7 +844,7 @@ for (i in seq_along(targets)) {
 comp_df
 ```
 
-## 5.4 How latent shape affects calibration
+## 5.5 How latent shape affects calibration
 
 Different latent distribution shapes require different scaling factors to
 achieve the same target reliability, even with the same item parameters.  This
@@ -691,7 +888,7 @@ reliability.  This makes intuitive sense: extreme $\theta$ values receive less
 test information under the logistic model, and heavier tails put more mass in
 those regions.
 
-## 5.5 Effect of test length on reliability curve
+## 5.6 Effect of test length on reliability curve
 
 ```{r test-length-curves, fig.height = 5, fig.alt = "Reliability curves comparing how test length affects the discrimination scale needed for a target reliability."}
 lengths_to_plot <- c(10, 20, 30, 50)
@@ -736,6 +933,8 @@ range.
 
 - Increase the number of items.
 - Switch from Rasch to 2PL (varying discriminations provide more flexibility).
+- For 3PL designs, inspect the selected root topology and reconsider the
+  guessing distribution or scale bounds rather than assuming monotonicity.
 - Widen `c_bounds` in `check_feasibility()` to explore a larger range.
 - Consider whether the latent shape makes the target unrealistic.
 
@@ -769,6 +968,7 @@ $[\rho(c_{\min}), \rho(c_{\max})]$.
 **Possible causes:**
 
 - Different reliability metrics (check `metric` field).
+- Different item scopes (fixed form versus item superpopulation) or item banks.
 - Insufficient Monte Carlo samples (`M` for EQC, `M_per_iter`/`n_iter` for SAC).
 - Different random seeds producing different item/theta draws.
 
@@ -776,14 +976,16 @@ $[\rho(c_{\min}), \rho(c_{\max})]$.
 
 - Increase `M` and `M_per_iter`.
 - Use `reliability_metric = "info"` for both algorithms for fair comparison.
-- Use the same `seed` for both.
+- For a fixed-form comparison, pass the EQC result with
+  `resample_items = FALSE` and omit item-generation arguments so the same form
+  is reused. A shared seed alone does not make different estimands comparable.
 
 ## 6.2 Performance tips
 
 | Goal | Recommendation |
 |:-----|:---------------|
 | Fast exploration | Use `M = 5000L`, `n_iter = 100L` |
-| Publication quality | Use `M = 50000L`, `n_iter = 500L` |
+| Higher-precision starting point | Try `M = 50000L`, `n_iter = 500L`, then verify seed and holdout sensitivity |
 | Quick feasibility check | Use `check_feasibility()` with `M = 3000L` |
 | Reduce SAC variance | Increase `M_per_iter` to 1000 or 2000 |
 | Faster SAC | Warm start from EQC, reduce `n_iter` |
@@ -803,9 +1005,14 @@ library(IRTsimrel)
 # --- Configuration ------------------------------------------
 target_rho   <- 0.85       # desired marginal reliability
 n_items      <- 25         # test length
-model        <- "rasch"    # "rasch" or "2pl"
+model        <- "rasch"    # "rasch", "2pl", or "3pl"
 latent_shape <- "normal"   # latent distribution shape
 item_source  <- "parametric"
+item_params  <- if (model == "3pl") {
+  list(guessing_params = list(distribution = "fixed", value = 0.20))
+} else {
+  list()
+}
 N_persons    <- 500        # sample size for response data
 M_quad       <- 5000L      # Monte Carlo samples for EQC
 seed_val     <- 42         # for reproducibility
@@ -814,17 +1021,20 @@ seed_val     <- 42         # for reproducibility
 feas <- check_feasibility(
   n_items = n_items, model = model,
   latent_shape = latent_shape, item_source = item_source,
+  item_params = item_params,
   target_rho = target_rho, M = M_quad, seed = seed_val, verbose = FALSE
 )
 stopifnot(
-  feas$target_status_info %in% c("feasible", "boundary_lower", "boundary_upper")
+  identical(feas$target_status_info_canonical, "feasible"),
+  feas$admissible_root_count_info > 0L
 )
-cat("Step 1: Feasibility confirmed.\n")
+cat("Step 1: Feasible target with an admissible root confirmed.\n")
 
 # --- Step 2: Reliability curve (optional) --------------------
 curve_df <- rho_curve(
   n_items = n_items, model = model,
   latent_shape = latent_shape, item_source = item_source,
+  item_params = item_params,
   M = M_quad, seed = seed_val, plot = FALSE
 )
 
@@ -833,6 +1043,7 @@ eqc_res <- eqc_calibrate(
   target_rho = target_rho, n_items = n_items,
   model = model, latent_shape = latent_shape,
   item_source = item_source,
+  item_params = item_params,
   reliability_metric = "info",
   M = M_quad, seed = seed_val
 )
@@ -843,9 +1054,9 @@ cat(sprintf("Step 3: EQC calibrated c* = %.4f, achieved rho = %.4f\n",
 sac_res <- sac_calibrate(
   target_rho = target_rho, n_items = n_items,
   model = model, latent_shape = latent_shape,
-  item_source = item_source,
   reliability_metric = "info",
   c_init = eqc_res,
+  resample_items = FALSE,
   n_iter = 200L, M_per_iter = 500L, M_pre = 5000L,
   seed = seed_val
 )
@@ -875,9 +1086,11 @@ paper.  Replace bracketed values with your specific settings.
 
 > Item response data were generated using the reliability-targeted simulation
 > framework of Lee (2026), implemented in the R package IRTsimrel (version
-> `r packageVersion("IRTsimrel")`).  A [Rasch / two-parameter logistic] model
-> was assumed with [25] items and latent abilities drawn from a [standard
-> normal / bimodal / skewed] distribution.
+> `r packageVersion("IRTsimrel")`). A [Rasch / two-parameter logistic /
+> three-parameter logistic] model was assumed with [25] items and latent
+> abilities drawn from a [standard normal / bimodal / skewed] distribution.
+> For the 3PL, item lower asymptotes were [fixed at 0.20 / generated from the
+> stated distribution], and calibration multiplied discrimination only.
 
 ## 8.2 Describing the calibration
 
@@ -898,9 +1111,10 @@ paper.  Replace bracketed values with your specific settings.
 ## 8.4 Describing the response data
 
 > Binary item response data were generated for $N =$ [500] simulated examinees
-> using the calibrated item parameters.  Each response $Y_{pi}$ was drawn from
-> $\text{Bernoulli}(p_{pi})$ where $p_{pi} = \text{logit}^{-1}[\lambda_i^*
-> (\theta_p - \beta_i)]$. Simulation provenance, including metric,
+> using the calibrated item parameters. Each response $Y_{pi}$ was drawn from
+> $\text{Bernoulli}(p_{pi})$ where $p_{pi} = g_i + (1-g_i)
+> \text{logit}^{-1}[\lambda_i^*(\theta_p - \beta_i)]$ (with $g_i=0$ for
+> Rasch/2PL). Simulation provenance, including metric,
 > calibration status, item source, latent shape, and seed, was retained with
 > each generated data object.
 

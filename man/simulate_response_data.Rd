@@ -37,12 +37,20 @@ result class, target and achieved reliability, metric, model, test
 length, scalar \code{calibration_status}, character-vector
 \code{status_flags}, item source/design, calibration call, simulation
 seed, sample size, latent shape, and latent parameters.}
+\item{\code{guessing}}{Item lower asymptotes (I x 1). This additive
+component is a zero vector for Rasch and 2PL designs.}
 }
 }
 \description{
 Generates item response data using the calibrated parameters from
 \code{eqc_calibrate()} or \code{sac_calibrate()} (formerly
 \code{spc_calibrate()}).
+
+The function uses the normalized item design stored in the calibration
+result. For a fixed-form result this is the calibrated fixed form. For a
+SAC result with \code{item_scope = "item_superpopulation"}, it is one stored
+representative evaluation form; this function does not redraw a new item
+form or simulate the aggregate item-superpopulation estimand.
 }
 \examples{
 \dontrun{
@@ -68,6 +76,7 @@ sac_result <- sac_calibrate(
   model = "rasch",
   reliability_metric = "info",
   c_init = eqc_result,
+  resample_items = FALSE,
   n_iter = 200,
   seed = 42
 )

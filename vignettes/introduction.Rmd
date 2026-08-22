@@ -126,17 +126,27 @@ $$
 
 where $\sigma_\theta^2$ is the latent trait variance and
 $\bar{\mathcal{J}} = \mathbb{E}_\theta[\mathcal{J}(\theta)]$ is the marginal
-(average) test information. The test information at a given ability level is
-the sum of item information functions:
+(average) test information. Under the package's fixed logistic convention
+(`D = 1`), write
 
 $$
-\mathcal{J}(\theta) \;=\; \sum_{i=1}^{I} \lambda_i^2 \, p_i(\theta) \,
-  [1 - p_i(\theta)]
+q_i(\theta) = \operatorname{logit}^{-1}\!\left[\lambda_i
+  (\theta-\beta_i)\right], \qquad
+P_i(\theta) = g_i + (1-g_i)q_i(\theta),
 $$
 
-where $p_i(\theta) = \text{logit}^{-1}[\lambda_i (\theta - \beta_i)]$ is
-the probability of a correct response to item $i$. This formula makes
-explicit that reliability depends on both the **item parameters** (through
+where $g_i$ is the 3PL lower asymptote (zero for Rasch/2PL). Test information
+is then
+
+$$
+\mathcal{J}(\theta) \;=\; \sum_{i=1}^{I}
+\frac{\{(1-g_i)\lambda_i q_i(\theta)[1-q_i(\theta)]\}^2}
+     {P_i(\theta)[1-P_i(\theta)]}.
+$$
+
+For $g_i=0$, this reduces exactly to
+$\lambda_i^2q_i(\theta)[1-q_i(\theta)]$. The formulas make explicit that
+reliability depends on both the **item parameters** (through
 $\bar{\mathcal{J}}$) and the **latent distribution** (through
 $\sigma_\theta^2$ and the expectation over $\theta$). Changing either one
 changes the implied reliability, which is precisely why it must be actively
@@ -165,23 +175,30 @@ qualitative features of the data-generating process --- how difficulties are
 spread, whether discriminations vary across items, whether the latent
 distribution is skewed or multimodal. These features come from realistic
 generators (parametric distributions by default, optional Item Response
-Warehouse integration when available, or user-supplied custom parameters) and
-are preserved exactly throughout calibration.
+Warehouse integration when available, or user-supplied custom parameters).
+Within a fixed form, difficulty, relative discrimination, and 3PL guessing are
+held fixed while discrimination alone is scaled. In an SAC item-superpopulation
+run, individual forms are redrawn from the same normalized generator rather
+than preserved item by item.
 
-Scale controls only the **overall level of informativeness**, and thus
-reliability. It operates through a single **scaling factor** $c^*$. Given
-baseline (unscaled) discriminations $\lambda_{i,0}$, the calibrated
-discriminations are:
+The intervention acts only on the **overall discrimination scale** through a
+single **scaling factor** $c^*$. Given baseline (unscaled) discriminations
+$\lambda_{i,0}$, the calibrated discriminations are:
 
 $$
 \lambda_i^* \;=\; c^* \cdot \lambda_{i,0}
 $$
 
-Increasing $c^*$ amplifies all discriminations proportionally, raising test
-information and therefore reliability, while preserving the relative structure
-among items (e.g., the ratio $\lambda_2 / \lambda_1$ remains constant). The
-calibration algorithm finds the value $c^*$ that makes the population
-reliability equal to the user's target $\rho^*$.
+Increasing $c^*$ always amplifies all discriminations proportionally and
+preserves their relative structure (for example, the ratio
+$\lambda_2 / \lambda_1$). On a detected increasing branch in the regular
+calibration region, this also raises the targeted reliability. No global
+direction is assumed outside that branch because response saturation and
+finite-grid effects can produce extrema or multiple crossings. The calibration
+algorithm finds a selected-branch value $c^*$ whose empirical quadrature or
+stochastic reliability estimate matches the user's target $\rho^*$.
+Population-level accuracy is an approximation governed by the Monte Carlo
+design and should be checked on independent draws.
 
 
 ### 3.2 How It Works in Practice
@@ -195,11 +212,12 @@ The workflow has three steps:
 
 2. **Calibrate scale.** Call `eqc_calibrate()` (or `sac_calibrate()`) with
    your target reliability. The function uses the generated structure to
-   find the scaling factor $c^*$ that achieves $\rho^* = \rho_{\text{target}}$.
+   find a scaling factor $c^*$ whose selected empirical objective matches
+   $\rho_{\text{target}}$.
 
 3. **Generate data.** Call `simulate_response_data()` with the calibration
-   result to produce a binary response matrix whose implied population
-   reliability matches your target.
+   result to produce a binary response matrix from the calibrated design.
+   Finite-sample reliability estimates can differ from the analytic target.
 
 
 ### 3.3 A Minimal Example
@@ -225,10 +243,10 @@ result
 ```
 
 The output reports the calibrated scaling factor `c*`, the achieved
-reliability, and convergence diagnostics. The absolute error between target
-and achieved reliability is typically on the order of $10^{-5}$ or smaller,
-confirming that the calibration solved the root-finding problem to high
-precision.
+reliability, and topology diagnostics. The reported residual measures
+agreement on the fixed calibration quadrature. A small residual confirms
+numerical solution of that empirical objective; it does not by itself
+establish the same error on an independent population draw.
 
 
 ### 3.4 From Calibration to Data
@@ -252,9 +270,10 @@ dim(sim$response_matrix)
 sim$provenance[c("metric", "calibration_status", "status_flags", "item_source")]
 ```
 
-The resulting dataset has exactly the reliability properties you specified.
-It also carries provenance metadata describing the metric, calibration status,
-item source, design, and simulation seed. You can use the response matrix
+The response data inherit the calibrated item design, but a finite response
+sample can have an estimator-specific reliability different from the analytic
+target. The result also carries provenance metadata describing the metric,
+calibration status, item source, design, and simulation seed. You can use the response matrix
 directly in any downstream analysis: model fitting, parameter recovery studies,
 comparison of estimators, or power analysis.
 
@@ -270,9 +289,10 @@ differ in their approach and strengths.
 
 ### 4.1 Algorithm 1: EQC (Empirical Quadrature Calibration)
 
-EQC draws a large, fixed Monte Carlo sample ("quadrature") of $M$ abilities
-and $I$ item parameters, then uses Brent's root-finding method
-(`uniroot()`) to solve $\hat{\rho}_M(c) = \rho^*$ deterministically.
+EQC draws a fixed Monte Carlo sample ("quadrature") of $M$ abilities and one
+fixed item form. It adaptively maps the complete user-supplied interval on the
+log scale, polishes detected local crossings with Brent's method
+(`uniroot()`), and selects an admissible branch according to `root_policy`.
 
 **How it works:**
 
@@ -280,24 +300,28 @@ and $I$ item parameters, then uses Brent's root-finding method
    $\{(\beta_i, \lambda_{i,0})\}_{i=1}^I \sim H$ once.
 2. For any candidate $c$, form $\lambda_i(c) = c \cdot \lambda_{i,0}$ and
    compute the empirical reliability $\hat{\rho}_M(c)$.
-3. Solve $\hat{\rho}_M(c^*) = \rho^*$ via `uniroot()`.
+3. Enumerate detected crossings, tangencies, plateaus, and extrema; polish
+   bracketed crossings locally and apply the requested root-selection policy.
 
-**Strengths:** Fast (typically under one second), deterministic, exact up to
-Monte Carlo noise, reproducible with a fixed seed. The recommended default
-for routine simulation studies.
+**Strengths:** Fast, deterministic conditional on the fixed draw, explicit
+about root topology, and reproducible with a fixed seed. It is the recommended
+default for routine fixed-form simulation studies.
 
 **When to use EQC:**
 
 - Routine simulation studies where you need fast, reliable calibration.
-- Rasch or 2PL models with standard distributions.
+- Rasch, 2PL, or 3PL models with supported item and latent generators.
 - As initialization (warm start) for SAC.
 
 
 ### 4.2 Algorithm 2: SAC (Stochastic Approximation Calibration)
 
-SAC uses the Robbins-Monro stochastic approximation algorithm. At each
-iteration it draws a fresh mini-batch of abilities and items, computes a
-noisy reliability estimate, and takes a gradient-like step toward the target.
+SAC uses the Robbins-Monro stochastic approximation algorithm after a
+deterministic topology preflight has selected a feasible increasing branch.
+At each iteration it draws a fresh mini-batch of abilities, computes a noisy
+reliability estimate, and takes a gradient-like step toward the target. Items
+are reused for `resample_items = FALSE` (fixed form) and redrawn for
+`resample_items = TRUE` (item-superpopulation).
 After a burn-in phase, Polyak-Ruppert averaging yields the final estimate
 $c^*$.
 
@@ -333,7 +357,8 @@ eqc_res <- eqc_calibrate(
 )
 sac_res <- sac_calibrate(target_rho = 0.80, n_items = 20,
                           reliability_metric = "info",
-                          c_init = eqc_res, ...)
+                          c_init = eqc_res,
+                          resample_items = FALSE, ...)
 ```
 
 
@@ -341,11 +366,11 @@ sac_res <- sac_calibrate(target_rho = 0.80, n_items = 20,
 
 | Scenario | Recommended | Rationale |
 |----------|-------------|-----------|
-| Standard Rasch/2PL, need quick answer | EQC | Deterministic, fast, precise |
+| Standard Rasch/2PL/3PL fixed form, need quick answer | EQC | Deterministic conditional on the fixed draw; fast and topology-aware |
 | Targeting $\tilde{\rho}$ (average-information) | EQC | Deterministic root-finding with bracket checks |
 | Targeting $\bar{w}$ (MSEM-based) | SAC | Direct stochastic targeting with convergence diagnostics |
 | Validating an EQC result | SAC warm start with `reliability_metric = "info"` | Independent confirmation of the same estimand |
-| Complex custom DGP | SAC | Only requires pointwise reliability estimates |
+| Item-superpopulation target | SAC with `resample_items = TRUE` | Calibrates and evaluates across independently redrawn forms |
 | Large-scale Monte Carlo study | EQC + optional SAC check | Speed for production, SAC for spot checks |
 
 For most users in most situations, **EQC is the right choice**. Use SAC when
@@ -359,7 +384,7 @@ IRTsimrel supports two population-level reliability metrics from Lee (2026).
 Understanding the distinction is important for choosing the right algorithm
 and interpreting results.
 
-### 5.1 Average-Information Reliability ($\tilde{\rho}$)
+### 5.1 Average-Information Reliability (rho-tilde) {#average-information-reliability-tilderho}
 
 $$
 \tilde{\rho}(c) \;=\;
@@ -370,19 +395,19 @@ $$
 $$
 
 This metric uses the **arithmetic mean** of the test information function
-across the latent distribution. Because the arithmetic mean is a linear
-functional of $c^2$ (via the item information formula), $\tilde{\rho}(c)$ is
-well behaved on practical EQC search intervals. The implementation verifies
-the bracket before root-finding so that
-Brent's method will find the unique root, making $\tilde{\rho}$ the natural
-target for EQC.
+across the latent distribution. It is often well behaved on practical search
+intervals, but it is not generally linear in $c^2$: response probabilities
+also change with $c$, and saturation can create an interior maximum and
+multiple crossings. EQC therefore maps the interval, identifies root topology,
+and applies an explicit branch policy instead of assuming global monotonicity
+or a unique root.
 
 The `compute_rho_tilde()` function computes this metric directly from a
 scaling factor, theta sample, and item parameters. Inside `eqc_calibrate()`,
 this is the default metric (`reliability_metric = "info"`).
 
 
-### 5.2 MSEM-Based Reliability ($\bar{w}$)
+### 5.2 MSEM-Based Reliability (w-bar) {#msem-based-reliability-barw}
 
 $$
 \bar{w}(c) \;=\;
@@ -404,7 +429,7 @@ The `compute_rho_bar()` function computes this metric, and
 `compute_rho_both()` computes both metrics in a single pass for efficiency.
 
 
-### 5.3 Jensen's Inequality: $\tilde{\rho} \geq \bar{w}$
+### 5.3 Jensen's Inequality: rho-tilde >= w-bar {#jensens-inequality-tilderho-geq-barw}
 
 For the same positive information distribution, or the same finite quadrature
 grid, Jensen's inequality applied to the convex function $f(x) = 1/x$ implies
@@ -462,7 +487,7 @@ IRTsimrel exports 16 user-facing functions organized into five categories:
 
 | Function | Purpose |
 |----------|---------|
-| `eqc_calibrate()` | Algorithm 1: deterministic calibration via Brent's root-finding method for average-information reliability |
+| `eqc_calibrate()` | Algorithm 1: adaptive topology scan, explicit branch selection, and local Brent polishing for average-information reliability |
 | `sac_calibrate()` | Algorithm 2: stochastic calibration via Robbins-Monro approximation |
 
 **Reliability computation:**
@@ -480,7 +505,7 @@ IRTsimrel exports 16 user-facing functions organized into five categories:
 |----------|---------|
 | `check_feasibility()` | Screen whether a target reliability is achievable for a given design |
 | `rho_curve()` | Compute and plot $\rho(c)$ over a grid of scaling factor values |
-| `compute_reliability_tam()` | Validate calibration using TAM (WLE and EAP reliability) |
+| `compute_reliability_tam()` | Rasch/2PL TAM helper returning WLE and EAP diagnostics; direct 3PL TAM validation is EAP-only in the validated workflow |
 
 **Comparison and visualization:**
 
@@ -537,35 +562,41 @@ R idioms.
 - `feasibility_check`: `print()` displays achievable reliability ranges
 - `rho_curve`: `print()` displays curve summary and first few rows
 
-In total, the package provides **25 S3 methods** for interactive exploration
+In total, the package provides **24 S3 methods** for interactive exploration
 of results.
 
 
-### 6.3 New in v0.2.0
+### 6.3 New in v0.3.0
 
-Version 0.2.0 introduces several important new features:
+Version 0.3.0 extends the reliability-targeted workflow while preserving
+existing Rasch/2PL calls:
 
-- **`check_feasibility()`**: Screen whether a target reliability is achievable
-  before investing computation time in calibration. Reports the achievable range
-  for both metrics.
+- **End-to-end 3PL support (`D = 1`)**: item generation, analytic probability
+  and information kernels, EQC, SAC, S3 extraction, and response generation
+  now carry lower asymptotes explicitly. The global scale multiplies
+  discrimination only; it never denotes or rescales guessing.
 
-- **`rho_curve()`**: Visualize how reliability varies with the scaling factor
-  over a fine grid. Supports both metrics, customizable grid, and optional
-  plotting.
+- **Topology-aware calibration**: feasibility tools and EQC map the complete
+  requested interval, record crossings and extrema, and use an explicit
+  `root_policy`. This replaces any assumption of a globally monotone curve or
+  a unique root.
 
-- **`compute_rho_both()`**: Compute both the average-information and MSEM-based
-  reliabilities in a single matrix pass, avoiding redundant computation.
+- **Guarded SAC scopes**: deterministic branch preflight precedes stochastic
+  updates. `resample_items = FALSE` targets a fixed form, whereas `TRUE`
+  targets an item superpopulation and is evaluated on independent forms.
 
-- **`coef()` and `predict()` methods**: Standard S3 generics for extracting
-  item parameters and evaluating the reliability function at new points.
+- **Strict warm starts and comparison contracts**: EQC-object warm starts and
+  EQC--SAC comparisons check model, metric, item scope, and design provenance
+  instead of comparing scales from incompatible estimands.
 
-- **SAC warm start from EQC**: Pass an `eqc_result` object directly to
-  `sac_calibrate(c_init = eqc_result, reliability_metric = "info")` for fast,
-  well-initialized same-estimand stochastic validation.
+- **Expanded diagnostics and bounded-memory reducers**: result objects retain
+  root/branch, RNG, evaluation, and iteration provenance, while large analytic
+  information calculations are automatically chunked.
 
-- **Renamed from SPC to SAC**: The stochastic algorithm is now called SAC
-  (Stochastic Approximation Calibration) to match the paper. The old name
-  `spc_calibrate()` is retained as a deprecated alias.
+The v0.2 diagnostics (`check_feasibility()`, `rho_curve()`,
+`compute_rho_both()`, and `coef()`/`predict()` methods) remain available.
+The former SPC names are legacy-only deprecated aliases; new code should use
+SAC terminology.
 
 Here is `check_feasibility()` in action:
 
@@ -582,9 +613,11 @@ feas <- check_feasibility(
 feas
 ```
 
-The `target_status_info` and `target_status_msem` fields report whether the
-requested target is below, within, on the boundary of, or above the achievable
-range for each metric.
+The legacy `target_status_info` and `target_status_msem` fields locate the
+target relative to the resolved range. Use
+`target_status_*_canonical` to retain an explicit `uncertain` state when
+topology is unresolved, and inspect the corresponding admissible-root count
+before treating range membership as calibration-ready.
 
 
 ## 7. Road Map to the Vignettes

@@ -4,9 +4,8 @@ author: "JoonHo Lee (jlee296@ua.edu)"
 date: "`r Sys.Date()`"
 description: >
   Detailed treatment of the SAC algorithm for reliability-targeted IRT
-  simulation, including the Robbins-Monro framework, step-size analysis,
-  Polyak-Ruppert averaging, initialization strategies, convergence theory,
-  and diagnostic examples.
+  simulation, including branch preflight, fixed-form and item-superpopulation
+  estimands, Robbins-Monro updates, independent evaluation, and diagnostics.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Algorithm 2: Stochastic Approximation Calibration (SAC)}
@@ -58,32 +57,66 @@ Monro (1951); Polyak and Juditsky (1992); Kushner and Yin (2003).
 | Convergence diagnostics | SAC provides trajectory plots |
 | Research on stochastic approximation | Use SAC |
 
+The built-in Student-$t$ `heavy_tail` population is not compatible with
+population MSEM targeting: its reciprocal-information expectation diverges.
+SAC rejects that combination before iteration. Use the information metric or
+define and label an explicitly truncated empirical design.
+
+### Item scope is part of the target
+
+`resample_items = FALSE` defines a **fixed-form** target. The same realized
+item bank is used in preflight, every stochastic update, and independent theta
+evaluation. `resample_items = TRUE` defines an **item-superpopulation** target:
+fresh forms are drawn during calibration and `achieved_rho` is the mean of
+form-level reliabilities over an independent evaluation bank. It is not the
+reliability obtained by pooling information across forms. Result fields
+`item_scope`, `estimand_signature`, and `achieved_distribution` make the
+distinction explicit.
+
+For `model = "3pl"`, lower asymptotes are supplied through
+`item_params$guessing_params` and remain fixed within each item form while the
+global scale multiplies discrimination only. The result stores
+`guessing_vec`; `coef()` appends a `guessing` column only for 3PL results.
+All-zero guessing follows the 2PL numerical path exactly. The letter $c$ below
+always denotes the global discrimination scale, never the 3PL lower asymptote.
+
 
 ## The Robbins-Monro Framework
 
 ### The Stochastic Root-Finding Problem
 
-SAC targets the same root-finding problem as EQC, but uses a fundamentally
-different approach. The goal is to solve:
+After deterministic branch preflight, SAC uses stochastic approximation to
+solve:
 
 $$
 g(c) = \mathbb{E}\!\left[\hat{\rho}(c)\right] - \rho^* = 0
 \qquad \text{(1)}
 $$
 
-where $g(c) = \rho(c) - \rho^*$ is the reliability gap function. The key
-distinction from EQC is that SAC never constructs a deterministic approximation
-of $g$. Instead, at each iteration $n$, it observes a noisy evaluation:
+where $g(c) = \rho(c) - \rho^*$ is the reliability gap function. At each
+iteration $n$, it observes a noisy evaluation:
 
 $$
 Y_n = \hat{\rho}_n(c_n) = \rho(c_n) + \varepsilon_n
 \qquad \text{(2)}
 $$
 
-where $\hat{\rho}_n$ is computed from fresh Monte Carlo samples at each step,
+where $\hat{\rho}_n$ is computed from fresh theta samples at each step (and
+fresh item forms only for the item-superpopulation scope),
 and $\varepsilon_n$ is zero-mean noise with bounded variance:
 $\mathbb{E}[\varepsilon_n \mid c_n] = 0$ and
 $\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon$.
+
+### Branch preflight
+
+Before the first update, SAC evaluates a common-random-number pilot bank over
+the configured log-scale interval. It requires a resolved, feasible, interior
+increasing crossing and narrows projection bounds to that selected branch. For
+item-superpopulation calibration, two disjoint form splits must select
+compatible roots with overlapping branch intervals. Infeasible, decreasing,
+boundary-only, non-finite, resolution-limited, or split-unstable cases stop
+with an `irtsimrel_sac_*` classed error. The preflight bank is isolated from the
+iteration and evaluation RNG streams.
 
 ### The Robbins-Monro Update Rule
 
@@ -94,8 +127,9 @@ c_{n+1} = \Pi_{[c_L, c_U]}\!\left[c_n - a_n\,(\hat{\rho}_n(c_n) - \rho^*)\right]
 \qquad \text{(3)}
 $$
 
-where $\Pi_{[c_L, c_U]}[\cdot]$ denotes projection onto the feasible interval
-$[c_L, c_U]$ and $a_n$ is a decreasing step size sequence.
+where $\Pi_{[c_L, c_U]}[\cdot]$ denotes projection onto the effective interior
+of the selected branch (itself contained in the user bounds) and $a_n$ is a
+decreasing step size sequence.
 
 **Intuition**: When $\hat{\rho}_n(c_n) > \rho^*$ (current reliability is too
 high), the update decreases $c_n$ (reducing discrimination, hence reliability).
@@ -234,10 +268,11 @@ legend("topright",
 
 ### Why Averaging?
 
-The raw SAC iterates $c_n$ converge at rate $O(n^{-\gamma})$, which is
-suboptimal. Polyak and Juditsky (1992) showed that a simple average of the
-iterates achieves the optimal rate $O(n^{-1/2})$, regardless of $\gamma$
-(as long as the Robbins-Monro conditions hold).
+Under the usual locally linear stochastic-approximation conditions, a last
+iterate with step size $n^{-\gamma}$ typically has mean-squared error of order
+$n^{-\gamma}$. Polyak and Juditsky (1992) showed that averaging can attain the
+optimal $n^{-1}$ mean-squared-error order, equivalently an
+$n^{-1/2}$ error scale, under the additional regularity conditions of the CLT.
 
 ### The Averaging Formula
 
@@ -253,16 +288,16 @@ where $N$ is the total number of iterations and $B$ is the burn-in count.
 
 ### Convergence Rate Comparison
 
-| Estimator | Rate | Notes |
-|:----------|:-----|:------|
-| Final iterate $c_N$ | $O(N^{-\gamma})$ | Depends on step decay |
-| Polyak-Ruppert $\bar{c}_N$ | $O(N^{-1/2})$ | Optimal, independent of $\gamma$ |
-| Truncated average | $O(N^{-1/2})$ | Requires $B = o(N)$ |
+| Estimator | Error scale | MSE order | Notes |
+|:----------|:------------|:----------|:------|
+| Final iterate $c_N$ | typically $O_p(N^{-\gamma/2})$ | $O(N^{-\gamma})$ | Depends on step schedule and local conditions |
+| Polyak-Ruppert $\bar{c}_N$ | $O_p(N^{-1/2})$ | $O(N^{-1})$ | Optimal under the stated averaging CLT |
+| Truncated average | $O_p(N^{-1/2})$ | $O(N^{-1})$ | Requires an admissible burn-in sequence |
 
-The practical benefit is substantial. With $\gamma = 0.67$ (the package
-default), the final iterate converges at rate $O(n^{-0.67})$, while the
-Polyak-Ruppert average converges at rate $O(n^{-0.5})$ --- nearly the same
-exponent but with considerably smaller constants due to variance reduction.
+With $\gamma = 0.67$ (the package default), this heuristic comparison gives a
+last-iterate error scale near $n^{-0.335}$ versus the averaged $n^{-0.5}$
+scale. These are asymptotic orders under local assumptions, not finite-run
+guarantees for every IRT reliability curve.
 
 ### Burn-In Selection
 
@@ -291,18 +326,34 @@ package supports three initialization methods.
 
 Pass an `eqc_result` object directly to `c_init`:
 
+An EQC object is accepted only for the same target, model, item count, metric,
+and fixed-form scope. Leave `item_source` and `item_params` unspecified so SAC
+can reuse the stored EQC form exactly. Supplying an EQC-info result to initialize
+an MSEM run is a contract mismatch; use a numeric scale when the initializer is
+only a heuristic and label the designs separately.
+
 ```{r init-eqc}
 eqc_for_init <- eqc_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
   item_source = "parametric", M = 5000L, seed = 42, verbose = FALSE
 )
 
+fixed_rasch_init <- list(
+  custom_params = list(
+    beta = eqc_for_init$beta_vec,
+    lambda = eqc_for_init$lambda_base
+  ),
+  center_difficulties = FALSE
+)
+
 sac_warm <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  reliability_metric = "info", resample_items = FALSE,
   c_init = eqc_for_init,  # EQC warm start
   n_iter = 200L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 cat(sprintf("EQC c*: %.4f\n", eqc_for_init$c_star))
@@ -315,8 +366,11 @@ burn-in can be minimal, and fewer iterations are needed.
 
 ### Strategy 2: Analytic Pre-Calibration (APC)
 
-When `c_init = NULL`, SAC uses a closed-form approximation derived under
-Gaussian Rasch assumptions.
+When `c_init = NULL`, Rasch/2PL SAC first considers a closed-form approximation
+derived under Gaussian Rasch assumptions. If it lies outside the admissible
+preflight branch, the selected preflight root is used instead. For 3PL, APC is
+not a valid approximation and the selected preflight root is the default
+initializer.
 
 **Definition (APC Formula).** Under the assumptions $\theta \sim N(0, 1)$ and
 $\beta_i \sim N(0, \sigma^2_\beta)$ with $\lambda_i^{(0)} = 1$ (Rasch), the
@@ -347,10 +401,13 @@ Setting this equal to $\rho^*$ and solving for $c$ yields Eq. (7).
 # APC initialization (c_init = NULL triggers APC)
 sac_apc <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  item_source = "custom", item_params = fixed_rasch_init,
+  reliability_metric = "info", resample_items = FALSE,
   c_init = NULL,  # APC warm start
   n_iter = 300L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 cat(sprintf("SAC c* (APC start): %.4f\n", sac_apc$c_star))
@@ -369,10 +426,13 @@ A numeric value can be passed directly:
 ```{r init-user}
 sac_user <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  item_source = "custom", item_params = fixed_rasch_init,
+  reliability_metric = "info", resample_items = FALSE,
   c_init = 1.0,  # user-specified
   n_iter = 300L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 cat(sprintf("SAC c* (user init = 1.0): %.4f\n", sac_user$c_star))
@@ -412,8 +472,11 @@ legend("topright",
 
 1. The step sizes satisfy Eq. (4): $\sum a_n = \infty$, $\sum a_n^2 < \infty$.
 2. The reliability function $\rho(c)$ is Lipschitz continuous on $[c_L, c_U]$.
-3. $g(c) = \rho(c) - \rho^*$ has a unique root $c^*$ in $(c_L, c_U)$.
-4. $g'(c^*) > 0$ (strict monotonicity at the root).
+3. $g(c) = \rho(c) - \rho^*$ has one isolated root $c^*$ in the interior of
+   the selected projected preflight branch.
+4. The selected branch is globally stable over its projection interval:
+   $(c-c^*)g(c)>0$ for every $c\ne c^*$ in that interval, and
+   $g'(c^*)>0$ locally.
 5. The noise $\varepsilon_n$ satisfies $\mathbb{E}[\varepsilon_n \mid c_n] = 0$
    and $\mathbb{E}[\varepsilon_n^2 \mid c_n] \leq \sigma^2_\varepsilon < \infty$.
 
@@ -423,6 +486,12 @@ $$
 c_n \xrightarrow{\text{a.s.}} c^* \quad \text{as } n \to \infty
 \qquad \text{(9)}
 $$
+
+This is a local, branch-conditional result. It does not claim a globally
+unique root on the original user interval, and it does not apply after a
+reported `branch_lost` event. The configured preflight scan supplies
+numerical evidence for an increasing branch; it does not prove the
+branch-wide drift condition assumed by this theorem.
 
 **Proof sketch.** The proof follows the classical Robbins-Monro theory,
 extended to the projected (constrained) setting by Kushner and Yin (2003,
@@ -463,18 +532,16 @@ N\!\left(0,\, \frac{\sigma^2_\varepsilon}{g'(c^*)^2}\right)
 \qquad \text{(10)}
 $$
 
-This achieves the Cramer-Rao lower bound for the stochastic root-finding
-problem, meaning Polyak-Ruppert averaging is _asymptotically efficient_.
+Under the additional regular stochastic-approximation conditions of
+Polyak--Juditsky theory, this covariance is asymptotically efficient for the
+local stochastic-approximation problem. It is not an unconditional
+Cramer--Rao claim for arbitrary IRT designs or noise processes.
 
-**Rate comparison**: For $\gamma = 0.67$ (the package default):
-
-- Final iterate: MSE $\sim O(n^{-1.34})$
-- Polyak-Ruppert average: MSE $\sim O(n^{-1})$
-
-The final iterate converges faster in rate than the PR average in this case,
-but the PR average achieves smaller constants and optimal asymptotic
-efficiency. For $\gamma$ closer to $1/2$, the rate improvement from
-averaging is more dramatic.
+**Rate comparison**: Under the same local conditions, $\gamma=0.67$ gives a
+typical last-iterate MSE order $O(n^{-0.67})$, whereas the Polyak--Ruppert
+average has $O(n^{-1})$ MSE and the asymptotic covariance shown above. This is
+the rate improvement; the reverse ordering reported in earlier documentation
+was incorrect.
 
 ### Convergence Diagnostics
 
@@ -484,9 +551,11 @@ SAC provides automatic convergence assessment through several statistics.
 # Run SAC with enough iterations
 sac_diag <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  reliability_metric = "info", resample_items = FALSE,
   c_init = eqc_for_init, n_iter = 300L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 conv <- sac_diag$convergence
@@ -501,7 +570,7 @@ cat(sprintf("  Hit lower bound:    %s\n", conv$hit_lower_bound))
 cat(sprintf("  Hit upper bound:    %s\n", conv$hit_upper_bound))
 ```
 
-**Convergence criterion**: The algorithm is considered converged when:
+**Convergence criterion**: The split-mean trajectory diagnostic is:
 
 $$
 \frac{|\bar{c}_{\text{first half}} - \bar{c}_{\text{second half}}|}
@@ -514,19 +583,40 @@ that the iterates have not yet settled around the solution. The threshold is
 relative to the calibrated scale because the diagnostic is measured on the
 \(c\) scale; \(\epsilon\) is machine precision.
 
+The public `convergence$converged` flag requires all of the following:
+
+1. enough post-burn-in iterates and the split-mean diagnostic below 5%;
+2. independent achieved reliability within 0.05 of the target; and
+3. no `branch_lost` condition (including repeated branch-bound hits, an
+   out-of-branch final average, or a nonpositive final branch slope).
+
+Thus the split-mean statistic alone is not the convergence decision.
+
 **Post-burn-in SD**: Should be small relative to $c^*$. Values above 0.1
 suggest more iterations or better initialization.
+
+`iteration_trace` is the authoritative update ledger. Each row pairs the
+pre-update `c_evaluated` with `rho_update`, then records `c_raw`, `c_updated`,
+the reliability recomputed at that updated scale (`rho_updated`), and any
+projection. The top-level `trajectory` and `rho_trajectory` are the aligned
+post-update scale/reliability sequence; `evaluation_trajectory` (also exposed as
+`rho_scale_trajectory`) and `rho_update_trajectory` preserve the aligned
+pre-update pair. This removes the one-step pairing ambiguity present in earlier
+schemas.
 
 
 ## Comparative Analysis: EQC vs SAC
 
 ### When They Agree
 
-When both algorithms use the same reliability metric and comparable design
-inputs, and the SAC run has converged, agreement within 5% is typical and
-expected. `compare_eqc_sac()` checks target, metric, model, item count, and
-status fields, but it cannot prove that every latent/item generator argument or
-resampling choice was identical.
+When both algorithms use the same reliability metric and a verifiably
+comparable design, and the SAC run has converged, their scales can be compared.
+`compare_eqc_sac()` checks the estimand signature, model, item count, item
+scope, fixed bank or normalized generator specification, scale convention, and
+calibration status. If comparability cannot be established, it retains the
+side-by-side numbers but returns `agreement = NA` and explanatory
+`comparability_reasons`; a percentage threshold is not evidence across different
+estimands.
 
 ```{r agree-demo}
 # Both targeting rho* = 0.80 with info metric
@@ -538,9 +628,11 @@ eqc_comp <- eqc_calibrate(
 
 sac_comp <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  reliability_metric = "info", resample_items = FALSE,
   c_init = eqc_comp, n_iter = 300L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 comparison <- compare_eqc_sac(eqc_comp, sac_comp, verbose = FALSE)
@@ -564,7 +656,15 @@ When EQC and SAC disagree by more than 5%, investigate the following:
 3. **Small M in EQC**: Low quadrature size introduces Monte Carlo error.
    Increase `M` in EQC.
 
-4. **Extreme target**: Very high ($> 0.95$) or very low ($< 0.50$) targets
+4. **Different item scope/design**: Fixed-form EQC and a resampled-form SAC
+   target different item measures. Inspect `comparable` and
+   `comparability_reasons` rather than interpreting their raw percentage gap.
+
+5. **Different root branch**: Confirm the selected root direction and policy.
+   A high-scale decreasing root is not interchangeable with the default lowest
+   increasing root.
+
+6. **Extreme target**: Very high ($> 0.95$) or very low ($< 0.50$) targets
    have flatter reliability curves, making both algorithms less precise.
 
 ### What to Do When They Disagree
@@ -629,10 +729,12 @@ sac_reps <- numeric(n_reps)
 for (r in seq_len(n_reps)) {
   sac_r <- sac_calibrate(
     target_rho = 0.80, n_items = 25, model = "rasch",
-    item_source = "parametric", reliability_metric = "info",
+    reliability_metric = "info", resample_items = FALSE,
     c_init = eqc_for_init,
     n_iter = 200L, M_per_iter = 1000L,
-    seed = r * 100, verbose = FALSE
+    seed = r * 100, verbose = FALSE,
+    preflight_controls = list(M = 500L),
+    evaluation_controls = list(n_forms = 3L, M = 1000L)
   )
   sac_reps[r] <- sac_r$c_star
 }
@@ -662,9 +764,11 @@ for (rho_t in targets) {
   )
   sac_t <- sac_calibrate(
     target_rho = rho_t, n_items = 25, model = "rasch",
-    item_source = "parametric", reliability_metric = "info",
+    reliability_metric = "info", resample_items = FALSE,
     c_init = eqc_t, n_iter = 200L, M_per_iter = 1000L,
-    seed = 42, verbose = FALSE
+    seed = 42, verbose = FALSE,
+    preflight_controls = list(M = 500L),
+    evaluation_controls = list(n_forms = 3L, M = 1000L)
   )
   diff_abs <- abs(eqc_t$c_star - sac_t$c_star)
   diff_pct <- 100 * diff_abs / eqc_t$c_star
@@ -689,10 +793,12 @@ cat(sprintf("  %-12s %-10s %-12s %-10s\n",
 for (m_val in m_values) {
   sac_m <- sac_calibrate(
     target_rho = 0.80, n_items = 25, model = "rasch",
-    item_source = "parametric", reliability_metric = "info",
+    reliability_metric = "info", resample_items = FALSE,
     c_init = eqc_for_init, n_iter = 300L,
     M_per_iter = as.integer(m_val),
-    seed = 42, verbose = FALSE
+    seed = 42, verbose = FALSE,
+    preflight_controls = list(M = 500L),
+    evaluation_controls = list(n_forms = 3L, M = 1000L)
   )
   cat(sprintf("  %-12d %-10.4f %-12.4f %-10s\n",
               m_val, sac_m$c_star,
@@ -700,6 +806,24 @@ for (m_val in m_values) {
               sac_m$convergence$converged))
 }
 ```
+
+### Independent achieved-reliability evaluation
+
+Calibration and final evaluation use separate deterministic RNG streams. For a
+fixed form, independent theta blocks quantify integration variability and the
+concatenated evaluation nodes define `achieved_rho`. For an
+item-superpopulation target, each evaluation block has an independently drawn
+form and `achieved_rho` is the arithmetic mean of the form reliabilities;
+`achieved_se` and `achieved_distribution` summarize their dispersion.
+`representative_achieved_rho` and the stored representative item bank remain
+available for inspection, but they are not substitutes for the canonical
+superpopulation mean. Likewise, `predict(object)` returns the stored aggregate,
+whereas prediction at explicit new scales is labeled with its prediction scope.
+
+The result also records `preflight`, `branch`, `iteration_trace`,
+`calibration_design`, `evaluation_design`, and `rng_provenance`. These fields
+should accompany a reproducibility report; `c_star` alone does not identify the
+estimand or branch.
 
 
 ## Deprecated Alias
@@ -724,7 +848,8 @@ SAC is a theoretically grounded validation companion to EQC:
 | **Key advantage** | Direct MSEM targeting and independent validation of EQC |
 | **Key disadvantage** | Requires tuning (step size, iterations, burn-in) |
 | **Default metric** | MSEM-based (`"msem"` / `"bar"`); use `"info"` for EQC validation |
-| **Best practice** | Use EQC warm start, $n_{\text{iter}} \geq 200$ |
+| **Item target** | Fixed form or mean of form reliabilities, selected explicitly |
+| **Best practice** | Inspect preflight/branch and independent achieved distribution; use a comparable EQC warm start only for fixed-form info calibration |
 | **Convergence check** | `sac_result$convergence$converged` |
 
 

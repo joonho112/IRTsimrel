@@ -146,7 +146,7 @@ Default: 5}
 
 \subsection{Connection to IRT Framework}{
 
-In the Rasch/2PL model, the latent distribution \eqn{G} affects:
+In the Rasch, 2PL, and 3PL models, the latent distribution \eqn{G} affects:
 \itemize{
 \item Marginal reliability: \eqn{\bar{w} = \sigma_\theta^2 / (\sigma_\theta^2 + \text{MSEM})}
 \item Expected test information: \eqn{\bar{\mathcal{J}} = E_G[\mathcal{J}(\theta)]}

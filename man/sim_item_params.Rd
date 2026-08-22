@@ -7,7 +7,7 @@
 \usage{
 sim_item_params(
   n_items,
-  model = c("rasch", "2pl"),
+  model = c("rasch", "2pl", "3pl"),
   source = c("parametric", "irw", "hierarchical", "custom"),
   method = c("copula", "conditional", "independent"),
   n_forms = 1L,
@@ -17,7 +17,8 @@ sim_item_params(
   custom_params = list(),
   scale = 1,
   center_difficulties = TRUE,
-  seed = NULL
+  seed = NULL,
+  guessing_params = list()
 )
 
 \method{print}{item_params}(x, digits = 4, ...)
@@ -27,7 +28,8 @@ sim_item_params(
 \arguments{
 \item{n_items}{Integer. Number of items to generate per form.}
 
-\item{model}{Character. The data-generating model: "rasch" or "2pl".}
+\item{model}{Character. The data-generating model: "rasch", "2pl", or
+"3pl". The 3PL uses a fixed logistic scaling constant of \eqn{D=1}.}
 
 \item{source}{Character. Source for generating difficulties:
 \describe{
@@ -37,9 +39,11 @@ sim_item_params(
 \item{\code{"custom"}}{User-supplied parameters or function}
 }}
 
-\item{method}{Character. Method for generating discriminations (when model = "2pl"):
+\item{method}{Character. Method for generating discriminations (when model
+is "2pl" or "3pl"):
 \describe{
-\item{\code{"copula"}}{Gaussian copula - preserves marginals exactly (RECOMMENDED)}
+\item{\code{"copula"}}{Rank-based Gaussian-copula construction
+(recommended; finite-form marginal and correlation are approximate).}
 \item{\code{"conditional"}}{Conditional normal regression on difficulty}
 \item{\code{"independent"}}{Independent generation (no correlation)}
 }}
@@ -60,9 +64,10 @@ When > 1, returns a data frame with form_id column.}
 \describe{
 \item{\code{mu_log}}{Finite mean of log-discrimination (default: 0).}
 \item{\code{sigma_log}}{Positive finite SD of log-discrimination (default: 0.3).}
-\item{\code{rho}}{Finite target correlation between \eqn{\beta} and
-\eqn{\log(\lambda)} in the closed interval from -1 to 1
-(default: -0.3).}
+\item{\code{rho}}{Finite latent-Gaussian dependence parameter for
+\eqn{\beta} and \eqn{\log(\lambda)} in the closed interval from -1
+to 1 (default: -0.3). Realized finite-form Pearson and Spearman
+correlations are stochastic and need not equal this value.}
 }}
 
 \item{hierarchical_params}{List. For source = "hierarchical":
@@ -78,7 +83,7 @@ When > 1, returns a data frame with form_id column.}
 function returning one.}
 \item{\code{lambda}}{Positive finite numeric vector of length
 \code{n_items}, or function returning one; required for
-\code{model = "2pl"}.}
+\code{model = "2pl"} or \code{"3pl"}.}
 }}
 
 \item{scale}{Numeric. Global discrimination scaling factor for reliability targeting.
@@ -88,6 +93,14 @@ Final discriminations are \eqn{\lambda_i^* = c \cdot \lambda_i}. Default is 1.}
 for identification. Default is TRUE.}
 
 \item{seed}{Integer. Random seed for reproducibility.}
+
+\item{guessing_params}{List. Lower-asymptote generator for
+\code{model = "3pl"}. Set \code{distribution} to \code{"fixed"}
+(with scalar or item-length \code{value}, default 0.20), \code{"beta"}
+(with positive \code{shape1} and \code{shape2}, defaults 5 and 17), or
+\code{"uniform"} (with \code{min} and \code{max}, defaults 0.10 and
+0.30). Values must be finite and satisfy \eqn{0 \le g_i < 1}. For a
+custom source, supply \code{custom_params$guessing} instead.}
 
 \item{x}{An object of class \code{"item_params"}.}
 
@@ -100,7 +113,8 @@ for identification. Default is TRUE.}
 \value{
 An object of class \code{"item_params"} containing:
 \describe{
-\item{\code{data}}{Data frame with columns: form_id, item_id, beta, lambda, lambda_unscaled}
+\item{\code{data}}{Data frame with columns: form_id, item_id, beta,
+lambda, lambda_unscaled, plus guessing for the 3PL.}
 \item{\code{model}}{Model type used}
 \item{\code{source}}{Source used for generation}
 \item{\code{method}}{Method used for discrimination generation}
@@ -119,7 +133,8 @@ parameter summaries.
 }
 \description{
 \code{sim_item_params()} generates item parameters (difficulty \eqn{\beta} and
-discrimination \eqn{\lambda}) for Item Response Theory (IRT) simulation studies.
+discrimination \eqn{\lambda}, and optional lower asymptote \eqn{g}) for
+Item Response Theory (IRT) simulation studies.
 It provides parametric, hierarchical, custom, and optional Item Response
 Warehouse (IRW) sources, plus multiple methods for generating correlated
 discriminations.
@@ -132,8 +147,9 @@ external item-pool data.
 when the Item Response Warehouse package is installed.
 \item \strong{Correlated parameters:} Support for the empirically observed negative
 correlation between difficulty and discrimination (Sweeney et al., 2022).
-\item \strong{Marginal preservation:} Copula method preserves exact marginal
-distributions while achieving target correlation.
+\item \strong{Marginal control:} The copula method leaves sampled
+difficulties unchanged and approximately targets the requested
+discrimination marginal and dependence in finite forms.
 \item \strong{Reliability targeting:} Scale factor for subsequent calibration.
 }
 }
@@ -150,11 +166,14 @@ correlation because it assumes linearity. The Gaussian copula method:
 \item Transforms back to desired marginals (log-normal for discrimination)
 }
 
-This guarantees:
+Its finite-sample properties are:
 \itemize{
 \item Exact preservation of the sampled difficulty marginal
-\item Exact log-normal marginal for discriminations
-\item Spearman correlation \eqn{\approx \rho} (rank-based, robust to non-normality)
+\item Approximate log-normal discrimination marginal, converging toward
+the requested marginal as the form size grows
+\item The supplied \eqn{\rho} is a latent Gaussian dependence parameter;
+realized Pearson and Spearman correlations are stochastic and need not
+equal \eqn{\rho}
 }
 }
 

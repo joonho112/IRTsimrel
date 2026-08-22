@@ -8,7 +8,10 @@ compute_reliability_tam(resp, model = c("rasch", "2pl"), verbose = FALSE, ...)
 \arguments{
 \item{resp}{Matrix or data.frame of item responses (0/1).}
 
-\item{model}{Character. \code{"rasch"} or \code{"2pl"}.}
+\item{model}{Character. \code{"rasch"} or \code{"2pl"}. A 3PL value is deliberately
+unsupported because the package's validated TAM contract requires both
+WLE and EAP reliability, while the tested TAM 3PL path does not provide
+the required WLE workflow.}
 
 \item{verbose}{Logical. If TRUE, print fitting messages.}
 
@@ -25,7 +28,8 @@ A list with components:
 }
 \description{
 Fits a Rasch or 2PL model using \pkg{TAM} and computes WLE and EAP
-reliability using the official \code{WLErel()} and \code{EAPrel()} functions.
+reliability using \code{TAM::WLErel()} and \code{TAM::EAPrel()}. This helper does not
+fit or score a 3PL model.
 }
 \details{
 \subsection{WLE vs EAP Reliability}{
@@ -36,10 +40,18 @@ TAM defines these reliability coefficients differently:
 \item \strong{EAP reliability}: \eqn{V_{EAP} / (V_{EAP} + \bar{\sigma}^2)}, based on posterior variance
 }
 
-In many practical TAM fits, EAP reliability is greater than or equal to WLE
-reliability, but the two coefficients use different estimators and variance
-bases. EAP reliability more closely corresponds to MSEM-based population
-reliability. For conservative inference, inspect WLE alongside EAP.
+WLE and EAP use different estimators and variance bases, so neither is a
+universal upper or lower bound for the other. EAP is the closer external
+analogue to the MSEM-based population estimand, but it is not identical to
+the information-based EQC estimand.
+}
+
+\subsection{3PL limitation}{
+
+\code{compute_reliability_tam()} intentionally rejects \code{model = "3pl"}. The
+package's Phase 7 external 3PL oracle used a direct TAM EAP-only fit; TAM 3PL
+WLE was unavailable in that validated path. That oracle is evidence about
+the probability/information implementation, not a public 3PL WLE API.
 }
 }
 \examples{

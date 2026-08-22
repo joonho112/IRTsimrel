@@ -35,6 +35,7 @@
 # Misc
 ^.*\.DS_Store$
 ^vignettes/.*\.html$
+^vignettes/\.gitignore$
 ^data-raw$
 ^vignettes/.*_cache$
 ^vignettes/.*_files$

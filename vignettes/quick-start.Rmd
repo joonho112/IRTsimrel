@@ -34,6 +34,7 @@ minutes. By the end you will know how to:
 2. **Check feasibility** and visualize the reliability curve.
 3. **Generate** a simulated binary response dataset.
 4. **Extract and inspect** calibrated parameters using S3 methods.
+5. **Extend** the same workflow to a 3PL test with lower asymptotes.
 
 **Estimated time:** 5 minutes.
 
@@ -46,7 +47,9 @@ installed; the final full-workflow block is shown as a copyable template.
 
 The core function is `eqc_calibrate()`. Give it a target reliability, the
 number of items, and a measurement model, and it returns a calibrated scaling
-factor $c^*$ that makes the population reliability match your target.
+factor $c^*$ that makes the selected empirical reliability objective match
+your target. Population accuracy remains a Monte Carlo approximation and is
+best assessed on independent draws.
 
 ```{r calibrate}
 result <- eqc_calibrate(
@@ -77,9 +80,11 @@ There are two numbers to focus on in the output:
   to the target of 0.80 --- typically the absolute error is less than
   $10^{-4}$.
 
-The `model` argument accepts `"rasch"` (all discriminations equal) or
-`"2pl"` (log-normal discrimination distribution). For this quick start we
-use the Rasch model; see `vignette("applied-guide")` for 2PL examples.
+The `model` argument accepts `"rasch"` (all discriminations equal), `"2pl"`
+(varying discriminations), or `"3pl"` (varying discriminations plus item
+lower asymptotes). For this first pass we use the Rasch model so the familiar
+v0.2 workflow is unchanged. A compact, executable 3PL version appears in
+Section 7.
 
 
 ## 3. Check Feasibility
@@ -104,11 +109,14 @@ feas <- check_feasibility(
 feas
 ```
 
-The output shows two ranges --- one for each reliability metric. If your
-target falls within the `rho_tilde (info)` range, EQC can calibrate for it.
-If it falls within the `rho_bar (msem)` range, SAC can calibrate for it.
-The `target_status_info` and `target_status_msem` fields summarize this
-metric-specific screening result.
+The output shows two finite-sample ranges, one for each metric. Range
+membership is a screening condition, not by itself a calibration guarantee:
+inspect the canonical target status, detected roots, admissible-root counts,
+and topology resolution. EQC additionally needs a root admitted by its
+`root_policy`. SAC performs its own split-bank preflight and requires a
+stable interior increasing crossing. It also rejects population-MSEM targeting
+for the built-in `heavy_tail` distribution because that functional can be
+non-integrable even when a finite grid returns a number.
 
 You can also visualize how reliability varies continuously with the scaling
 factor by using `rho_curve()`. This plot shows both the average-information
@@ -134,7 +142,7 @@ shorter tests or non-normal latent distributions.
 Once you have a calibration result, `simulate_response_data()` generates a
 binary response matrix using the calibrated item parameters. The function
 draws fresh latent abilities from the specified distribution and produces
-responses according to the 2PL (or Rasch) model with the calibrated
+responses according to the stored Rasch, 2PL, or 3PL model with the calibrated
 discriminations:
 
 ```{r simulate}
@@ -151,6 +159,7 @@ The result is a list with five components:
 - `theta`: the true latent abilities for each person
 - `beta`: the item difficulties
 - `lambda`: the scaled item discriminations
+- `guessing`: item lower asymptotes (zero for Rasch/2PL)
 - `provenance`: calibration and simulation metadata, including metric, status,
   item source, and seed
 
@@ -225,8 +234,9 @@ head(item_pars)
 ```
 
 For a Rasch model, `lambda_base` is always 1 and `lambda_scaled` equals
-$c^*$ for every item. For a 2PL model, `lambda_base` would vary across
-items and `lambda_scaled` would be `lambda_base * c*`.
+$c^*$ for every item. For 2PL and 3PL models, `lambda_base` varies across
+items and `lambda_scaled` is `lambda_base * c*`. A 3PL coefficient table also
+contains `guessing`; calibration does not multiply that column by $c^*$.
 
 
 ### 5.3 Predict Reliability at New Scaling Factors
@@ -271,6 +281,7 @@ sac_result <- sac_calibrate(
   model      = "rasch",
   reliability_metric = "info",
   c_init     = result,
+  resample_items = FALSE,
   n_iter     = 100L,
   M_per_iter = 500L,
   seed       = 42
@@ -284,8 +295,9 @@ comp <- compare_eqc_sac(result, sac_result)
 ```
 
 The comparison reports the absolute and percent difference between the two
-$c^*$ values. If the percent difference is below 5%, the two algorithms are
-in agreement (and typically the difference is below 1%).
+$c^*$ values and applies its 5% diagnostic agreement threshold. Interpret that
+flag together with `comparable`, calibration status, and the independent
+holdout reliability rather than as a universal precision guarantee.
 
 You can also visualize the SAC convergence trajectory to verify that the
 iterations stabilized near the EQC warm start:
@@ -325,7 +337,7 @@ eqc_res <- eqc_calibrate(
 sac_res <- sac_calibrate(
   target_rho = 0.80, n_items = 20, model = "rasch",
   reliability_metric = "info", c_init = eqc_res,
-  n_iter = 100L, seed = 42
+  resample_items = FALSE, n_iter = 100L, seed = 42
 )
 compare_eqc_sac(eqc_res, sac_res)
 
@@ -339,14 +351,105 @@ dim(sim_data$response_matrix)  # 1000 x 20
 ```
 
 
-## 8. What's Next?
+## 8. The Same Cycle for a 3PL Test
+
+The 3PL response probability is
+
+$$
+P(Y_i=1\mid\theta)=g_i+(1-g_i)
+\operatorname{logit}^{-1}\{c\lambda_{i,0}(\theta-\beta_i)\}.
+$$
+
+Here `guessing_params` generates the lower asymptotes $g_i$. In contrast,
+`scale` in `sim_item_params()` and the calibrated $c^*$ are the same kind of
+**global discrimination multiplier**: they change $\lambda$, not $g$. The
+names are deliberately kept separate in the API to prevent treating a 0.20
+guessing parameter as a discrimination scale.
+
+The following small workflow generates a fixed 3PL form, calibrates it with
+EQC, validates the same estimand with a fixed-form SAC run, and then generates
+responses. The seeds are explicit, and the vignette-sized Monte Carlo settings
+keep the example fast.
+
+```{r quick-3pl-workflow}
+# Generate and freeze one item form.
+items_3pl <- sim_item_params(
+  n_items = 12,
+  model = "3pl",
+  source = "parametric",
+  guessing_params = list(distribution = "fixed", value = 0.20),
+  seed = 310
+)
+
+fixed_3pl <- list(custom_params = list(
+  beta = items_3pl$data$beta,
+  lambda = items_3pl$data$lambda_unscaled,
+  guessing = items_3pl$data$guessing
+))
+
+eqc_3pl <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_source = "custom",
+  item_params = fixed_3pl,
+  reliability_metric = "info",
+  M = 2000L,
+  seed = 310
+)
+
+# Omitted item_source/item_params tell SAC to reuse the EQC form exactly.
+sac_3pl <- sac_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  reliability_metric = "info",
+  c_init = eqc_3pl,
+  resample_items = FALSE,
+  n_iter = 60L,
+  M_per_iter = 250L,
+  M_pre = 1000L,
+  evaluation_controls = list(n_forms = 3L, M = 500L),
+  seed = 310
+)
+
+responses_3pl <- simulate_response_data(
+  result = eqc_3pl,
+  n_persons = 200,
+  seed = 311
+)
+
+validation_3pl <- compare_eqc_sac(eqc_3pl, sac_3pl)
+stopifnot(
+  validation_3pl$comparable,
+  identical(dim(responses_3pl$response_matrix), c(200L, 12L)),
+  all(responses_3pl$guessing == 0.20)
+)
+head(coef(eqc_3pl))
+```
+
+EQC always targets the generated **fixed form**. For SAC,
+`resample_items = FALSE` targets that same fixed form, whereas
+`resample_items = TRUE` targets an **item superpopulation** by drawing forms
+during calibration and reporting the mean reliability across independent
+holdout forms. An EQC object is therefore a valid SAC warm start only for the
+same metric and fixed item bank; use a numeric or automatic SAC initializer
+for a superpopulation run.
+
+Setting all $g_i=0$ gives exact nested 2PL behavior in the response and
+information kernels. Existing Rasch/2PL calls need no new arguments, so this
+extension is backward compatible.
+
+
+## 9. What's Next?
 
 You have now completed a full calibrate-generate-validate cycle. Here are
 some directions for deeper exploration:
 
 - **`vignette("applied-guide")`**: Comprehensive applied tutorial covering
-  2PL models, non-normal latent distributions, optional IRW-based item sources,
-  and factorial simulation designs with multiple reliability levels.
+  Rasch, 2PL, and 3PL models; fixed-form versus item-superpopulation targets;
+  non-normal latent distributions; optional IRW-based item sources; and
+  factorial simulation designs with multiple reliability levels.
 
 - **`vignette("latent-distributions")`**: Explore all 12 latent distribution
   shapes available in `sim_latentG()` and learn when to use each one for

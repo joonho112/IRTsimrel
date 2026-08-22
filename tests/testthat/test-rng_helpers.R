@@ -175,9 +175,11 @@ test_that("seeded calibration utilities preserve existing RNG state", {
 
   expect_preserves_rng(
     suppressWarnings(suppressMessages(sac_calibrate(
-      target_rho = 0.70,
+      target_rho = 0.60,
       n_items = 6L,
       item_source = "parametric",
+      reliability_metric = "info",
+      resample_items = FALSE,
       M_per_iter = 60L,
       M_pre = 120L,
       n_iter = 8L,

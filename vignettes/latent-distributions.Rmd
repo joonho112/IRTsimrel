@@ -66,7 +66,8 @@ and variance 1** before any scaling is applied.
 This ensures that:
 
 - Changing the shape does **not** inadvertently change the scale
-- The `sigma` parameter directly controls the standard deviation
+- The `sigma` parameter directly controls the residual standard deviation;
+  covariate variation can increase the marginal SD of `theta`
 - Comparisons across shapes are meaningful
 
 The generated abilities follow:
@@ -240,6 +241,13 @@ Based on standardized Student-t:
 $$z = \frac{t_\nu}{\sqrt{\nu / (\nu - 2)}}$$
 
 This has $\text{Var}[z] = 1$ for $\nu > 2$.
+
+The built-in Student-$t$ heavy-tail population is suitable for the
+average-information metric, but not for population MSEM targeting under the
+reciprocal-information approximation: the expectation of inverse information
+diverges in the tails. A finite Monte Carlo sample can still return a finite
+`rho_bar`, but that number is a sample/grid diagnostic rather than a finite
+population estimand. SAC rejects this incompatible population-MSEM contract.
 
 ```{r heavy-tail, fig.alt = "Histogram and density plot of a heavy-tailed latent ability distribution with a normal reference curve."}
 sim_heavy <- sim_latentG(n = 2000, shape = "heavy_tail", seed = 1)
@@ -462,7 +470,8 @@ mean(theta_vec)
 
 ## 10. Connection to IRT Framework
 
-In the Rasch/2PL model, the latent distribution $G$ affects key quantities:
+In Rasch, 2PL, and 3PL models, the latent distribution $G$ affects key
+quantities:
 
 ### 10.1 Marginal Reliability
 
@@ -490,9 +499,11 @@ supporting the first identification approach.
 
 ## 11. How Latent Shape Affects Achievable Reliability
 
-Different latent shapes lead to different achievable reliability ranges for the
-same test design. This section uses `check_feasibility()` and `rho_curve()` to
-explore this connection.
+Different latent shapes lead to different empirical achievable-reliability
+ranges for the same realized design and Monte Carlo grid. This section uses
+`check_feasibility()` and `rho_curve()` to explore that connection. Treat the
+reported MSEM range for `heavy_tail` as a finite-grid sensitivity diagnostic,
+not as a finite population-MSEM quantity.
 
 ### 11.1 Feasibility Across Shapes
 
@@ -671,11 +682,11 @@ For the complete 6-step applied workflow, see `vignette("applied-guide")`.
 
 ### 14.2 Sample Size Considerations
 
-For stable Monte Carlo estimates:
-
-- **M = 10,000** or more for `eqc_calibrate()` quadrature
-- **n = 500--2,000** per replication for simulation studies
-- Increase $n$ for heavy-tailed or highly multimodal shapes
+Choose quadrature size and replication sample size through a sensitivity or
+Monte Carlo precision analysis. Heavier tails and sparse mixture components
+often require larger draws, but no universal `M` or `n` threshold guarantees a
+desired error. Report the values used and, for calibration claims, evaluate the
+selected scale on independent theta draws.
 
 ### 14.3 Reproducibility
 

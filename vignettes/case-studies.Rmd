@@ -49,6 +49,11 @@ Each case study follows the same five-step structure:
 `simulate_response_data()`. See `vignette("introduction")`
 and `vignette("simulation-design")` for background.
 
+These examples intentionally focus on Rasch/2PL comparisons; that limited
+factorial design is not a package limitation. The general template also accepts
+`model = "3pl"` when a scientifically justified lower-asymptote specification
+is supplied.
+
 
 # Case Study 1: Model Comparison Under Controlled Reliability
 
@@ -153,9 +158,10 @@ packages. The log-odds estimator is:
 
 $$\hat{\beta}_i = -\log\left(\frac{p_i}{1 - p_i}\right)$$
 
-where $p_i$ is the proportion of correct responses for item $i$. This is
-the standard item calibration under the Rasch model in the limit of
-large $N$.
+where $p_i$ is the proportion of correct responses for item $i$. This is a
+fast Rasch-oriented descriptive estimator, not a fitted 2PL estimator. The
+case study therefore illustrates a workflow; it cannot isolate a pure model
+effect from estimator misspecification in the 2PL cells.
 
 ```{r cs1-replications}
 # Storage
@@ -273,10 +279,11 @@ grid(lty = 2, col = "gray80")
 
 ## Interpretation
 
-With reliability held constant, any remaining difference in RMSE between
-models is attributable to the structural difference between Rasch and 2PL
-data-generating processes---not to differing data quality. Several
-patterns emerge:
+With the calibration objective held constant, differences are no longer due
+to an intended reliability imbalance. They may still combine realized-form
+variation, response sampling, model structure, and the Rasch-oriented recovery
+estimator used here. The small executable run illustrates these patterns but
+does not estimate stable operating characteristics:
 
 - **Higher reliability leads to smaller RMSE** for both models, as expected.
   Better data quality (higher signal-to-noise ratio) improves parameter
@@ -302,8 +309,8 @@ patterns emerge:
 > condition, this executable demonstration used $R = 5$ replications of
 > $N = 300$ simulees; production studies should increase both values. Item
 > difficulties were estimated with a fast log-odds estimator and evaluated via
-> bias and RMSE. The maximum calibration error across conditions
-> was less than 0.001.
+> bias and RMSE. We report the maximum calibration-quadrature residual across
+> conditions separately from response-sample recovery error.
 
 
 # Case Study 2: Latent Distribution Robustness
@@ -357,16 +364,16 @@ n_persons <- 300
 R <- 5
 ```
 
-## Step 2: Compute actual reliability under each generating distribution
+## Step 2: Estimate reliability under each generating distribution
 
-Before running the full simulation, we can compute the theoretical
-reliability under each generating distribution using the calibrated item
-parameters. This uses `compute_rho_tilde()` with theta samples from each
-distribution, providing the theoretical prediction of how reliability
-shifts.
+Before running the response simulation, we can estimate reliability under each
+generating distribution using the calibrated item parameters. This uses
+`compute_rho_tilde()` with an independent Monte Carlo theta sample from each
+distribution. The result is a conditional empirical approximation, not an
+exact theoretical coefficient.
 
 ```{r cs2-actual-rho}
-# Compute reliability under each generating distribution
+# Estimate reliability under each generating distribution
 actual_rho <- numeric(length(gen_shapes))
 names(actual_rho) <- gen_shapes
 
@@ -387,7 +394,7 @@ rho_table <- data.frame(
   actual_rho   = round(actual_rho, 4),
   rho_shift    = round(actual_rho - 0.80, 4)
 )
-cat("Reliability under each generating distribution:\n")
+cat("Independent-grid reliability estimate under each distribution:\n")
 print(rho_table)
 ```
 
@@ -457,14 +464,14 @@ cat("====================================================\n")
 print(cs2_summary)
 ```
 
-```{r cs2-plot, fig.height = 6, fig.cap = "Impact of latent distribution misspecification. Top: actual reliability shifts away from the 0.80 target under non-normal generation. Bottom: difficulty RMSE varies with generating shape, driven partly by the reliability shift.", fig.alt = "Two-panel bar plot showing actual reliability and difficulty RMSE by generating latent shape."}
+```{r cs2-plot, fig.height = 6, fig.cap = "Impact of latent distribution misspecification. Top: independent-grid reliability estimates shift away from the 0.80 target under non-normal generation. Bottom: difficulty RMSE varies with generating shape.", fig.alt = "Two-panel bar plot showing estimated reliability and difficulty RMSE by generating latent shape."}
 oldpar <- par(mfrow = c(2, 1), mar = c(4, 4, 3, 1))
 
 # Panel 1: Reliability shift
 bar_colors <- c("steelblue", "coral", "seagreen", "orchid")
 bp <- barplot(actual_rho, col = bar_colors,
               ylim = c(0.5, 1.0), ylab = "Achieved Reliability",
-              main = "Actual Reliability Under Each Generating Distribution",
+              main = "Independent-Grid Reliability Estimate",
               names.arg = gen_shapes, las = 1, cex.names = 0.8)
 abline(h = 0.80, col = "red", lty = 2, lwd = 2)
 text(bp[1], 0.82, "Target = 0.80", col = "red", adj = 0, cex = 0.8)
@@ -492,7 +499,7 @@ par(oldpar)
 When the generating distribution does not match the calibration
 distribution, two things happen:
 
-1. **Reliability shifts**: the actual reliability deviates from the target
+1. **Reliability shifts**: the independent-grid estimate deviates from the target
    (sometimes higher, sometimes lower), depending on how the test
    information profile aligns with the new distribution.
 
@@ -513,25 +520,26 @@ Key findings:
   effective information utilization.
 
 - **Heavy-tailed**: extreme ability values fall in regions of very low
-  item information, reducing the harmonic mean of information.
+  item information and can reduce average information for this fixed form.
 
 This demonstrates why it is critical to either (a) calibrate under the
-intended generating distribution, or (b) report the actual achieved
-reliability under the generating distribution when intentionally
+intended generating distribution, or (b) report an independently evaluated
+reliability estimate under the generating distribution when intentionally
 mismatching.
 
 ## Methods text
 
 > To assess robustness to latent distribution misspecification, we
 > calibrated item parameters to $\tilde{\rho}^* = 0.80$ under a normal
-> latent distribution using EQC ($M = 10{,}000$; $I = 20$ Rasch items).
+> latent distribution using EQC ($M = 5{,}000$; $I = 20$ Rasch items).
 > Response data were then generated under four distributions: normal,
 > positively skewed (Gamma, $k = 4$), bimodal ($\delta = 0.8$), and
 > heavy-tailed (Student-t, $df = 5$), all pre-standardized to mean 0 and
-> variance 1. For each generating condition, $R = 500$ replications of
-> $N = 1{,}000$ simulees were generated. We report both the theoretical
-> reliability under each generating distribution and the difficulty recovery
-> RMSE.
+> variance 1. This executable demonstration used $R = 5$ replications of
+> $N = 300$ simulees per condition; a production study should set replication
+> count from a Monte Carlo precision target. We report both an independent
+> Monte Carlo average-information estimate under each generating distribution
+> and the difficulty recovery RMSE.
 
 
 # Case Study 3: Sample Size Planning
@@ -691,26 +699,15 @@ print(cs3_summary[, c("n_persons", "mean_RMSE", "rmse_x_sqrtN")])
 If the product RMSE $\times \sqrt{N}$ is approximately constant across
 sample sizes, it confirms the expected $O(1/\sqrt{N})$ scaling.
 
-## Practical recommendation
+## Practical interpretation
 
-The RMSE decreases with sample size but exhibits diminishing returns.
-Based on this analysis:
-
-- **N < 100**: RMSE is high and variable; difficulty estimates are
-  unreliable for individual items. The maximum absolute error may exceed
-  0.50 logits.
-
-- **N = 200**: a reasonable minimum for stable difficulty recovery
-  at $\tilde{\rho} = 0.80$ with 20 Rasch items. RMSE stabilizes at
-  a tolerable level for most applications.
-
-- **N >= 500**: marginal improvement is small relative to the increased
-  data collection cost. Recommended only for high-precision applications.
-
-For studies that require difficulty recovery within a specified tolerance
-(e.g., RMSE < 0.20), the researcher can read the required N directly
-from the RMSE curve. Different reliability levels will shift the curve
-vertically: lower reliability requires larger N for the same RMSE.
+The five-replication run is a rendering-friendly pilot, not a basis for a
+universal minimum sample size. Use its curve to define a candidate range, then
+increase replications and attach Monte Carlo uncertainty to the RMSE criterion.
+The required $N$ is specific to the estimator, item form, reliability metric,
+latent distribution, and tolerance. Different reliability levels can shift
+the curve, so they should be crossed explicitly rather than extrapolated from
+this one condition.
 
 ## Methods text
 
@@ -719,8 +716,9 @@ vertically: lower reliability requires larger N for the same RMSE.
 > Response data were generated for $N \in \{50, 100, 200, 500\}$ simulees
 > across $R = 5$ demonstration replications per condition. Item difficulties
 > were estimated with a fast log-odds estimator and evaluated by RMSE.
-> Diminishing returns in RMSE were observed beyond $N = 200$, which we
-> recommend as the minimum sample size for this configuration.
+> The pilot RMSE curve was used to identify candidate sample sizes for a
+> larger, precision-calibrated replication study; it was not treated as a
+> definitive minimum-$N$ rule.
 
 
 # Adapt for Your Study
@@ -737,8 +735,10 @@ Before running your study, verify the following:
    be used to evaluate it.
 
 2. **Select the IRT model(s)** appropriate for your context. Use `"rasch"`
-   for tests with equal discriminations and `"2pl"` for tests with varying
-   discriminations.
+   for tests with equal discriminations, `"2pl"` for tests with varying
+   discriminations, and `"3pl"` when lower asymptotes are part of the DGP.
+   For 3PL, specify and report `guessing_params` and the package's `D = 1`
+   logistic convention.
 
 3. **Choose the latent distribution(s)** that represent your target
    population. Use `"normal"` as a baseline and add non-normal shapes
@@ -750,8 +750,9 @@ Before running your study, verify the following:
 5. **Screen all design cells** for feasibility using `check_feasibility()`.
    Remove or modify any infeasible cells.
 
-6. **Determine the number of replications.** For published work, $R \geq 500$
-   is standard. For pilot studies, $R = 100$ may suffice.
+6. **Determine the number of replications** from the desired Monte Carlo
+   standard error or confidence-interval width. Small values are suitable only
+   for code pilots; there is no universal publication threshold.
 
 7. **Establish a seed management scheme** for complete reproducibility.
    Record all seeds in your analysis script.
@@ -779,7 +780,7 @@ library(IRTsimrel)
 design <- expand.grid(
   target_rho   = c(0.60, 0.70, 0.80),      # [your reliability levels]
   n_items      = c(20, 40),                  # [your test lengths]
-  model        = c("rasch", "2pl"),          # [your models]
+  model        = c("rasch", "2pl"),          # add "3pl" plus item_params when needed
   latent_shape = c("normal", "skew_pos"),    # [your latent shapes]
   stringsAsFactors = FALSE
 )
@@ -802,8 +803,9 @@ for (i in seq_len(nrow(design))) {
     seed         = CALIB_SEED,
     verbose      = FALSE
   )
-  design$feasible[i] <- feas$target_status_info %in%
-                         c("feasible", "boundary_lower", "boundary_upper")
+  design$feasible[i] <-
+    identical(feas$target_status_info_canonical, "feasible") &&
+    feas$admissible_root_count_info > 0L
 }
 design <- design[design$feasible, ]
 cat(sprintf("Feasible cells: %d\n", nrow(design)))
@@ -888,9 +890,13 @@ When writing up your simulation study, include the following:
 5. Describe item parameter source and generation method.
 6. State latent distribution(s) and shape parameters.
 7. Report feasibility screening results (number screened, number infeasible).
-8. Report maximum calibration error across all cells.
+8. Report root policy, selected-root status, item scope, and maximum
+   calibration-quadrature residual across all cells.
 9. State the number of replications and persons per replication.
 10. Describe seed management for reproducibility.
+11. For 3PL, report lower-asymptote generation and the `D = 1` convention.
+12. Distinguish calibration, independent holdout, and response-estimator
+    reliability evidence.
 
 
 # Summary and Recommendations

@@ -4,9 +4,9 @@ author: "JoonHo Lee (jlee296@ua.edu)"
 date: "`r Sys.Date()`"
 description: >
   A guide to generating realistic item parameters with sim_item_params(),
-  covering parametric defaults, optional IRW integration, hierarchical and
-  custom sources, the copula method for correlated parameters, and extracting
-  calibrated items with coef().
+  covering Rasch, 2PL, and 3PL generation, optional IRW integration,
+  hierarchical and custom sources, correlated parameters, lower asymptotes,
+  and extracting calibrated items with coef().
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Generating Realistic Item Parameters}
@@ -37,29 +37,32 @@ pal <- list(
 
 **Reading time**: approximately 20--25 minutes.
 
-The `sim_item_params()` function generates item parameters (difficulty $\beta$
-and discrimination $\lambda$) for IRT simulation studies.  It is designed with
-four key principles:
+The `sim_item_params()` function generates item parameters---difficulty
+$\beta$, discrimination $\lambda$, and, for the 3PL, lower asymptote
+$g$---for IRT simulation studies. It is designed with five key principles:
 
 1. **Realistic difficulties**: Parametric defaults for portable simulations,
    with optional Item Response Warehouse (IRW) integration for empirically
    grounded difficulty distributions when the IRW package is installed.
 2. **Correlated parameters**: Support for the empirically observed negative
    correlation between difficulty and discrimination.
-3. **Marginal preservation**: The copula method preserves exact marginal
-   distributions.
+3. **Marginal control**: The copula method keeps the sampled difficulty values
+   unchanged while approximately targeting the requested discrimination
+   marginal and dependence in a finite form.
 4. **Reliability targeting**: A scale factor enables subsequent calibration for
    target reliability.
+5. **Explicit 3PL guessing**: Lower asymptotes are generated independently of
+   the global discrimination scale and retained in downstream results.
 
 This vignette covers:
 
 1. The difficulty-discrimination correlation
-2. Basic usage (Rasch and 2PL)
+2. Basic usage (Rasch, 2PL, and 3PL)
 3. Sources for difficulty generation
 4. Methods for discrimination generation
 5. Customizing discrimination parameters
 6. Generating multiple test forms
-7. The scale parameter
+7. Guessing distributions and the global scale parameter
 8. Visualization
 9. Extracting calibrated item parameters with `coef()`
 10. Integration with calibration functions
@@ -124,8 +127,56 @@ items_2pl <- sim_item_params(
 print(items_2pl)
 ```
 
-Notice the **achieved correlation** between $\beta$ and $\log(\lambda)$ is
-close to the default target of $-0.3$.
+The printed **achieved correlation** is one finite-form realization to compare
+with the default latent-Gaussian dependence input of $-0.3$; it is not
+constrained to equal that input.
+
+## 3.3 Three-parameter logistic (3PL) model
+
+The 3PL adds an item lower asymptote $g_i$ while retaining the 2PL difficulty
+and discrimination generators. Supply its generator through
+`guessing_params`; the default is a fixed value of 0.20.
+
+```{r 3pl-basic}
+items_3pl <- sim_item_params(
+  n_items = 30,
+  model = "3pl",
+  source = "parametric",
+  method = "copula",
+  guessing_params = list(distribution = "fixed", value = 0.20),
+  seed = 42
+)
+
+items_3pl$data[1:6, c("beta", "lambda", "guessing")]
+```
+
+Available guessing generators are:
+
+| `distribution` | Fields | Meaning |
+|:---------------|:-------|:--------|
+| `"fixed"` | `value` | One scalar (recycled) or one value per item |
+| `"beta"` | `shape1`, `shape2` | Beta-distributed values on $[0,1)$ |
+| `"uniform"` | `min`, `max` | Uniform values with $0 \leq \min < \max < 1$ |
+
+For `source = "custom"`, put the lower asymptotes in
+`custom_params$guessing` instead of `guessing_params`. Every $g_i$ must be
+finite and satisfy $0 \leq g_i < 1$.
+
+```{r 3pl-g-zero-compatibility}
+# With g = 0, the 3PL is exactly nested in the 2PL. The same seed also
+# produces the same beta and lambda draws because fixed guessing uses no RNG.
+items_2pl_g0 <- sim_item_params(12, model = "2pl", seed = 91)
+items_3pl_g0 <- sim_item_params(
+  12, model = "3pl",
+  guessing_params = list(distribution = "fixed", value = 0),
+  seed = 91
+)
+stopifnot(
+  identical(items_2pl_g0$data$beta, items_3pl_g0$data$beta),
+  identical(items_2pl_g0$data$lambda, items_3pl_g0$data$lambda),
+  all(items_3pl_g0$data$guessing == 0)
+)
+```
 
 
 # 4. Sources for Difficulty Generation
@@ -228,6 +279,25 @@ items_custom <- sim_item_params(
 items_custom$data
 ```
 
+A custom 3PL form requires all three item vectors. A scalar guessing value is
+accepted and recycled, but an explicit vector is often clearer when freezing a
+form for calibration:
+
+```{r source-custom-3pl}
+items_custom_3pl <- sim_item_params(
+  n_items = 10,
+  model = "3pl",
+  source = "custom",
+  custom_params = list(
+    beta = seq(-2, 2, length.out = 10),
+    lambda = rep(1.2, 10),
+    guessing = rep(0.20, 10)
+  ),
+  seed = 42
+)
+items_custom_3pl$data
+```
+
 You can also provide functions that generate parameters:
 
 ```{r source-custom-function, eval = FALSE}
@@ -246,18 +316,23 @@ items_custom_fn <- sim_item_params(
 
 # 5. Methods for Discrimination Generation
 
-When using `source = "irw"` or `source = "parametric"` with `model = "2pl"`,
+When using `source = "irw"` or `source = "parametric"` with `model = "2pl"`
+or `model = "3pl"`,
 you can choose how discriminations are generated. The default is `method =
 "copula"`, and three methods are available.
 
 ## 5.1 Copula method (recommended)
 
-The **Gaussian copula** method preserves exact marginal distributions while
-achieving the target correlation.
+The **rank-based Gaussian copula** method leaves the sampled difficulty values
+unchanged while approximately targeting the requested discrimination marginal
+and dependence in a finite form. The supplied `rho` is a latent Gaussian
+dependence parameter; realized Pearson and Spearman correlations are stochastic
+and are not guaranteed to equal it.
 
 **Algorithm:**
 
-1. Transform $\beta$ to uniform via empirical CDF: $u = \text{rank}(\beta)/(n+1)$.
+1. Transform $\beta$ to uniform scores:
+   $u = \{\text{rank}(\beta)-0.5\}/n$.
 2. Transform to normal: $z_\beta = \Phi^{-1}(u)$.
 3. Generate correlated normal: $z_\lambda = \rho \cdot z_\beta + \sqrt{1-\rho^2} \cdot z_{\text{indep}}$.
 4. Transform to uniform: $v = \Phi(z_\lambda)$.
@@ -286,8 +361,9 @@ cat(sprintf("Achieved Spearman: %.3f\n",
 **Why copula is recommended:**
 
 - Preserves the exact difficulty distribution.
-- Guarantees log-normal marginal for discriminations.
-- Achieves target **Spearman** correlation (robust to non-normality).
+- Approximately targets a log-normal discrimination marginal in a finite form.
+- Uses `rho` as a latent-Gaussian dependence input; realized **Pearson** and
+  **Spearman** correlations are stochastic and should be inspected.
 - Works well with any difficulty distribution shape.
 
 ## 5.2 Conditional method
@@ -364,7 +440,7 @@ cat(sprintf("SD lambda:   %.3f\n", sd(items_high_disc$data$lambda)))
 |:----------|:--------|:------------|
 | `mu_log` | 0 | Mean of $\log(\lambda)$. $\mathbb{E}[\lambda] \approx \exp(\mu_{\log} + \sigma_{\log}^2/2)$ |
 | `sigma_log` | 0.3 | SD of $\log(\lambda)$. Controls heterogeneity across items |
-| `rho` | -0.3 | Target correlation between $\beta$ and $\log(\lambda)$ |
+| `rho` | -0.3 | Latent-Gaussian dependence input for $\beta$ and $\log(\lambda)$; finite-form correlations are stochastic |
 
 
 # 7. Generating Multiple Test Forms
@@ -410,6 +486,18 @@ $$\lambda_i^* = c \cdot \lambda_{i,0}$$
 where $\lambda_{i,0}$ is the baseline discrimination and $c$ is the scale
 factor.
 
+For a 3PL item, the full response probability is
+
+$$
+P(Y_i=1\mid\theta)=g_i+(1-g_i)
+\operatorname{logit}^{-1}\{c\lambda_{i,0}(\theta-\beta_i)\}.
+$$
+
+Thus, `scale = c` multiplies only discrimination. It does **not** scale the
+lower asymptote: use `guessing_params` (or `custom_params$guessing`) to define
+$g_i$. Calibration functions estimate this same global $c$ while holding the
+generated $\beta_i$ and $g_i$ fixed.
+
 ```{r scale-parameter}
 # Baseline (scale = 1)
 items_base <- sim_item_params(
@@ -440,6 +528,25 @@ head(items_scaled$data[, c("lambda", "lambda_unscaled")])
 all.equal(
   items_scaled$data$lambda,
   items_scaled$data$lambda_unscaled * items_scaled$scale
+)
+```
+
+The distinction is directly checkable for a 3PL form:
+
+```{r scale-versus-guessing}
+items_3pl_scaled <- sim_item_params(
+  n_items = 12,
+  model = "3pl",
+  scale = 1.5,
+  guessing_params = list(distribution = "fixed", value = 0.20),
+  seed = 42
+)
+stopifnot(
+  all.equal(
+    items_3pl_scaled$data$lambda,
+    1.5 * items_3pl_scaled$data$lambda_unscaled
+  ),
+  all(items_3pl_scaled$data$guessing == 0.20)
 )
 ```
 
@@ -519,6 +626,7 @@ Each row contains:
 | `lambda_base` | Baseline (unscaled) discrimination |
 | `lambda_scaled` | Calibrated discrimination: $\lambda_{\text{base}} \times c^*$ |
 | `c_star` | The calibrated scaling factor (constant across items) |
+| `guessing` | 3PL lower asymptote; present for 3PL results and not scaled by $c^*$ |
 
 ## 11.2 Summary statistics from coef output
 
@@ -542,9 +650,9 @@ sac_result <- sac_calibrate(
   target_rho        = 0.85,
   n_items           = 25,
   model             = "rasch",
-  item_source       = "parametric",
   reliability_metric = "info",
   c_init            = eqc_result,
+  resample_items    = FALSE,
   n_iter            = 200L,
   M_per_iter        = 500L,
   M_pre             = 5000L,
@@ -603,6 +711,30 @@ abline(lm(lambda_scaled ~ beta, data = items_2pl_df),
        col = pal$accent, lty = 2, lwd = 1.5)
 ```
 
+## 11.7 Using `coef()` with a 3PL model
+
+For 3PL results, the coefficient table retains the fixed lower asymptotes:
+
+```{r coef-3pl}
+eqc_3pl <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_params = list(
+    guessing_params = list(distribution = "fixed", value = 0.20)
+  ),
+  reliability_metric = "info",
+  M = 2000L,
+  seed = 310
+)
+
+items_3pl_df <- coef(eqc_3pl)
+items_3pl_df[1:6, c(
+  "beta", "lambda_base", "lambda_scaled", "guessing", "c_star"
+)]
+stopifnot(all(items_3pl_df$guessing == 0.20))
+```
+
 
 # 12. Integration with eqc_calibrate
 
@@ -632,6 +764,32 @@ eqc_result_full <- eqc_calibrate(
 cat(sprintf("c* = %.4f, achieved rho = %.4f\n",
             eqc_result_full$c_star, eqc_result_full$achieved_rho))
 ```
+
+For a 3PL calibration, the guessing generator is nested inside `item_params`
+because `eqc_calibrate()` passes that list to `sim_item_params()`:
+
+```{r integration-3pl}
+eqc_3pl_generated <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12,
+  model = "3pl",
+  item_source = "parametric",
+  item_params = list(
+    discrimination_params = list(rho = -0.3),
+    guessing_params = list(distribution = "beta", shape1 = 5, shape2 = 17)
+  ),
+  reliability_metric = "info",
+  M = 2000L,
+  seed = 311
+)
+summary(coef(eqc_3pl_generated)$guessing)
+```
+
+EQC calibrates the one form stored in its result (`item_scope =
+"fixed_form"`). SAC can either reuse that form with `resample_items = FALSE`
+or target a generator-level item superpopulation with `resample_items = TRUE`.
+Those are different estimands; only the fixed-form, same-metric run can use an
+EQC result as a comparable warm start.
 
 ## 12.1 Accessing calibrated items
 
@@ -680,7 +838,10 @@ for (m in methods) {
 }
 ```
 
-The copula method achieves the target Spearman correlation most reliably.
+The copula method usually tracks the requested direction and magnitude of
+dependence more closely than the alternatives in this example, but the
+finite-form correlation remains stochastic and is not constrained to equal
+`rho`.
 
 
 # 14. Working with the Output Object
@@ -715,13 +876,16 @@ items$achieved$overall
 | `hierarchical` | Joint MVN generation | Bayesian framework |
 | `custom` | User-supplied parameters | Specific scenarios |
 
+For 3PL models, every source above can be paired with `guessing_params`, except
+that `source = "custom"` uses `custom_params$guessing`.
+
 ## 15.2 Methods
 
-| Method | Preserves Marginals | Target Correlation | Notes |
-|:-------|:--------------------|:-------------------|:------|
-| `copula` | Yes | Spearman | **Recommended** |
-| `conditional` | No | Pearson | Assumes normality |
-| `independent` | Yes | None (0) | No correlation |
+| Method | Difficulty Values | Dependence Input | Notes |
+|:-------|:------------------|:-----------------|:------|
+| `copula` | Preserved exactly | Latent Gaussian `rho` | Approximate discrimination marginal and stochastic realized correlations; **recommended** |
+| `conditional` | Preserved exactly | Conditional-regression `rho` | Assumes standardized difficulty enters linearly |
+| `independent` | Preserved exactly | None | Realized finite-form correlation fluctuates around zero |
 
 
 # 16. Practical Recommendations
@@ -763,6 +927,25 @@ items <- sim_item_params(
   seed = 42
 )
 ```
+
+## 16.4 For controlled 3PL experiments
+
+```{r practical-3pl, eval = FALSE}
+items <- sim_item_params(
+  n_items = 25,
+  model = "3pl",
+  source = "parametric",
+  method = "copula",
+  discrimination_params = list(mu_log = 0, sigma_log = 0.25, rho = -0.3),
+  guessing_params = list(distribution = "fixed", value = 0.20),
+  scale = 1,
+  seed = 42
+)
+```
+
+Use `scale = 1` when defining the baseline form, then let EQC or SAC estimate
+the global discrimination multiplier. Keep `guessing_params` fixed across
+conditions unless lower-asymptote variation is itself part of the design.
 
 
 # References

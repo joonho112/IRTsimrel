@@ -311,10 +311,12 @@ test_that("simulate_response_data validates result design fields", {
 
 test_that("simulate_response_data accepts schema-complete legacy spc_result", {
   spc_legacy <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.80,
+    target_rho = 0.60,
     n_items = 8,
     model = "rasch",
     item_source = "parametric",
+    reliability_metric = "info",
+    resample_items = FALSE,
     n_iter = 20L,
     M_per_iter = 100L,
     M_pre = 1000L,
@@ -334,10 +336,12 @@ test_that("simulate_response_data accepts schema-complete legacy spc_result", {
 
 test_that("simulate_response_data falls back for empty legacy status_flags", {
   spc_legacy <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.80,
+    target_rho = 0.60,
     n_items = 8,
     model = "rasch",
     item_source = "parametric",
+    reliability_metric = "info",
+    resample_items = FALSE,
     n_iter = 20L,
     M_per_iter = 100L,
     M_pre = 1000L,
@@ -355,10 +359,12 @@ test_that("simulate_response_data falls back for empty legacy status_flags", {
 
 test_that("simulate_response_data rejects status-incomplete legacy spc_result", {
   spc_legacy <- suppressWarnings(suppressMessages(sac_calibrate(
-    target_rho = 0.80,
+    target_rho = 0.60,
     n_items = 8,
     model = "rasch",
     item_source = "parametric",
+    reliability_metric = "info",
+    resample_items = FALSE,
     n_iter = 20L,
     M_per_iter = 100L,
     M_pre = 1000L,
@@ -387,7 +393,7 @@ describe("compare_eqc_sac()", {
     n_items = 15,
     model = "rasch",
     item_source = "parametric",
-    c_init = eqc_for_val,
+    c_init = eqc_for_val$c_star,
     n_iter = 50L,
     M_per_iter = 200L,
     M_pre = 2000L,
@@ -422,9 +428,13 @@ describe("compare_eqc_sac()", {
                  abs(comp$achieved_eqc - comp$achieved_sac))
   })
 
-  test_that("agreement is TRUE when diff_pct < 5", {
+  test_that("default EQC and SAC estimands do not receive an agreement label", {
     comp <- suppressWarnings(compare_eqc_sac(eqc_for_val, sac_for_comp, verbose = FALSE))
-    expect_equal(comp$agreement, comp$diff_pct < 5)
+    expect_false(comp$comparable)
+    expect_true(is.na(comp$agreement))
+    expect_identical(comp$agreement_status, "not_comparable")
+    expect_true("metric_mismatch" %in% comp$comparability_reasons)
+    expect_true("item_scope_mismatch" %in% comp$comparability_reasons)
   })
 
   test_that("errors with wrong class for eqc_result", {
@@ -468,7 +478,7 @@ describe("compare_eqc_sac()", {
     )
 
     bad_sac <- sac_for_comp
-    bad_sac$model <- "3pl"
+    bad_sac$model <- "4pl"
     expect_error(
       compare_eqc_sac(eqc_for_val, bad_sac, verbose = FALSE),
       "sac_result\\$model"
@@ -534,7 +544,14 @@ describe("compare_eqc_sac()", {
   test_that("warns when metric differs between EQC and SAC", {
     # SAC default metric is msem, EQC default is info, so they already differ
     expect_warning(
-      compare_eqc_sac(eqc_for_val, sac_for_comp, verbose = FALSE),
+      withCallingHandlers(
+        compare_eqc_sac(eqc_for_val, sac_for_comp, verbose = FALSE),
+        warning = function(w) {
+          if (!grepl("metric differs", conditionMessage(w), ignore.case = TRUE)) {
+            invokeRestart("muffleWarning")
+          }
+        }
+      ),
       "metric differs"
     )
   })
@@ -636,7 +653,11 @@ test_that("compare_eqc_spc forwards to compare_eqc_sac after deprecation", {
     seed = 42
   )))
 
-  primary <- compare_eqc_sac(eqc_for_val, sac_dep, verbose = FALSE)
+  primary <- suppressWarnings(compare_eqc_sac(
+    eqc_for_val,
+    sac_dep,
+    verbose = FALSE
+  ))
   alias <- suppressWarnings(compare_eqc_spc(eqc_for_val, sac_dep,
                                             verbose = FALSE))
 

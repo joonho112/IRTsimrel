@@ -60,6 +60,25 @@
   )
 }
 
+.irtsimrel_latent_shape_choices <- function() {
+  c(
+    "normal", "bimodal", "trimodal", "multimodal",
+    "skew_pos", "skew_neg", "heavy_tail", "light_tail",
+    "uniform", "floor", "ceiling", "custom"
+  )
+}
+
+.irtsimrel_match_latent_shape <- function(shape,
+                                          arg_name = "latent_shape") {
+  if (!is.character(shape) || length(shape) != 1L || is.na(shape) ||
+      !nzchar(shape)) {
+    stop("`", arg_name, "` must be a non-empty character scalar.",
+         call. = FALSE)
+  }
+
+  match.arg(shape, .irtsimrel_latent_shape_choices())
+}
+
 .irtsimrel_normalize_latent_params <- function(latent_params,
                                                arg_name = "latent_params",
                                                message_auto_wrap = TRUE) {
@@ -146,6 +165,8 @@
 }
 
 .irtsimrel_recompute_item_achieved <- function(data, model) {
+  has_discrimination <- model %in% c("2pl", "3pl")
+
   compute_one <- function(df) {
     lambda_unscaled <- if ("lambda_unscaled" %in% names(df)) {
       df$lambda_unscaled
@@ -153,24 +174,30 @@
       df$lambda
     }
 
-    list(
+    out <- list(
       beta_mean = mean(df$beta),
       beta_sd = stats::sd(df$beta),
       beta_range = range(df$beta),
       lambda_mean = mean(df$lambda),
       lambda_sd = stats::sd(df$lambda),
       lambda_range = range(df$lambda),
-      cor_pearson = if (model == "2pl") {
+      cor_pearson = if (has_discrimination) {
         .irtsimrel_cor_or_na(df$beta, log(lambda_unscaled))
       } else {
         NA_real_
       },
-      cor_spearman = if (model == "2pl") {
+      cor_spearman = if (has_discrimination) {
         .irtsimrel_cor_or_na(df$beta, log(lambda_unscaled), method = "spearman")
       } else {
         NA_real_
       }
     )
+    if (model == "3pl") {
+      out$guessing_mean <- mean(df$guessing)
+      out$guessing_sd <- stats::sd(df$guessing)
+      out$guessing_range <- range(df$guessing)
+    }
+    out
   }
 
   lambda_unscaled <- if ("lambda_unscaled" %in% names(data)) {
@@ -179,25 +206,32 @@
     data$lambda
   }
 
+  overall <- list(
+    n_total = nrow(data),
+    beta_mean = mean(data$beta),
+    beta_sd = stats::sd(data$beta),
+    lambda_mean = mean(data$lambda),
+    lambda_sd = stats::sd(data$lambda),
+    cor_pearson_pooled = if (has_discrimination) {
+      .irtsimrel_cor_or_na(data$beta, log(lambda_unscaled))
+    } else {
+      NA_real_
+    },
+    cor_spearman_pooled = if (has_discrimination) {
+      .irtsimrel_cor_or_na(data$beta, log(lambda_unscaled), method = "spearman")
+    } else {
+      NA_real_
+    }
+  )
+  if (model == "3pl") {
+    overall$guessing_mean <- mean(data$guessing)
+    overall$guessing_sd <- stats::sd(data$guessing)
+    overall$guessing_range <- range(data$guessing)
+  }
+
   list(
     by_form = lapply(split(data, data$form_id), compute_one),
-    overall = list(
-      n_total = nrow(data),
-      beta_mean = mean(data$beta),
-      beta_sd = stats::sd(data$beta),
-      lambda_mean = mean(data$lambda),
-      lambda_sd = stats::sd(data$lambda),
-      cor_pearson_pooled = if (model == "2pl") {
-        .irtsimrel_cor_or_na(data$beta, log(lambda_unscaled))
-      } else {
-        NA_real_
-      },
-      cor_spearman_pooled = if (model == "2pl") {
-        .irtsimrel_cor_or_na(data$beta, log(lambda_unscaled), method = "spearman")
-      } else {
-        NA_real_
-      }
-    )
+    overall = overall
   )
 }
 

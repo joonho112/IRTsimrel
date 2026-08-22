@@ -8,7 +8,7 @@
 eqc_calibrate(
   target_rho,
   n_items,
-  model = c("rasch", "2pl"),
+  model = c("rasch", "2pl", "3pl"),
   latent_shape = "normal",
   item_source = "parametric",
   latent_params = list(),
@@ -18,7 +18,11 @@ eqc_calibrate(
   c_bounds = c(0.3, 3),
   tol = 1e-04,
   seed = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  root_policy = "lowest_increasing",
+  root_controls = list(),
+  allow_tangent = FALSE,
+  allow_plateau = FALSE
 )
 
 \method{print}{eqc_result}(x, digits = 4, ...)
@@ -30,8 +34,12 @@ eqc_calibrate(
 
 \item{n_items}{Integer. Number of items in the test form.}
 
-\item{model}{Character. Measurement model: \code{"rasch"} or \code{"2pl"}.
-For \code{"rasch"}, all baseline discriminations are set to 1 before scaling.}
+\item{model}{Character. Measurement model: \code{"rasch"}, \code{"2pl"},
+or \code{"3pl"}.
+For \code{"rasch"}, all baseline discriminations are set to 1 before scaling.
+For \code{"3pl"}, \code{item_params$guessing_params} controls the item
+lower asymptotes; calibration scales discrimination only and uses the
+fixed logistic convention \code{D = 1}.}
 
 \item{latent_shape}{Character. Shape argument passed to \code{sim_latentG()}
 (e.g. \code{"normal"}, \code{"bimodal"}, \code{"heavy_tail"}, ...).}
@@ -61,11 +69,32 @@ direct MSEM targeting can be non-monotone under EQC root-finding. Use
 
 \item{c_bounds}{Numeric length-2 vector. Search bounds for \eqn{c}. Default: c(0.3, 3).}
 
-\item{tol}{Numeric. Tolerance for \code{uniroot()}. Default: 1e-4.}
+\item{tol}{Numeric. Root-polishing tolerance. Default: 1e-4.}
 
 \item{seed}{Optional integer for reproducibility.}
 
 \item{verbose}{Logical. If TRUE, print progress messages.}
+
+\item{root_policy}{Character. Root-selection policy used when the fixed-form
+reliability curve has multiple roots. The default,
+\code{"lowest_increasing"}, selects the lowest-scale root with positive
+local slope. \code{"nearest_increasing"} uses the unscaled baseline
+\code{c = 1} as its reference. \code{"lowest_any"} and
+\code{"highest_any"} select the lowest- or highest-scale admissible root
+regardless of slope direction. Tangent and plateau roots remain
+inadmissible under the \code{"*_any"} policies unless
+\code{allow_tangent} or \code{allow_plateau}, respectively, is enabled.}
+
+\item{root_controls}{Named list of advanced topology-scanner controls. The
+supplied \code{c_bounds} are never expanded.}
+
+\item{allow_tangent}{Logical. If \code{TRUE}, a detected tangent root may be
+selected by an \code{"*_any"} policy. The default is \code{FALSE}.}
+
+\item{allow_plateau}{Logical. If \code{TRUE}, the geometric midpoint of a
+detected target plateau may be selected by an \code{"*_any"} policy. The
+complete plateau interval remains recorded in the root table. The default
+is \code{FALSE}.}
 
 \item{x}{An object of class \code{"eqc_result"}.}
 
@@ -91,12 +120,20 @@ An object of class \code{"eqc_result"} (a list) with elements:
 \item{\code{lambda_base}}{Baseline (unscaled) item discriminations.}
 \item{\code{lambda_scaled}}{Scaled item discriminations
 (\code{lambda_base * c_star}).}
+\item{\code{guessing_vec}}{Item lower asymptotes. New Rasch/2PL objects
+store an all-zero vector; 3PL objects store the generated guessing
+parameters.}
 \item{\code{items_base}}{item_params object with scale = 1 (baseline).}
 \item{\code{items_calib}}{item_params object with discriminations scaled by c_star.}
+\item{\code{schema_version}, \code{item_scope}}{Additive result-schema and
+fixed-form estimand metadata.}
+\item{\code{estimand_signature}, \code{design_signature}}{Canonical
+estimand and realized-design provenance used by comparison utilities.}
 \item{\code{call}}{Matched function call.}
 \item{\code{misc}}{List of root-finding diagnostics, including bounds,
-endpoint reliabilities, target status, and the \code{uniroot()} result
-when an interior root was used.}
+endpoint reliabilities, global achievable range, root topology, branch
+selection, and a legacy-compatible \code{uniroot_result} for an interior
+crossing.}
 }
 
 The input object, invisibly.
@@ -111,8 +148,10 @@ Calibration, EQC) for reliability-targeted IRT simulation.
 Given a target marginal reliability \eqn{\rho^*}, a latent distribution
 generator \code{sim_latentG()} (for \eqn{G}) and an item parameter generator
 \code{sim_item_params()} (for \eqn{H}), the function searches for a global
-discrimination scale \eqn{c^* > 0} such that the population reliability
-\eqn{\rho(c)} of the Rasch/2PL model is approximately equal to \eqn{\rho^*}.
+discrimination scale \eqn{c^* > 0} such that a selected empirical
+quadrature approximation \eqn{\hat\rho_M(c)} for the Rasch, 2PL, or 3PL
+model matches \eqn{\rho^*}. Population accuracy is a Monte Carlo
+approximation and should be assessed on independent draws.
 
 The key idea is to:
 \enumerate{
@@ -122,8 +161,9 @@ The key idea is to:
 \item For any scale \eqn{c}, form \eqn{\lambda_i(c) = c \cdot \lambda_{i,0}}
 and compute the empirical approximation to population reliability
 \eqn{\hat\rho_M(c)} from the test information function.
-\item Solve the scalar equation \eqn{\hat\rho_M(c^*) = \rho^*} using
-deterministic root-finding (Brent's method via \code{uniroot()}).
+\item Scan the explicit scale interval on a logarithmic grid, enumerate
+all detected roots of \eqn{\hat\rho_M(c^*) = \rho^*}, and apply the
+requested branch-selection policy.
 }
 }
 \details{
@@ -136,27 +176,31 @@ The function calibrates the average-information reliability definition:
 By Jensen's inequality, \eqn{\tilde{\rho} \geq \bar{w}}, so this metric typically
 yields higher reliability values. \strong{This is the recommended default for EQC} because
 the objective function \eqn{\tilde{\rho}(c) - \rho^*} is stable on practical
-search intervals. For very wide finite empirical quadrature bounds, the
-implementation checks for an interior maximum before declaring a target
-infeasible.
+search intervals. The implementation nevertheless scans the complete
+user-supplied interval on \code{log(c)}, polishes detected local extrema
+and successfully bracketed sign-changing crossings, records any
+near-target fallback separately, and applies an explicit root policy. It
+does not assume that the empirical curve is globally monotone or unimodal.
 }
 
 \strong{MSEM-based} (\code{"msem"}/\code{"bar"}) reliability uses the harmonic mean of test information,
 \eqn{\bar{w}(c) = \sigma^2_\theta / (\sigma^2_\theta + E[1/\mathcal{J}(\theta;c)])}.
 This metric is rejected by \code{eqc_calibrate()} because the objective
 \eqn{\bar{w}(c) - \rho^*} may be non-monotone (see the reliability-targeted
-simulation manuscript, Section 4.3),
-which can cause single-bracket root-finding to return an incorrect solution.
+simulation manuscript, Section 4.3). Although the shared scanner can
+diagnose such topology, MSEM remains outside EQC's calibration contract.
 Use \code{\link{sac_calibrate}} if you need to target \eqn{\bar{w}} directly.
 }
 
 \subsection{WLE vs EAP Reliability Interpretation}{
 
-When validating with TAM, EAP reliability is often greater than WLE reliability
-in practical fits, but the two coefficients use different estimators and
-variance bases. EAP reliability more directly corresponds to MSEM-based
-population reliability. Treat WLE and EAP as complementary external
-diagnostics rather than guaranteed lower/upper bounds.
+WLE and EAP reliability use different estimators and variance bases, so they
+are complementary external diagnostics rather than ordered versions of one
+estimand. EAP is more closely related to MSEM-based population reliability;
+neither coefficient is identical to EQC's information-based target. The
+public \code{\link[=compute_reliability_tam]{compute_reliability_tam()}} helper supports Rasch/2PL only. Phase 7's
+direct TAM 3PL check was EAP-only because a validated TAM 3PL WLE path was
+unavailable.
 }
 }
 \examples{
@@ -172,6 +216,20 @@ eqc_result <- eqc_calibrate(
   seed = 42
 )
 print(eqc_result)
+
+# 3PL: guessing is generated once with the fixed item form and is not scaled.
+eqc_3pl <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 12L,
+  model = "3pl",
+  item_params = list(
+    guessing_params = list(distribution = "fixed", value = 0.20)
+  ),
+  M = 1500L,
+  c_bounds = c(0.1, 5),
+  seed = 5102L
+)
+stopifnot(all(eqc_3pl$guessing_vec == 0.20))
 }
 
 \dontrun{

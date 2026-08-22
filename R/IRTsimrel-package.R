@@ -28,7 +28,7 @@
 
 utils::globalVariables(c(
   "theta", "density", "c", "rho", "iteration", "phase",
-  "beta", "lambda", "shape", "after_stat",
+  "beta", "lambda", "guessing", "shape", "after_stat",
   "form_id", "item_id", "lambda_unscaled",
   "metric"
 ))

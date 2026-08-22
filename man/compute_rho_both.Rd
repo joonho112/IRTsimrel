@@ -3,7 +3,16 @@
 \alias{compute_rho_both}
 \title{Compute Both Reliability Metrics in a Single Pass}
 \usage{
-compute_rho_both(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
+compute_rho_both(
+  c,
+  theta_vec,
+  beta_vec,
+  lambda_base,
+  theta_var = NULL,
+  guessing = NULL,
+  weights = NULL,
+  return_diagnostics = FALSE
+)
 }
 \arguments{
 \item{c}{Numeric scalar. Global discrimination scaling factor.}
@@ -17,6 +26,16 @@ compute_rho_both(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
 
 \item{theta_var}{Optional numeric. Pre-calculated variance of theta.
 If NULL, computed from \code{theta_vec}.}
+
+\item{guessing}{Optional numeric scalar or item-length vector of 3PL lower
+asymptotes in \verb{[0, 1)}. A scalar is recycled; \code{NULL} gives the Rasch/2PL
+special case. The kernel uses \code{D = 1}.}
+
+\item{weights}{Optional non-negative integration weights, one per theta
+value. They are normalized internally.}
+
+\item{return_diagnostics}{Logical. Return log-domain numerical diagnostics
+in addition to the two legacy reliability fields.}
 }
 \value{
 A named list with components:
@@ -28,11 +47,11 @@ A named list with components:
 \description{
 Computes both the average-information reliability (\eqn{\tilde{\rho}}) and
 the MSEM-based marginal reliability (\eqn{\bar{w}}) from a single set of
-test information values, avoiding redundant matrix computation.
+test-information reductions, avoiding redundant kernel evaluation.
 
 This is a performance optimization over calling \code{compute_rho_tilde()}
-and \code{compute_rho_bar()} separately, since both share the same
-\eqn{M \times I} matrix computations.
+and \code{compute_rho_bar()} separately, since both share the same stable,
+automatically chunked item-information reduction.
 }
 \details{
 For the same information values and latent-variance basis, Jensen's
@@ -51,5 +70,8 @@ both$rho_bar
 
 # Verify: rho_tilde >= rho_bar (Jensen's inequality)
 both$rho_tilde >= both$rho_bar
+
+# The same call supports 3PL information.
+compute_rho_both(1, theta, beta, lambda0, guessing = 0.20)
 
 }

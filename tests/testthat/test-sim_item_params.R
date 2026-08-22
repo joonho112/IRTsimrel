@@ -287,7 +287,7 @@ describe("Input validation for sim_item_params", {
 
   test_that("invalid model errors", {
     expect_error(
-      sim_item_params(n_items = 10, model = "3pl", source = "parametric"),
+      sim_item_params(n_items = 10, model = "4pl", source = "parametric"),
       "'arg' should be one of"
     )
   })

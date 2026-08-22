@@ -18,6 +18,8 @@ A data frame with columns:
 \item{\code{lambda_base}}{Baseline (unscaled) discrimination.}
 \item{\code{lambda_scaled}}{Scaled discrimination (\code{lambda_base * c*}).}
 \item{\code{c_star}}{Calibrated scaling factor (same for all items).}
+\item{\code{guessing}}{For 3PL results only, the item lower asymptote.
+This column is omitted for Rasch and 2PL results.}
 }
 }
 \description{

@@ -291,14 +291,14 @@ test_that("c=0 returns reliability 0", {
   expect_equal(compute_rho_tilde(0, theta, beta, lambda), 0)
 })
 
-test_that("c=-1 returns reliability 0", {
+test_that("negative c is rejected", {
   set.seed(42)
   theta <- rnorm(100)
   beta  <- rnorm(10)
   lambda <- rep(1, 10)
 
-  expect_equal(compute_rho_bar(-1, theta, beta, lambda), 0)
-  expect_equal(compute_rho_tilde(-1, theta, beta, lambda), 0)
+  expect_error(compute_rho_bar(-1, theta, beta, lambda), "non-negative")
+  expect_error(compute_rho_tilde(-1, theta, beta, lambda), "non-negative")
 })
 
 
@@ -320,31 +320,31 @@ test_that("pre-calculated theta_var gives identical result to auto-computed", {
 
 
 # ---------------------------------------------------------------------------
-# theta_var = NA or near-zero triggers warning and fallback to 1.0
+# theta_var = NA or nonpositive is rejected instead of changing the estimand
 # ---------------------------------------------------------------------------
 
-test_that("theta_var=NA triggers warning and fallback to 1.0", {
+test_that("theta_var=NA is rejected", {
   set.seed(42)
   theta <- rnorm(100)
   beta  <- rnorm(10)
   lambda <- rep(1, 10)
 
-  expect_warning(
+  expect_error(
     compute_rho_bar(1, theta, beta, lambda, theta_var = NA),
-    "Invalid theta_var"
+    "theta_var"
   )
 })
 
-test_that("theta_var near-zero triggers warning and fallback", {
+test_that("positive theta_var near zero is used as supplied", {
   set.seed(42)
   theta <- rnorm(100)
   beta  <- rnorm(10)
   lambda <- rep(1, 10)
 
-  expect_warning(
-    compute_rho_bar(1, theta, beta, lambda, theta_var = 1e-12),
-    "Invalid theta_var"
-  )
+  observed <- compute_rho_bar(1, theta, beta, lambda, theta_var = 1e-12)
+  expect_true(is.finite(observed))
+  expect_gt(observed, 0)
+  expect_lt(observed, 1e-9)
 })
 
 

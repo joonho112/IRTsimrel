@@ -29,7 +29,7 @@ set.seed(42)
 ## Overview
 
 This vignette provides a comprehensive reference for every exported function in
-**IRTsimrel** v0.2.0. Functions are organized into five categories:
+**IRTsimrel** v0.3.0. Functions are organized into five categories:
 
 1. **Calibration Functions** -- The core algorithms for reliability-targeted
    simulation (`eqc_calibrate`, `sac_calibrate`, `compare_eqc_sac`).
@@ -62,9 +62,12 @@ https://doi.org/10.48550/arXiv.2512.16012
 
 Implements Algorithm 1 (EQC) from Lee (2026). Given a target marginal
 reliability, EQC draws a large fixed quadrature sample of abilities and item
-parameters, then solves the scalar root-finding problem via Brent's method
-(`uniroot()`). This is the recommended starting point for most simulation
-studies and targets the bracket-checked average-information metric.
+parameters, maps the reliability topology over the requested log-scale
+interval, and applies an explicit root-selection policy. Brent's method
+(`uniroot()`) locally polishes ordinary sign-changing crossings; boundary,
+tangent, plateau, and infeasible best-achievable outcomes follow their
+separate contracts. This is the recommended starting point for most simulation
+studies and targets the average-information metric.
 
 #### Signature
 
@@ -72,7 +75,7 @@ studies and targets the bracket-checked average-information metric.
 eqc_calibrate(
   target_rho,
   n_items,
-  model             = c("rasch", "2pl"),
+  model             = c("rasch", "2pl", "3pl"),
   latent_shape      = "normal",
   item_source       = "parametric",
   latent_params     = list(),
@@ -82,7 +85,11 @@ eqc_calibrate(
   c_bounds          = c(0.3, 3),
   tol               = 1e-4,
   seed              = NULL,
-  verbose           = FALSE
+  verbose           = FALSE,
+  root_policy       = "lowest_increasing",
+  root_controls     = list(),
+  allow_tangent     = FALSE,
+  allow_plateau     = FALSE
 )
 ```
 
@@ -92,17 +99,21 @@ eqc_calibrate(
 |:----------|:-----|:--------|:------------|
 | `target_rho` | numeric | *required* | Target marginal reliability in (0, 1). |
 | `n_items` | integer | *required* | Number of test items. |
-| `model` | character | `"rasch"` | Measurement model: `"rasch"` or `"2pl"`. |
+| `model` | character | `"rasch"` | Measurement model: `"rasch"`, `"2pl"`, or `"3pl"` (fixed logistic convention `D = 1`). |
 | `latent_shape` | character | `"normal"` | Shape passed to `sim_latentG()`. |
 | `item_source` | character | `"parametric"` | Source passed to `sim_item_params()`; `"irw"` is optional external integration. |
 | `latent_params` | list | `list()` | Additional arguments for `sim_latentG()`. |
-| `item_params` | list | `list()` | Additional arguments for `sim_item_params()`. |
+| `item_params` | list | `list()` | Additional arguments for `sim_item_params()`; for 3PL, pass `guessing_params` or a custom bank with `custom_params$guessing`. |
 | `reliability_metric` | character | `"info"` | EQC supports `"info"`/`"tilde"`; use SAC for direct `"msem"`/`"bar"` targeting. |
 | `M` | integer | `10000L` | Quadrature sample size. |
 | `c_bounds` | numeric(2) | `c(0.3, 3)` | Search bounds for scaling factor c. |
-| `tol` | numeric | `1e-4` | Tolerance for `uniroot()`. |
+| `tol` | numeric | `1e-4` | Residual/root-polishing tolerance used by topology classification and local crossing refinement. |
 | `seed` | integer or NULL | `NULL` | Random seed for reproducibility. |
 | `verbose` | logical | `FALSE` | Print progress messages. |
+| `root_policy` | character | `"lowest_increasing"` | One of `lowest_increasing`, `nearest_increasing`, `lowest_any`, or `highest_any`; the default chooses the lowest positive-slope crossing. |
+| `root_controls` | list | `list()` | Advanced controls for the adaptive log-scale topology scan. The requested `c_bounds` are not expanded. |
+| `allow_tangent` | logical | `FALSE` | Permit a detected tangent root to be selected by a compatible `"*_any"` policy. |
+| `allow_plateau` | logical | `FALSE` | Permit the midpoint of a detected target plateau to be selected by a compatible `"*_any"` policy. |
 
 #### Return Value
 
@@ -114,7 +125,7 @@ An object of class `"eqc_result"` (a list) with elements:
 | `target_rho` | The target reliability supplied. |
 | `achieved_rho` | Empirical quadrature estimate at `c_star`. |
 | `metric` | Internal metric label (`"info"`). |
-| `model` | Model used (`"rasch"` or `"2pl"`). |
+| `model` | Model used (`"rasch"`, `"2pl"`, or `"3pl"`). |
 | `n_items` | Number of items. |
 | `M` | Quadrature sample size. |
 | `theta_quad` | Length-M vector of quadrature abilities. |
@@ -122,10 +133,13 @@ An object of class `"eqc_result"` (a list) with elements:
 | `beta_vec` | Item difficulties. |
 | `lambda_base` | Baseline (unscaled) discriminations. |
 | `lambda_scaled` | Discriminations scaled by `c_star`. |
+| `guessing_vec` | Lower asymptotes (all zero for new Rasch/2PL results). |
 | `items_base` | `item_params` object at scale = 1. |
 | `items_calib` | `item_params` object with scaled discriminations. |
 | `call` | The matched call. |
-| `misc` | List of convergence diagnostics. |
+| `schema_version`, `item_scope` | Additive schema version and the fixed-form estimand scope. |
+| `estimand_signature`, `design_signature` | Canonical estimand and realized-design provenance used in comparisons. |
+| `misc` | Bounds, achievable range, topology, root-selection, status, and local root-polishing diagnostics. |
 
 #### Examples
 
@@ -159,6 +173,21 @@ cat(sprintf("c* = %.4f, achieved rho = %.4f\n",
 
 See `vignette("algorithm-eqc")` for a detailed walk-through.
 
+```{r eqc-3pl, eval=TRUE}
+# Fixed-form 3PL calibration: guessing is held fixed while discrimination scales
+eqc_3pl <- eqc_calibrate(
+  target_rho = 0.70,
+  n_items = 10,
+  model = "3pl",
+  item_params = list(
+    guessing_params = list(distribution = "fixed", value = 0.20)
+  ),
+  M = 2000L,
+  seed = 42
+)
+coef(eqc_3pl)[1:4, c("beta", "lambda_base", "lambda_scaled", "guessing")]
+```
+
 ---
 
 ### 1.2 `sac_calibrate()` -- Stochastic Approximation Calibration {#sac-calibrate}
@@ -174,7 +203,7 @@ same-estimand validation of EQC when `reliability_metric = "info"`.
 sac_calibrate(
   target_rho,
   n_items,
-  model              = c("rasch", "2pl"),
+  model              = c("rasch", "2pl", "3pl"),
   latent_shape       = "normal",
   item_source        = "parametric",
   latent_params      = list(),
@@ -189,7 +218,10 @@ sac_calibrate(
   c_bounds           = c(0.01, 20),
   resample_items     = TRUE,
   seed               = NULL,
-  verbose            = FALSE
+  verbose            = FALSE,
+  root_policy        = "lowest_increasing",
+  preflight_controls = list(),
+  evaluation_controls = list()
 )
 ```
 
@@ -199,22 +231,25 @@ sac_calibrate(
 |:----------|:-----|:--------|:------------|
 | `target_rho` | numeric | *required* | Target marginal reliability in (0, 1). |
 | `n_items` | integer | *required* | Number of test items. |
-| `model` | character | `"rasch"` | Measurement model: `"rasch"` or `"2pl"`. |
+| `model` | character | `"rasch"` | Measurement model: `"rasch"`, `"2pl"`, or `"3pl"` (`D = 1`). |
 | `latent_shape` | character | `"normal"` | Shape passed to `sim_latentG()`. |
 | `item_source` | character | `"parametric"` | Source passed to `sim_item_params()`. |
 | `latent_params` | list | `list()` | Additional arguments for `sim_latentG()`. |
 | `item_params` | list | `list()` | Additional arguments for `sim_item_params()`. |
 | `reliability_metric` | character | `"msem"` | Metric: `"msem"`/`"bar"` or `"info"`/`"tilde"`. |
-| `c_init` | numeric, `eqc_result`, or NULL | `NULL` | Initial scaling factor. If `NULL`, uses APC. If an `eqc_result` object, uses its `c_star` (warm start). |
+| `c_init` | numeric, `eqc_result`, or NULL | `NULL` | Initial scale. A compatible EQC object is a strict fixed-form, same-estimand warm start. With `NULL`, the selected preflight root is used for 3PL and whenever APC is unavailable. |
 | `M_per_iter` | integer | `500L` | Monte Carlo samples per iteration. |
 | `M_pre` | integer | `10000L` | Samples for pre-calculating latent variance. |
 | `n_iter` | integer | `300L` | Total Robbins--Monro iterations. |
 | `burn_in` | integer or NULL | `NULL` | Iterations to discard before averaging. Default: `floor(n_iter / 2)`. |
 | `step_params` | list | `list()` | Step size parameters: `a` (base, default 1.0), `A` (stabilization, default 50), `gamma` (decay, default 0.67). |
 | `c_bounds` | numeric(2) | `c(0.01, 20)` | Projection bounds for iterates. |
-| `resample_items` | logical | `TRUE` | Re-draw item parameters each iteration. |
+| `resample_items` | logical | `TRUE` | `FALSE` targets one fixed form; `TRUE` targets an item-superpopulation by redrawing forms. |
 | `seed` | integer or NULL | `NULL` | Random seed. |
 | `verbose` | logical or integer | `FALSE` | Print progress (2 for iteration-level detail). |
+| `root_policy` | character | `"lowest_increasing"` | Root policy for the deterministic branch preflight. |
+| `preflight_controls` | list | `list()` | Controls for topology scanning, split-form stability checks, and preflight Monte Carlo size. |
+| `evaluation_controls` | list | `list()` | Controls for the independent post-calibration evaluation, including `M` and number of forms. |
 
 #### Return Value
 
@@ -229,6 +264,9 @@ An object of class `"sac_result"` (a list) with elements:
 | `theta_var` | Pre-calculated latent variance. |
 | `trajectory` | Numeric vector of all iterates. |
 | `rho_trajectory` | Reliability estimates at each iteration. |
+| `rho_update_trajectory` | Reliability sequence used in the stochastic updates. |
+| `evaluation_trajectory`, `rho_scale_trajectory` | Scale values aligned with the reliability sequence. |
+| `iteration_trace` | Row-wise iteration diagnostics. |
 | `raw_trajectory` | Unprojected candidate iterates before bounds are applied. |
 | `step_size_trajectory` | Robbins--Monro step sizes used at each iteration. |
 | `gradient_trajectory` | Stochastic reliability residuals used for updates. |
@@ -249,13 +287,22 @@ An object of class `"sac_result"` (a list) with elements:
 | `c_init` | Initial value used. |
 | `init_method` | Initialization method label. |
 | `item_design` | Item draw policy used for the final calibrated design. |
+| `item_scope` | `"fixed_form"` or `"item_superpopulation"`. |
 | `convergence` | List of convergence diagnostics. |
-| `beta_vec` | Item difficulties (post-calibration draw). |
+| `beta_vec` | Item difficulties from the fixed form, or from the stored representative evaluation form for an item-superpopulation result. |
 | `lambda_base` | Baseline discriminations. |
 | `lambda_scaled` | Scaled discriminations. |
+| `guessing_vec` | Item lower asymptotes (zero for new Rasch/2PL results). |
 | `items_base` | Baseline `item_params` object. |
 | `items_calib` | Calibrated `item_params` object. |
 | `theta_quad` | Theta sample for post-calibration estimate. |
+| `schema_version`, `estimand_signature`, `design_signature` | Schema and comparison provenance. |
+| `calibration_design`, `evaluation_design` | Calibration and independent evaluation designs. |
+| `achieved_distribution`, `achieved_se`, `representative_achieved_rho` | Holdout reliability distribution and summary. |
+| `preflight`, `branch` | Deterministic topology scan and selected increasing-branch contract. |
+| `requested_c_bounds`, `projection_source` | Requested interval and effective projection provenance. |
+| `rng_provenance`, `warm_start` | RNG stream and initializer audit metadata. |
+| `preflight_controls`, `evaluation_controls` | Normalized controls actually used. |
 | `call` | The matched call. |
 
 #### Examples
@@ -285,6 +332,7 @@ sac_warm <- sac_calibrate(
   model      = "rasch",
   reliability_metric = "info",
   c_init     = eqc_res,
+  resample_items = FALSE,
   n_iter     = 100L,
   M_per_iter = 500L,
   M_pre      = 5000L,
@@ -333,7 +381,7 @@ A list (returned invisibly) with components:
 | `c_sac` | Calibrated `c*` from SAC. |
 | `diff_abs` | Absolute difference between the two `c*` values. |
 | `diff_pct` | Percent difference relative to EQC. |
-| `agreement` | Logical. `TRUE` if percent difference < 5%. |
+| `agreement` | `TRUE` or `FALSE` when agreement is validly evaluated; `NA` when comparability or calibration status requires withholding it. |
 | `target_rho` | Shared target reliability. |
 | `achieved_eqc` | Achieved reliability from EQC. |
 | `achieved_sac` | Achieved reliability from SAC. |
@@ -342,6 +390,10 @@ A list (returned invisibly) with components:
 | `model_eqc`, `model_sac` | Model labels used by each result. |
 | `n_items_eqc`, `n_items_sac` | Test lengths used by each result. |
 | `eqc_status`, `sac_status`, `sac_status_flags` | Calibration status metadata. |
+| `comparable` | Whether the stored estimand and design contracts match. |
+| `comparability_reasons` | Stable reason codes when contracts are not comparable. |
+| `agreement_status`, `agreement_reasons` | Whether agreement was evaluated and why it was withheld otherwise. |
+| `eqc_contract`, `sac_contract` | Normalized contracts used for the comparison decision. |
 
 #### Examples
 
@@ -504,7 +556,7 @@ custom) and methods for inducing difficulty--discrimination correlation.
 ```r
 sim_item_params(
   n_items,
-  model                 = c("rasch", "2pl"),
+  model                 = c("rasch", "2pl", "3pl"),
   source                = c("parametric", "irw", "hierarchical", "custom"),
   method                = c("copula", "conditional", "independent"),
   n_forms               = 1L,
@@ -514,7 +566,8 @@ sim_item_params(
   custom_params         = list(),
   scale                 = 1,
   center_difficulties   = TRUE,
-  seed                  = NULL
+  seed                  = NULL,
+  guessing_params       = list()
 )
 ```
 
@@ -523,17 +576,18 @@ sim_item_params(
 | Parameter | Type | Default | Description |
 |:----------|:-----|:--------|:------------|
 | `n_items` | integer | *required* | Number of items per form. |
-| `model` | character | `"rasch"` | `"rasch"` or `"2pl"`. |
+| `model` | character | `"rasch"` | `"rasch"`, `"2pl"`, or `"3pl"`. |
 | `source` | character | `"parametric"` | `"parametric"`, optional `"irw"`, `"hierarchical"`, or `"custom"`. |
-| `method` | character | `"copula"` | For 2PL: `"copula"` (recommended), `"conditional"`, `"independent"`. |
+| `method` | character | `"copula"` | For 2PL/3PL discrimination generation: `"copula"`, `"conditional"`, or `"independent"`. |
 | `n_forms` | integer | `1L` | Number of parallel test forms. |
 | `difficulty_params` | list | `list()` | For parametric: `mu` (default 0), `sigma` (default 1), `distribution` (default `"normal"`). |
-| `discrimination_params` | list | `list()` | For 2PL: `mu_log` (default 0), `sigma_log` (default 0.3), `rho` (default -0.3). |
+| `discrimination_params` | list | `list()` | For 2PL/3PL: `mu_log` (default 0), `sigma_log` (default 0.3), `rho` (default -0.3). |
 | `hierarchical_params` | list | `list()` | For hierarchical: `mu` (2-vector), `tau` (2-vector), `rho`. |
-| `custom_params` | list | `list()` | For custom: `beta` (vector or function), `lambda` (vector or function). |
+| `custom_params` | list | `list()` | For custom: `beta`, `lambda`, and, for 3PL, `guessing` (vectors or functions). |
 | `scale` | numeric | `1` | Global discrimination scaling factor. |
 | `center_difficulties` | logical | `TRUE` | Center difficulties to sum to zero. |
 | `seed` | integer or NULL | `NULL` | Random seed. |
+| `guessing_params` | list | `list()` | 3PL lower-asymptote generator; supported distributions are `"fixed"`, `"uniform"`, and `"beta"`, with bounds constrained below 1. Must remain empty for Rasch/2PL; nonempty guessing input is rejected. |
 
 #### Return Value
 
@@ -541,7 +595,7 @@ An object of class `"item_params"` (a list) with elements:
 
 | Element | Description |
 |:--------|:------------|
-| `data` | Data frame: `form_id`, `item_id`, `beta`, `lambda`, `lambda_unscaled`. |
+| `data` | Data frame: `form_id`, `item_id`, `beta`, `lambda`, `lambda_unscaled`, and `guessing` for 3PL. |
 | `model` | Model type. |
 | `source` | Source used. |
 | `method` | Method for discriminations (NA for Rasch or hierarchical). |
@@ -549,7 +603,7 @@ An object of class `"item_params"` (a list) with elements:
 | `n_forms` | Forms generated. |
 | `scale` | Scale factor applied. |
 | `centered` | Whether difficulties were centered. |
-| `params` | Parameters used for generation. |
+| `params` | Normalized parameters used for generation, including the 3PL guessing specification when applicable. |
 | `achieved` | Achieved statistics (correlations, moments). |
 
 #### Examples
@@ -609,6 +663,16 @@ head(as.data.frame(items_custom))
 See `vignette("item-parameters")` for a complete discussion of sources
 and methods.
 
+```{r sim-items-3pl, eval=TRUE}
+items_3pl <- sim_item_params(
+  n_items = 12,
+  model = "3pl",
+  guessing_params = list(distribution = "uniform", min = 0.15, max = 0.25),
+  seed = 42
+)
+head(as.data.frame(items_3pl)[, c("beta", "lambda", "guessing")])
+```
+
 ---
 
 ### 2.3 `simulate_response_data()` -- Generate Response Matrices {#simulate-response-data}
@@ -616,6 +680,12 @@ and methods.
 Simulates binary (0/1) item response data using calibrated parameters from
 `eqc_calibrate()` or `sac_calibrate()`. This is the final step before
 external validation (e.g., with TAM).
+
+The function always uses the normalized item design stored in the calibration
+result. For a fixed-form result this is that calibrated form. For an SAC
+`item_scope = "item_superpopulation"` result, it is one stored
+representative evaluation form: this call does not redraw a new form and does
+not itself simulate the aggregate item-superpopulation estimand.
 
 #### Signature
 
@@ -649,6 +719,7 @@ A list with components:
 | `theta` | True latent abilities (length N). |
 | `beta` | Item difficulties (length I). |
 | `lambda` | Scaled item discriminations (length I). |
+| `guessing` | Item lower asymptotes (length I; zeros for Rasch/2PL). |
 | `provenance` | Calibration and simulation metadata for reproducible audit trails. |
 
 The `provenance` field includes `result_class`, `c_star`, `target_rho`,
@@ -657,6 +728,8 @@ The `provenance` field includes `result_class`, `c_star`, `target_rho`,
 `simulation_seed`, `n_persons`, `latent_shape`, and `latent_params`.
 `calibration_status` is a scalar status label; `status_flags` is always a
 character vector so EQC, SAC, and legacy SPC provenance can be handled uniformly.
+The provenance also records `schema_version`, `item_scope`,
+`design_signature`, and item-parameter provenance.
 
 #### Examples
 
@@ -721,7 +794,7 @@ compare_shapes(
 #### Return Value
 
 A `ggplot` object with faceted density plots, one panel per shape. A dashed
-red line shows the N(0, 1) reference density.
+red line shows the $N(0,\sigma^2)$ reference density.
 
 #### Example
 
@@ -755,7 +828,10 @@ MSEM convention described in `vignette("theory-reliability")`.
 #### Signature
 
 ```r
-compute_rho_bar(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
+compute_rho_bar(
+  c, theta_vec, beta_vec, lambda_base, theta_var = NULL,
+  guessing = NULL, weights = NULL, return_diagnostics = FALSE
+)
 ```
 
 #### Parameters
@@ -767,10 +843,15 @@ compute_rho_bar(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
 | `beta_vec` | numeric vector | *required* | Item difficulties. |
 | `lambda_base` | numeric vector | *required* | Baseline discriminations (before scaling). |
 | `theta_var` | numeric or NULL | `NULL` | Pre-calculated theta variance. If `NULL`, computed from `theta_vec`. |
+| `guessing` | numeric vector or NULL | `NULL` | Item lower asymptotes; `NULL` is the exact zero-guessing path. |
+| `weights` | numeric vector or NULL | `NULL` | Optional non-negative integration weights, normalized internally. |
+| `return_diagnostics` | logical | `FALSE` | Return the estimate together with numerical diagnostics instead of a scalar. |
 
 #### Return Value
 
-A numeric scalar: the MSEM-based reliability.
+A numeric scalar by default. With `return_diagnostics = TRUE`, a list contains
+the reliability estimate together with variance, integration, and numerical
+stability diagnostics.
 
 #### Example
 
@@ -795,7 +876,10 @@ metric for EQC.
 #### Signature
 
 ```r
-compute_rho_tilde(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
+compute_rho_tilde(
+  c, theta_vec, beta_vec, lambda_base, theta_var = NULL,
+  guessing = NULL, weights = NULL, return_diagnostics = FALSE
+)
 ```
 
 Parameters and return value are identical to `compute_rho_bar()` above; only
@@ -822,7 +906,10 @@ avoiding redundant M x I operations.
 #### Signature
 
 ```r
-compute_rho_both(c, theta_vec, beta_vec, lambda_base, theta_var = NULL)
+compute_rho_both(
+  c, theta_vec, beta_vec, lambda_base, theta_var = NULL,
+  guessing = NULL, weights = NULL, return_diagnostics = FALSE
+)
 ```
 
 Parameters are identical to `compute_rho_bar()`. The return value is a named
@@ -884,16 +971,22 @@ for (I in c(10, 20, 30, 50)) {
 
 ### 3.5 `check_feasibility()` -- Feasibility Screening {#check-feasibility}
 
-Screens whether a target reliability is achievable for a given test design
-by computing the range of reliabilities across a range of scaling factors.
+Screens whether a target reliability is attainable in one generated finite
+Monte Carlo design by computing the empirical reliability range across a set
+of scaling factors.
 Run this before calibration to avoid wasting time on infeasible targets.
+
+The classification is conditional on that finite theta sample. For
+`latent_shape = "heavy_tail"`, a numeric MSEM range is only a finite-grid
+sensitivity result: the corresponding population MSEM functional can be
+non-integrable, so this function does not certify population feasibility.
 
 #### Signature
 
 ```r
 check_feasibility(
   n_items,
-  model         = c("rasch", "2pl"),
+  model         = c("rasch", "2pl", "3pl"),
   latent_shape  = "normal",
   item_source   = "parametric",
   c_bounds      = c(0.1, 10),
@@ -911,7 +1004,7 @@ check_feasibility(
 | Parameter | Type | Default | Description |
 |:----------|:-----|:--------|:------------|
 | `n_items` | integer | *required* | Number of items. |
-| `model` | character | `"rasch"` | `"rasch"` or `"2pl"`. |
+| `model` | character | `"rasch"` | `"rasch"`, `"2pl"`, or `"3pl"`. |
 | `latent_shape` | character | `"normal"` | Latent distribution shape. |
 | `item_source` | character | `"parametric"` | Item parameter source. |
 | `c_bounds` | numeric(2) | `c(0.1, 10)` | Scaling factor range to evaluate. |
@@ -928,14 +1021,20 @@ An object of class `"feasibility_check"` (returned invisibly) with:
 
 | Element | Description |
 |:--------|:------------|
-| `rho_range_info` | Achievable range of rho_tilde. |
-| `rho_range_msem` | Achievable range of rho_bar. |
+| `rho_range_info` | Empirical range computed by the configured finite scan; provisional if topology is unresolved. |
+| `rho_range_msem` | Empirical range computed by the configured finite scan; provisional if unresolved and finite-grid only for `heavy_tail`. |
 | `rho_bounds_info` | Boundary reliabilities for the information metric. |
 | `rho_bounds_msem` | Boundary reliabilities for the MSEM metric. |
-| `rho_msem_max_c` | Scaling factor at the maximum sampled MSEM reliability. |
+| `rho_info_max_c` | Scale at the maximum information reliability detected by the configured scan; provisional if topology is unresolved. |
+| `rho_msem_max_c` | Scale at the maximum MSEM reliability detected by the configured scan; provisional if topology is unresolved. |
 | `target_rho` | Optional target reliability supplied. |
 | `target_status_info` | Feasibility classification for `target_rho` under the information metric. |
 | `target_status_msem` | Feasibility classification for `target_rho` under the MSEM metric. |
+| `topology_info`, `topology_msem` | Configured log-grid scans, roots, extrema, branches, evaluation counts, and resolution status. |
+| `target_status_info_canonical`, `target_status_msem_canonical` | Canonical status: feasible, below/above range, or uncertain. |
+| `root_count_info`, `root_count_msem` | Number of detected roots for each metric. |
+| `admissible_root_count_info`, `admissible_root_count_msem` | Number of detected roots on admissible increasing branches. |
+| `best_achievable_info`, `best_achievable_msem` | Closest detected scale/reliability point and target gap. |
 | `n_items` | Number of items. |
 | `model` | Model. |
 | `latent_shape` | Latent shape. |
@@ -969,9 +1068,12 @@ cat(sprintf("rho=0.85 status (msem): %s\n",
 
 ### 3.6 `rho_curve()` -- Reliability as a Function of Scaling Factor {#rho-curve}
 
-Computes and optionally plots the reliability curve across a grid of
-scaling factor values. Helps visualize the relationship between
-discrimination strength and measurement precision.
+Computes and optionally plots a finite-sample reliability curve across a grid
+of scaling factor values. It helps visualize the relationship between
+discrimination strength and measurement precision for that generated design.
+With `latent_shape = "heavy_tail"`, an MSEM curve is finite-grid sensitivity
+evidence only and does not establish that the population MSEM functional is
+finite.
 
 #### Signature
 
@@ -979,7 +1081,7 @@ discrimination strength and measurement precision.
 rho_curve(
   c_values      = seq(0.1, 5, length.out = 50),
   n_items,
-  model         = c("rasch", "2pl"),
+  model         = c("rasch", "2pl", "3pl"),
   latent_shape  = "normal",
   item_source   = "parametric",
   metric        = c("both", "info", "msem"),
@@ -997,7 +1099,7 @@ rho_curve(
 |:----------|:-----|:--------|:------------|
 | `c_values` | numeric vector | `seq(0.1, 5, length.out = 50)` | Grid of scaling factor values. |
 | `n_items` | integer | *required* | Number of items. |
-| `model` | character | `"rasch"` | `"rasch"` or `"2pl"`. |
+| `model` | character | `"rasch"` | `"rasch"`, `"2pl"`, or `"3pl"`. |
 | `latent_shape` | character | `"normal"` | Latent distribution shape. |
 | `item_source` | character | `"parametric"` | Item parameter source. |
 | `metric` | character | `"both"` | Which metric(s): `"both"`, `"info"`, or `"msem"`. |
@@ -1009,9 +1111,9 @@ rho_curve(
 
 #### Return Value
 
-A data frame of class `"rho_curve"` (returned invisibly when `plot = TRUE`)
-with columns `c`, `rho_tilde`, and/or `rho_bar` depending on the `metric`
-argument.
+A data frame of class `"rho_curve"`, always returned invisibly, with
+columns `c`, `rho_tilde`, and/or `rho_bar` depending on the
+`metric` argument. When `plot = TRUE`, the plot is drawn as a side effect.
 
 #### Example
 
@@ -1037,8 +1139,10 @@ head(curve_data)
 ### 3.7 `compute_reliability_tam()` -- TAM-Based Validation {#compute-reliability-tam}
 
 Fits a Rasch or 2PL model using the **TAM** package and returns WLE and EAP
-reliability estimates. This function requires the **TAM** package to be
-installed.
+reliability estimates. This public helper intentionally does not accept
+`model = "3pl"`. Direct Phase 7 validation showed that TAM's 3PL fit can
+provide EAP output, whereas `tam.wle()` was unsupported for the validated
+`tam.mml.3pl` object. This function requires **TAM** to be installed.
 
 #### Signature
 
@@ -1081,6 +1185,11 @@ if (requireNamespace("TAM", quietly = TRUE)) {
 ```
 
 See `vignette("validation")` for a complete validation workflow.
+
+TAM coefficients are estimator-, prior-, sample-, and fit-dependent external
+diagnostics. They are not identical to IRTsimrel's analytic population
+reliability estimands, so agreement is evidence about the workflow rather than
+an identity that every finite sample must satisfy.
 
 ---
 
@@ -1126,8 +1235,8 @@ s
 coef.eqc_result(object, ...)
 ```
 
-Returns a data frame with columns: `item_id`, `beta`, `lambda_base`,
-`lambda_scaled`, and `c_star`.
+Returns a data frame with columns `item_id`, `beta`, `lambda_base`,
+`lambda_scaled`, and `c_star`; 3PL results also include `guessing`.
 
 ```{r coef-eqc, eval=TRUE}
 item_df <- coef(eqc_res)
@@ -1189,8 +1298,8 @@ s_sac
 coef.sac_result(object, ...)
 ```
 
-Returns a data frame with columns: `item_id`, `beta`, `lambda_base`,
-`lambda_scaled`, and `c_star`.
+Returns a data frame with columns `item_id`, `beta`, `lambda_base`,
+`lambda_scaled`, and `c_star`; 3PL results also include `guessing`.
 
 ```{r coef-sac, eval=TRUE}
 head(coef(sac_res))
@@ -1242,7 +1351,7 @@ Objects returned by `sim_latentG()`.
 #### `print.latent_G()`
 
 ```r
-print.latent_G(x, ...)
+print.latent_G(x, digits = 4, ...)
 ```
 
 Prints shape, sample size, target parameters, and sample moments.
@@ -1298,6 +1407,9 @@ theta_vec <- g_norm$theta
 cat(sprintf("Length: %d, Mean: %.3f\n", length(theta_vec), mean(theta_vec)))
 ```
 
+`as.double()` is registered as the same extraction path, so
+`as.double(g_norm)` also returns the stored theta vector.
+
 ---
 
 ### 4.4 Methods for `item_params` Objects
@@ -1307,7 +1419,7 @@ Objects returned by `sim_item_params()`.
 #### `print.item_params()`
 
 ```r
-print.item_params(x, ...)
+print.item_params(x, digits = 4, ...)
 ```
 
 Prints model, source, method, summary statistics of difficulties and
@@ -1335,8 +1447,10 @@ summary(items_2pl)
 plot.item_params(x, type = c("scatter", "density", "both"), ...)
 ```
 
-For 2PL models, creates difficulty vs. discrimination scatter plots and/or
-density plots. Uses **ggplot2** if available.
+For 2PL and 3PL models, creates difficulty-versus-discrimination scatter
+plots and/or density plots; the 3PL density view also includes the guessing
+distribution. Rasch output uses the applicable difficulty/discrimination
+summaries. Uses **ggplot2** if available.
 
 | Parameter | Default | Description |
 |:----------|:--------|:------------|
@@ -1551,6 +1665,7 @@ sac_wf <- sac_calibrate(
   model      = "rasch",
   reliability_metric = "info",
   c_init     = eqc_wf,
+  resample_items = FALSE,
   n_iter     = 150L,
   M_per_iter = 500L,
   M_pre      = 5000L,
@@ -1631,6 +1746,7 @@ registered S3 methods from the NAMESPACE file, organized alphabetically.
 | Export | Type |
 |:-------|:-----|
 | `as.data.frame.item_params` | S3 method |
+| `as.double.latent_G` | S3 method |
 | `as.numeric.latent_G` | S3 method |
 | `check_feasibility` | Function |
 | `coef.eqc_result` | S3 method |

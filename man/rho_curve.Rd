@@ -7,7 +7,7 @@
 rho_curve(
   c_values = seq(0.1, 5, length.out = 50),
   n_items,
-  model = c("rasch", "2pl"),
+  model = c("rasch", "2pl", "3pl"),
   latent_shape = "normal",
   item_source = "parametric",
   metric = c("both", "info", "msem"),
@@ -26,7 +26,9 @@ Default: \code{seq(0.1, 5, length.out = 50)}.}
 
 \item{n_items}{Integer. Number of items in the test form.}
 
-\item{model}{Character. Measurement model: \code{"rasch"} or \code{"2pl"}.}
+\item{model}{Character. Measurement model: \code{"rasch"}, \code{"2pl"},
+or \code{"3pl"}. For 3PL, supply lower-asymptote generation controls in
+\code{item_params}; discrimination alone is varied under \code{D = 1}.}
 
 \item{latent_shape}{Character. Shape argument passed to \code{sim_latentG()}.}
 
@@ -69,7 +71,15 @@ selecting appropriate target reliability values.
 The function generates a single set of theta and item parameters, then
 evaluates the reliability at each value of \code{c_values}. When
 \code{metric = "both"}, it uses \code{\link{compute_rho_both}} for
-efficiency.
+efficiency. For a curve with detected interior extrema or unresolved
+regions, an independently scanned \code{topology_info} and/or
+\code{topology_msem} attribute is attached. Topology is never inferred from
+the display grid alone.
+
+Values are conditional on the generated finite theta sample. For the
+built-in \code{latent_shape = "heavy_tail"}, a numeric MSEM curve is a
+finite-grid sensitivity result; the corresponding population MSEM
+functional can be non-integrable and is not certified by this function.
 }
 \examples{
 # Basic usage: compute reliability curve for 25-item Rasch test

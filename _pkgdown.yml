@@ -1,8 +1,10 @@
 url: https://joonho112.github.io/IRTsimrel/
+llm-docs: false
 
 template:
   bootstrap: 5
   bootswatch: flatly
+  math-rendering: katex
   bslib:
     primary: "#0054AD"
     border-radius: 0.5rem

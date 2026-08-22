@@ -2,7 +2,8 @@
 #'
 #' @description
 #' `sim_item_params()` generates item parameters (difficulty \eqn{\beta} and
-#' discrimination \eqn{\lambda}) for Item Response Theory (IRT) simulation studies.
+#' discrimination \eqn{\lambda}, and optional lower asymptote \eqn{g}) for
+#' Item Response Theory (IRT) simulation studies.
 #' It provides parametric, hierarchical, custom, and optional Item Response
 #' Warehouse (IRW) sources, plus multiple methods for generating correlated
 #' discriminations.
@@ -15,13 +16,15 @@
 #'     when the Item Response Warehouse package is installed.
 #'   \item \strong{Correlated parameters:} Support for the empirically observed negative
 #'     correlation between difficulty and discrimination (Sweeney et al., 2022).
-#'   \item \strong{Marginal preservation:} Copula method preserves exact marginal
-#'     distributions while achieving target correlation.
+#'   \item \strong{Marginal control:} The copula method leaves sampled
+#'     difficulties unchanged and approximately targets the requested
+#'     discrimination marginal and dependence in finite forms.
 #'   \item \strong{Reliability targeting:} Scale factor for subsequent calibration.
 #' }
 #'
 #' @param n_items Integer. Number of items to generate per form.
-#' @param model Character. The data-generating model: "rasch" or "2pl".
+#' @param model Character. The data-generating model: "rasch", "2pl", or
+#'   "3pl". The 3PL uses a fixed logistic scaling constant of \eqn{D=1}.
 #' @param source Character. Source for generating difficulties:
 #'   \describe{
 #'     \item{\code{"parametric"}}{Generate from a parametric difficulty distribution (default).}
@@ -29,9 +32,11 @@
 #'     \item{\code{"hierarchical"}}{Joint MVN for both parameters (Glas & van der Linden)}
 #'     \item{\code{"custom"}}{User-supplied parameters or function}
 #'   }
-#' @param method Character. Method for generating discriminations (when model = "2pl"):
+#' @param method Character. Method for generating discriminations (when model
+#'   is "2pl" or "3pl"):
 #'   \describe{
-#'     \item{\code{"copula"}}{Gaussian copula - preserves marginals exactly (RECOMMENDED)}
+#'     \item{\code{"copula"}}{Rank-based Gaussian-copula construction
+#'       (recommended; finite-form marginal and correlation are approximate).}
 #'     \item{\code{"conditional"}}{Conditional normal regression on difficulty}
 #'     \item{\code{"independent"}}{Independent generation (no correlation)}
 #'   }
@@ -49,9 +54,10 @@
 #'   \describe{
 #'     \item{\code{mu_log}}{Finite mean of log-discrimination (default: 0).}
 #'     \item{\code{sigma_log}}{Positive finite SD of log-discrimination (default: 0.3).}
-#'     \item{\code{rho}}{Finite target correlation between \eqn{\beta} and
-#'       \eqn{\log(\lambda)} in the closed interval from -1 to 1
-#'       (default: -0.3).}
+#'     \item{\code{rho}}{Finite latent-Gaussian dependence parameter for
+#'       \eqn{\beta} and \eqn{\log(\lambda)} in the closed interval from -1
+#'       to 1 (default: -0.3). Realized finite-form Pearson and Spearman
+#'       correlations are stochastic and need not equal this value.}
 #'   }
 #' @param hierarchical_params List. For source = "hierarchical":
 #'   \describe{
@@ -65,13 +71,20 @@
 #'       function returning one.}
 #'     \item{\code{lambda}}{Positive finite numeric vector of length
 #'       \code{n_items}, or function returning one; required for
-#'       \code{model = "2pl"}.}
+#'       \code{model = "2pl"} or \code{"3pl"}.}
 #'   }
 #' @param scale Numeric. Global discrimination scaling factor for reliability targeting.
 #'   Final discriminations are \eqn{\lambda_i^* = c \cdot \lambda_i}. Default is 1.
 #' @param center_difficulties Logical. If TRUE, center difficulties to sum to zero
 #'   for identification. Default is TRUE.
 #' @param seed Integer. Random seed for reproducibility.
+#' @param guessing_params List. Lower-asymptote generator for
+#'   \code{model = "3pl"}. Set \code{distribution} to \code{"fixed"}
+#'   (with scalar or item-length \code{value}, default 0.20), \code{"beta"}
+#'   (with positive \code{shape1} and \code{shape2}, defaults 5 and 17), or
+#'   \code{"uniform"} (with \code{min} and \code{max}, defaults 0.10 and
+#'   0.30). Values must be finite and satisfy \eqn{0 \le g_i < 1}. For a
+#'   custom source, supply \code{custom_params$guessing} instead.
 #'
 #' @details
 #' ## Why the Copula Method is Recommended
@@ -86,11 +99,14 @@
 #'   \item Transforms back to desired marginals (log-normal for discrimination)
 #' }
 #'
-#' This guarantees:
+#' Its finite-sample properties are:
 #' \itemize{
 #'   \item Exact preservation of the sampled difficulty marginal
-#'   \item Exact log-normal marginal for discriminations
-#'   \item Spearman correlation \eqn{\approx \rho} (rank-based, robust to non-normality)
+#'   \item Approximate log-normal discrimination marginal, converging toward
+#'     the requested marginal as the form size grows
+#'   \item The supplied \eqn{\rho} is a latent Gaussian dependence parameter;
+#'     realized Pearson and Spearman correlations are stochastic and need not
+#'     equal \eqn{\rho}
 #' }
 #'
 #' ## Connection to Reliability-Targeted Framework
@@ -103,7 +119,8 @@
 #'
 #' @return An object of class \code{"item_params"} containing:
 #' \describe{
-#'   \item{\code{data}}{Data frame with columns: form_id, item_id, beta, lambda, lambda_unscaled}
+#'   \item{\code{data}}{Data frame with columns: form_id, item_id, beta,
+#'     lambda, lambda_unscaled, plus guessing for the 3PL.}
 #'   \item{\code{model}}{Model type used}
 #'   \item{\code{source}}{Source used for generation}
 #'   \item{\code{method}}{Method used for discrimination generation}
@@ -160,7 +177,7 @@
 #'
 #' @export
 sim_item_params <- function(n_items,
-                            model = c("rasch", "2pl"),
+                            model = c("rasch", "2pl", "3pl"),
                             source = c("parametric", "irw", "hierarchical", "custom"),
                             method = c("copula", "conditional", "independent"),
                             n_forms = 1L,
@@ -170,7 +187,8 @@ sim_item_params <- function(n_items,
                             custom_params = list(),
                             scale = 1,
                             center_difficulties = TRUE,
-                            seed = NULL) {
+                            seed = NULL,
+                            guessing_params = list()) {
 
   # ===========================================================================
   # Input Validation
@@ -203,6 +221,16 @@ sim_item_params <- function(n_items,
     hierarchical_params, "hierarchical_params"
   )
   custom_params <- .irtsimrel_check_list_arg(custom_params, "custom_params")
+  guessing_params <- .irtsimrel_check_list_arg(
+    guessing_params, "guessing_params"
+  )
+  guessing_spec <- .normalize_guessing_params(
+    guessing_params = guessing_params,
+    model = model,
+    source = source,
+    custom_params = custom_params,
+    n_items = n_items
+  )
 
   restore_seed <- .irtsimrel_set_seed(seed)
   if (!is.null(restore_seed)) on.exit(restore_seed(), add = TRUE)
@@ -250,7 +278,7 @@ sim_item_params <- function(n_items,
                      "irw" = {
                        beta <- .generate_irw_difficulties(n_items, difficulty_params)
 
-                       if (model == "2pl") {
+                       if (model %in% c("2pl", "3pl")) {
                          lambda <- .generate_discriminations(
                            beta = beta,
                            method = method,
@@ -269,7 +297,7 @@ sim_item_params <- function(n_items,
                      "parametric" = {
                        beta <- .generate_parametric_difficulties(n_items, difficulty_params)
 
-                       if (model == "2pl") {
+                       if (model %in% c("2pl", "3pl")) {
                          lambda <- .generate_discriminations(
                            beta = beta,
                            method = method,
@@ -287,7 +315,12 @@ sim_item_params <- function(n_items,
                      # -----------------------------------------------------------------------
                      "hierarchical" = {
                        pars <- .generate_hierarchical_2pl(n_items, hierarchical_params)
-                       list(beta = pars$beta, lambda = pars$lambda)
+                       lambda <- if (model == "rasch") {
+                         rep(1, n_items)
+                       } else {
+                         pars$lambda
+                       }
+                       list(beta = pars$beta, lambda = lambda)
                      },
 
                      # -----------------------------------------------------------------------
@@ -296,9 +329,12 @@ sim_item_params <- function(n_items,
                      "custom" = {
                        beta <- .process_custom_param(custom_params$beta, n_items, "beta")
 
-                       if (model == "2pl") {
+                       if (model %in% c("2pl", "3pl")) {
                          if (is.null(custom_params$lambda)) {
-                           stop("For model = '2pl' with source = 'custom', `custom_params$lambda` is required.")
+                           stop(
+                             "For model = '", model,
+                             "' with source = 'custom', `custom_params$lambda` is required."
+                           )
                          }
                          lambda <- .process_custom_param(custom_params$lambda, n_items, "lambda")
                        } else {
@@ -311,6 +347,15 @@ sim_item_params <- function(n_items,
 
     beta <- result$beta
     lambda <- result$lambda
+    guessing <- if (model == "3pl") {
+      if (source == "custom") {
+        .process_custom_guessing(custom_params$guessing, n_items)
+      } else {
+        .generate_guessing(n_items, guessing_spec)
+      }
+    } else {
+      NULL
+    }
 
     if (!is.numeric(beta) || length(beta) != n_items ||
         anyNA(beta) || any(!is.finite(beta))) {
@@ -319,6 +364,9 @@ sim_item_params <- function(n_items,
     if (!is.numeric(lambda) || length(lambda) != n_items ||
         anyNA(lambda) || any(!is.finite(lambda)) || any(lambda <= 0)) {
       stop("Generated `lambda` values must be a positive finite numeric vector of length n_items.")
+    }
+    if (model == "3pl") {
+      guessing <- .validate_guessing_values(guessing, n_items)
     }
 
     # Center difficulties if requested
@@ -333,18 +381,30 @@ sim_item_params <- function(n_items,
     lambda_scaled <- scale * lambda
 
     # Create data frame for this form
-    all_data[[f]] <- data.frame(
+    form_data <- data.frame(
       form_id = f,
       item_id = seq_len(n_items),
       beta = beta,
       lambda = lambda_scaled,
       lambda_unscaled = lambda_unscaled
     )
+    if (model == "3pl") {
+      form_data$guessing <- guessing
+    }
+    all_data[[f]] <- form_data
   }
 
   # Combine all forms
   data <- do.call(rbind, all_data)
   rownames(data) <- NULL
+
+  if (model == "3pl" && any(data$guessing >= 0.5)) {
+    warning(
+      "Some `guessing` values are at least 0.5; this is allowed but may be ",
+      "impractical for typical multiple-choice items.",
+      call. = FALSE
+    )
+  }
 
   # ===========================================================================
   # Compute Achieved Statistics
@@ -356,20 +416,33 @@ sim_item_params <- function(n_items,
   # Construct Output Object
   # ===========================================================================
 
+  params_used <- list(
+    difficulty = difficulty_params,
+    discrimination = discrimination_params,
+    hierarchical = hierarchical_params
+  )
+  if (source == "custom") {
+    params_used$custom <- custom_params
+  }
+  if (model == "3pl") {
+    params_used$guessing <- guessing_spec
+  }
+
   output <- list(
     data = data,
     model = model,
     source = source,
-    method = if (model == "2pl" && source != "hierarchical") method else NA,
+    method = if (model %in% c("2pl", "3pl") &&
+                 source %in% c("parametric", "irw")) {
+      method
+    } else {
+      NA_character_
+    },
     n_items = n_items,
     n_forms = n_forms,
     scale = scale,
     centered = center_difficulties,
-    params = list(
-      difficulty = difficulty_params,
-      discrimination = discrimination_params,
-      hierarchical = hierarchical_params
-    ),
+    params = params_used,
     achieved = achieved
   )
 
@@ -479,7 +552,8 @@ sim_item_params <- function(n_items,
 
                    # =========================================================================
                    # Method: Copula (RECOMMENDED)
-                   # Preserves marginals exactly, achieves target Spearman correlation
+                   # Keeps sampled beta values fixed; finite-form lambda marginal
+                   # and realized dependence are approximate and stochastic.
                    # =========================================================================
                    "copula" = {
                      .generate_copula(beta, mu_log, sigma_log, rho)
@@ -506,12 +580,165 @@ sim_item_params <- function(n_items,
 }
 
 
+#' Normalize a 3PL guessing generator specification
+#' @noRd
+.normalize_guessing_params <- function(guessing_params,
+                                       model,
+                                       source,
+                                       custom_params,
+                                       n_items) {
+  has_generator <- length(guessing_params) > 0L
+  has_custom_guessing <- !is.null(custom_params$guessing)
+
+  if (model != "3pl") {
+    if (has_generator || has_custom_guessing) {
+      stop(
+        "Guessing inputs are only supported when `model = \"3pl\"`.",
+        call. = FALSE
+      )
+    }
+    return(NULL)
+  }
+
+  if (source == "custom") {
+    if (has_generator && has_custom_guessing) {
+      stop(
+        "Supply custom guessing through `custom_params$guessing` only; ",
+        "using nonempty `guessing_params` at the same time is ambiguous.",
+        call. = FALSE
+      )
+    }
+    if (has_generator) {
+      stop(
+        "For `source = \"custom\"`, `guessing_params` must be empty and ",
+        "guessing must be supplied as `custom_params$guessing`.",
+        call. = FALSE
+      )
+    }
+    return(list(distribution = "custom"))
+  }
+
+  if (has_custom_guessing) {
+    stop(
+      "`custom_params$guessing` is only supported when `source = \"custom\"`.",
+      call. = FALSE
+    )
+  }
+
+  distribution <- if (is.null(guessing_params$distribution)) {
+    "fixed"
+  } else {
+    guessing_params$distribution
+  }
+  if (!is.character(distribution) || length(distribution) != 1L ||
+      is.na(distribution) ||
+      !(distribution %in% c("fixed", "beta", "uniform"))) {
+    stop(
+      "`guessing_params$distribution` must be one of 'fixed', 'beta', or ",
+      "'uniform'.",
+      call. = FALSE
+    )
+  }
+
+  allowed <- switch(
+    distribution,
+    fixed = c("distribution", "value"),
+    beta = c("distribution", "shape1", "shape2"),
+    uniform = c("distribution", "min", "max")
+  )
+  unknown <- setdiff(names(guessing_params), allowed)
+  if (length(unknown) > 0L) {
+    stop(
+      "Unknown or inapplicable `guessing_params` field(s) for distribution ",
+      "'", distribution, "': ",
+      .irtsimrel_backtick_collapse(unknown), ".",
+      call. = FALSE
+    )
+  }
+
+  if (distribution == "fixed") {
+    value <- if (is.null(guessing_params$value)) 0.20 else guessing_params$value
+    value <- .validate_guessing_values(value, n_items, recycle_scalar = TRUE)
+    return(list(distribution = distribution, value = value))
+  }
+
+  if (distribution == "beta") {
+    shape1 <- if (is.null(guessing_params$shape1)) 5 else guessing_params$shape1
+    shape2 <- if (is.null(guessing_params$shape2)) 17 else guessing_params$shape2
+    for (entry in c("shape1", "shape2")) {
+      value <- get(entry)
+      if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+          !is.finite(value) || value <= 0) {
+        stop(
+          "`guessing_params$", entry,
+          "` must be a positive finite numeric scalar.",
+          call. = FALSE
+        )
+      }
+    }
+    return(list(distribution = distribution, shape1 = shape1, shape2 = shape2))
+  }
+
+  min_value <- if (is.null(guessing_params$min)) 0.10 else guessing_params$min
+  max_value <- if (is.null(guessing_params$max)) 0.30 else guessing_params$max
+  if (!is.numeric(min_value) || length(min_value) != 1L ||
+      is.na(min_value) || !is.finite(min_value) ||
+      !is.numeric(max_value) || length(max_value) != 1L ||
+      is.na(max_value) || !is.finite(max_value) ||
+      min_value < 0 || min_value >= max_value || max_value >= 1) {
+    stop(
+      "`guessing_params$min` and `$max` must satisfy 0 <= min < max < 1.",
+      call. = FALSE
+    )
+  }
+  list(distribution = distribution, min = min_value, max = max_value)
+}
+
+
+#' Validate lower-asymptote values
+#' @noRd
+.validate_guessing_values <- function(x,
+                                      n_items,
+                                      recycle_scalar = FALSE) {
+  if (!is.numeric(x) || length(x) == 0L || anyNA(x) || any(!is.finite(x))) {
+    stop("`guessing` must contain finite numeric values.", call. = FALSE)
+  }
+  if (recycle_scalar && length(x) == 1L) {
+    x <- rep(as.numeric(x), n_items)
+  }
+  if (length(x) != n_items) {
+    stop(
+      "`guessing` must have length 1 or n_items = ", n_items, ".",
+      call. = FALSE
+    )
+  }
+  x <- as.numeric(x)
+  if (any(x < 0 | x >= 1)) {
+    stop("`guessing` values must satisfy 0 <= guessing < 1.", call. = FALSE)
+  }
+  x
+}
+
+
+#' Generate 3PL lower-asymptote parameters
+#' @noRd
+.generate_guessing <- function(n_items, params) {
+  switch(
+    params$distribution,
+    fixed = params$value,
+    beta = stats::rbeta(n_items, shape1 = params$shape1, shape2 = params$shape2),
+    uniform = stats::runif(n_items, min = params$min, max = params$max)
+  )
+}
+
+
 #' Generate discriminations using Gaussian copula
 #'
-#' This method preserves exact marginals while achieving target correlation.
+#' This rank-based construction leaves the sampled difficulties unchanged and
+#' approximately targets the requested discrimination marginal and dependence.
 #'
 #' Algorithm:
-#' 1. Transform beta to uniform via empirical CDF: u = rank(beta)/(n+1)
+#' 1. Transform beta to uniform scores: u = (rank(beta)-0.5)/n
 #' 2. Transform to normal: z_beta = qnorm(u)
 #' 3. Generate correlated normal: z_lambda = rho * z_beta + sqrt(1-rho^2) * z_indep
 #' 4. Transform to uniform: v = pnorm(z_lambda)
@@ -550,6 +777,10 @@ sim_item_params <- function(n_items,
 .generate_conditional <- function(beta, mu_log, sigma_log, rho) {
 
   n <- length(beta)
+
+  if (n == 1L) {
+    return(exp(rnorm(1L, mean = mu_log, sd = sigma_log)))
+  }
 
   if (abs(rho) < 1e-10) {
     # Independent case
@@ -600,6 +831,9 @@ sim_item_params <- function(n_items,
   # Draw from bivariate normal
   if (requireNamespace("MASS", quietly = TRUE)) {
     xi <- MASS::mvrnorm(n_items, mu = mu, Sigma = Sigma)
+    if (is.null(dim(xi))) {
+      xi <- matrix(xi, nrow = 1L, ncol = 2L)
+    }
   } else {
     # Fallback using Cholesky
     L <- t(chol(Sigma))
@@ -648,9 +882,50 @@ sim_item_params <- function(n_items,
 }
 
 
+#' Process custom 3PL lower-asymptote input
+#' @noRd
+.process_custom_guessing <- function(x, n) {
+  if (is.null(x)) {
+    stop(
+      "custom_params$guessing is required for model = '3pl' with ",
+      "source = 'custom'.",
+      call. = FALSE
+    )
+  }
+
+  result <- if (is.function(x)) x(n) else x
+  if (!is.numeric(result)) {
+    stop(
+      "custom_params$guessing must be a numeric scalar, numeric vector, ",
+      "or function.",
+      call. = FALSE
+    )
+  }
+  tryCatch(
+    .validate_guessing_values(result, n, recycle_scalar = TRUE),
+    error = function(e) {
+      stop("custom_params$guessing: ", conditionMessage(e), call. = FALSE)
+    }
+  )
+}
+
+
 # =============================================================================
 # S3 Methods
 # =============================================================================
+
+.item_target_rho <- function(x) {
+  if (!(x$model %in% c("2pl", "3pl"))) {
+    return(NA_real_)
+  }
+  if (identical(x$source, "hierarchical")) {
+    return(x$params$hierarchical$rho)
+  }
+  if (x$source %in% c("parametric", "irw")) {
+    return(x$params$discrimination$rho)
+  }
+  NA_real_
+}
 
 #' @rdname sim_item_params
 #' @param x An object of class \code{"item_params"}.
@@ -677,16 +952,29 @@ print.item_params <- function(x, digits = 4, ...) {
               digits, x$achieved$overall$beta_sd,
               digits, min(x$data$beta), digits, max(x$data$beta)))
 
-  if (x$model == "2pl") {
+  if (x$model %in% c("2pl", "3pl")) {
     cat("\nDiscrimination (lambda, scaled):\n")
     cat(sprintf("  Mean: %.*f, SD: %.*f, Range: [%.*f, %.*f]\n",
                 digits, x$achieved$overall$lambda_mean,
                 digits, x$achieved$overall$lambda_sd,
                 digits, min(x$data$lambda), digits, max(x$data$lambda)))
     cat(sprintf("\nCorrelation (beta, log-lambda):\n"))
-    cat(sprintf("  Target (rho): %.*f\n", digits, x$params$discrimination$rho))
+    target_rho <- .item_target_rho(x)
+    if (!is.na(target_rho)) {
+      cat(sprintf("  Target (rho): %.*f\n", digits, target_rho))
+    }
     cat(sprintf("  Achieved Pearson : %.*f\n", digits, x$achieved$overall$cor_pearson_pooled))
     cat(sprintf("  Achieved Spearman: %.*f\n", digits, x$achieved$overall$cor_spearman_pooled))
+  }
+
+  if (x$model == "3pl") {
+    cat("\nGuessing (lower asymptote):\n")
+    cat(sprintf(
+      "  Mean: %.*f, SD: %.*f, Range: [%.*f, %.*f]\n",
+      digits, x$achieved$overall$guessing_mean,
+      digits, x$achieved$overall$guessing_sd,
+      digits, min(x$data$guessing), digits, max(x$data$guessing)
+    ))
   }
 
   invisible(x)
@@ -710,7 +998,7 @@ summary.item_params <- function(object, ...) {
   )
 
   lambda_summary <- NULL
-  if (object$model == "2pl") {
+  if (object$model %in% c("2pl", "3pl")) {
     lambda_vals <- object$data$lambda
     lambda_unscaled_vals <- object$data$lambda_unscaled
     lambda_summary <- list(
@@ -724,9 +1012,9 @@ summary.item_params <- function(object, ...) {
   }
 
   achieved_cors <- NULL
-  if (object$model == "2pl") {
+  if (object$model %in% c("2pl", "3pl")) {
     achieved_cors <- list(
-      target_rho       = object$params$discrimination$rho,
+      target_rho       = .item_target_rho(object),
       pearson_pooled   = object$achieved$overall$cor_pearson_pooled,
       spearman_pooled  = object$achieved$overall$cor_spearman_pooled
     )
@@ -744,6 +1032,19 @@ summary.item_params <- function(object, ...) {
     lambda_summary = lambda_summary,
     achieved_cors  = achieved_cors
   )
+  if (object$model == "3pl") {
+    guessing_vals <- object$data$guessing
+    out$guessing_summary <- list(
+      mean = mean(guessing_vals),
+      sd = stats::sd(guessing_vals),
+      min = min(guessing_vals),
+      max = max(guessing_vals),
+      quantiles = stats::quantile(
+        guessing_vals,
+        probs = c(0.25, 0.50, 0.75)
+      )
+    )
+  }
   class(out) <- "summary.item_params"
   out
 }
@@ -781,7 +1082,7 @@ print.summary.item_params <- function(x, digits = 4, ...) {
               digits, x$beta_summary$quantiles[[2]],
               digits, x$beta_summary$quantiles[[3]]))
 
-  if (x$model == "2pl" && !is.null(x$lambda_summary)) {
+  if (x$model %in% c("2pl", "3pl") && !is.null(x$lambda_summary)) {
     cat("\nDiscrimination (lambda):\n")
     cat(sprintf("  Before scaling: Mean=%.*f, SD=%.*f\n",
                 digits, x$lambda_summary$mean_unscaled,
@@ -794,11 +1095,22 @@ print.summary.item_params <- function(x, digits = 4, ...) {
                 digits, x$lambda_summary$max_scaled))
   }
 
-  if (x$model == "2pl" && !is.null(x$achieved_cors)) {
+  if (x$model %in% c("2pl", "3pl") && !is.null(x$achieved_cors)) {
     cat("\nCorrelation (beta, log-lambda):\n")
-    cat(sprintf("  Target (rho)     : %.*f\n", digits, x$achieved_cors$target_rho))
+    if (!is.na(x$achieved_cors$target_rho)) {
+      cat(sprintf("  Target (rho)     : %.*f\n", digits, x$achieved_cors$target_rho))
+    }
     cat(sprintf("  Achieved Pearson : %.*f\n", digits, x$achieved_cors$pearson_pooled))
     cat(sprintf("  Achieved Spearman: %.*f\n", digits, x$achieved_cors$spearman_pooled))
+  }
+
+  if (x$model == "3pl" && !is.null(x$guessing_summary)) {
+    cat("\nGuessing (lower asymptote):\n")
+    cat(sprintf("  Mean     : %.*f\n", digits, x$guessing_summary$mean))
+    cat(sprintf("  SD       : %.*f\n", digits, x$guessing_summary$sd))
+    cat(sprintf("  Range    : [%.*f, %.*f]\n",
+                digits, x$guessing_summary$min,
+                digits, x$guessing_summary$max))
   }
 
   invisible(x)
@@ -821,13 +1133,21 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     # Base R fallback
-    if (x$model == "2pl") {
-      oldpar <- par(mfrow = c(1, 2))
+    if (x$model %in% c("2pl", "3pl")) {
+      oldpar <- par(mfrow = c(1, if (x$model == "3pl") 3 else 2))
       on.exit(par(oldpar))
       hist(x$data$beta, main = "Difficulty Distribution", xlab = "beta", col = "steelblue")
       plot(x$data$beta, x$data$lambda, main = "Difficulty vs Discrimination",
            xlab = "beta", ylab = "lambda", pch = 19, col = rgb(0, 0, 0.5, 0.5))
       abline(lm(lambda ~ beta, data = x$data), col = "red", lty = 2)
+      if (x$model == "3pl") {
+        hist(
+          x$data$guessing,
+          main = "Guessing Distribution",
+          xlab = "guessing",
+          col = "darkseagreen3"
+        )
+      }
     } else {
       hist(x$data$beta, main = "Difficulty Distribution", xlab = "beta", col = "steelblue")
     }
@@ -838,14 +1158,22 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
 
   # Scatter plot
   p_scatter <- NULL
-  if (x$model == "2pl") {
+  if (x$model %in% c("2pl", "3pl")) {
     rho_achieved <- x$achieved$overall$cor_spearman_pooled
+    target_rho <- .item_target_rho(x)
+    subtitle <- if (identical(x$source, "custom")) {
+      "Source: custom"
+    } else if (identical(x$source, "hierarchical")) {
+      sprintf("Source: hierarchical | Target rho: %.2f", target_rho)
+    } else {
+      sprintf("Method: %s | Target rho: %.2f", x$method, target_rho)
+    }
     p_scatter <- ggplot2::ggplot(df, ggplot2::aes(x = beta, y = lambda)) +
       ggplot2::geom_point(alpha = 0.6, color = "darkblue", size = 2) +
       ggplot2::geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "dashed") +
       ggplot2::labs(
         title = sprintf("Difficulty vs Discrimination (Spearman r = %.3f)", rho_achieved),
-        subtitle = sprintf("Method: %s | Target rho: %.2f", x$method, x$params$discrimination$rho),
+        subtitle = subtitle,
         x = expression(beta ~ "(Difficulty)"),
         y = expression(lambda ~ "(Discrimination)")
       ) +
@@ -862,7 +1190,7 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
     ggplot2::theme_minimal()
 
   p_lambda <- NULL
-  if (x$model == "2pl") {
+  if (x$model %in% c("2pl", "3pl")) {
     p_lambda <- ggplot2::ggplot(df, ggplot2::aes(x = lambda)) +
       ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 30,
                      fill = "coral", alpha = 0.5, color = "white") +
@@ -871,18 +1199,52 @@ plot.item_params <- function(x, type = c("scatter", "density", "both"), ...) {
       ggplot2::theme_minimal()
   }
 
+  p_guessing <- NULL
+  if (x$model == "3pl") {
+    p_guessing <- ggplot2::ggplot(df, ggplot2::aes(x = guessing)) +
+      ggplot2::geom_histogram(
+        ggplot2::aes(y = ggplot2::after_stat(density)),
+        bins = 30,
+        fill = "darkseagreen3",
+        alpha = 0.6,
+        color = "white"
+      ) +
+      ggplot2::geom_density(color = "darkgreen", linewidth = 1) +
+      ggplot2::labs(
+        title = "Guessing Distribution",
+        x = "guessing",
+        y = "Density"
+      ) +
+      ggplot2::theme_minimal()
+  }
+
   # Return based on type
   if (type == "scatter") {
-    if (x$model == "2pl") return(p_scatter) else return(p_beta)
+    if (x$model %in% c("2pl", "3pl")) return(p_scatter) else return(p_beta)
   } else if (type == "density") {
-    if (x$model == "2pl" && requireNamespace("patchwork", quietly = TRUE)) {
-      return(patchwork::wrap_plots(p_beta, p_lambda, ncol = 2))
+    if (x$model %in% c("2pl", "3pl") &&
+        requireNamespace("patchwork", quietly = TRUE)) {
+      density_plots <- if (x$model == "3pl") {
+        list(p_beta, p_lambda, p_guessing)
+      } else {
+        list(p_beta, p_lambda)
+      }
+      return(patchwork::wrap_plots(density_plots, ncol = length(density_plots)))
     } else {
       return(p_beta)
     }
   } else {  # both
-    if (x$model == "2pl" && requireNamespace("patchwork", quietly = TRUE)) {
-      combined_top <- patchwork::wrap_plots(p_beta, p_lambda, ncol = 2)
+    if (x$model %in% c("2pl", "3pl") &&
+        requireNamespace("patchwork", quietly = TRUE)) {
+      density_plots <- if (x$model == "3pl") {
+        list(p_beta, p_lambda, p_guessing)
+      } else {
+        list(p_beta, p_lambda)
+      }
+      combined_top <- patchwork::wrap_plots(
+        density_plots,
+        ncol = length(density_plots)
+      )
       return(patchwork::wrap_plots(combined_top, p_scatter, ncol = 1))
     } else {
       return(p_beta)

@@ -3,10 +3,9 @@ title: "Mathematical Foundations: Reliability Theory and the Inverse Design Prob
 author: "JoonHo Lee (jlee296@ua.edu)"
 date: "`r Sys.Date()`"
 description: >
-  A rigorous treatment of marginal reliability theory under the 2PL IRT model,
-  the global discrimination scaling framework, Jensen's inequality and its
-  consequences, monotonicity and existence-uniqueness results, and the
-  theoretical foundations of EQC and SAC calibration algorithms.
+  Marginal reliability theory for one-dimensional Rasch, 2PL, and 3PL
+  models, including global discrimination scaling, estimand scope, root
+  topology, and the contracts implemented by EQC and SAC.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Mathematical Foundations: Reliability Theory and the Inverse Design Problem}
@@ -49,11 +48,11 @@ specific reliability definitions (defined below).
 examples and workflows, see `vignette("introduction")`.
 
 
-## The Two-Parameter Logistic IRT Model
+## One-Dimensional Dichotomous Logistic Models
 
-We work within the two-parameter logistic (2PL) item response theory model. A
-test consists of $I$ items administered to examinees drawn from a latent trait
-distribution $G$.
+IRTsimrel 0.3.0 works with one-dimensional dichotomous Rasch, 2PL, and 3PL
+models. A test consists of $I$ items administered to examinees drawn from a
+latent trait distribution $G$.
 
 **Definition 1 (2PL Model).** Let $\theta \sim G$ denote a latent ability
 parameter and let $(\beta_i, \lambda_i)$ denote the difficulty and
@@ -69,11 +68,32 @@ where $\psi(z) = (1 + e^{-z})^{-1}$ is the standard logistic function.
 
 The Rasch model is the special case where $\lambda_i = 1$ for all items $i$.
 
+**Definition 1b (3PL Model).** Let $g_i\in[0,1)$ be the lower asymptote and
+write
+
+$$
+q_i(\theta)=\psi\bigl(\lambda_i(\theta-\beta_i)\bigr),\qquad
+P_i(\theta)=g_i+(1-g_i)q_i(\theta).
+$$
+
+The package calls $g_i$ `guessing`. This name is deliberate: the symbol $c$
+is reserved for the global discrimination multiplier introduced below. Setting
+$g_i=0$ gives the 2PL probability exactly.
+
 ### Item and Test Information
 
 The Fisher information provided by item $i$ at ability level $\theta$ is:
 
-**Definition 2 (Item Information).** Under the 2PL model,
+**Definition 2 (Item Information).** For a Bernoulli item with success
+probability $P_i(\theta)$,
+
+$$
+\mathcal{J}_i(\theta)=
+\frac{\{\partial P_i(\theta)/\partial\theta\}^2}
+     {P_i(\theta)\{1-P_i(\theta)\}}.
+$$
+
+Under the 2PL model this reduces to
 
 $$
 \mathcal{J}_i(\theta) = \lambda_i^2\, p_i(\theta)\, \bigl(1 - p_i(\theta)\bigr)
@@ -82,18 +102,37 @@ $$
 
 where $p_i(\theta) = P(X_i = 1 \mid \theta)$ is given by Eq. (1).
 
-Since $p(1-p)$ achieves its maximum of $1/4$ when $p = 1/2$ (i.e., when
-$\theta = \beta_i$), the maximum information from item $i$ is
-$\lambda_i^2 / 4$.
+For the 3PL model it becomes
+
+$$
+\mathcal{J}_{i,3\mathrm{PL}}(\theta)
+=\lambda_i^2(1-g_i)
+  \frac{q_i(\theta)^2\{1-q_i(\theta)\}}{P_i(\theta)}.
+$$
+
+The $g_i=0$ reduction is exact. For fixed $\lambda_i,\beta_i$, positive
+guessing cannot add Fisher information: it lowers information relative to the
+corresponding 2PL item. In the low-ability tail, 2PL information is of order
+$\exp(\eta_i)$ whereas 3PL information with $g_i>0$ is of order
+$\exp(2\eta_i)$, where $\eta_i=\lambda_i(\theta-\beta_i)$. This faster tail
+decay is important for the MSEM estimand.
+
+For Rasch/2PL items, $p(1-p)$ achieves its maximum of $1/4$ when
+$p = 1/2$ (i.e., when $\theta = \beta_i$), so the maximum item information is
+$\lambda_i^2/4$. This maximum statement does not apply unchanged to $g_i>0$;
+the 3PL maximum is shifted and reduced.
 
 **Definition 3 (Test Information).** The test information function is the sum of
 item information functions:
 
 $$
 \mathcal{J}(\theta) = \sum_{i=1}^{I} \mathcal{J}_i(\theta)
-  = \sum_{i=1}^{I} \lambda_i^2\, p_i(\theta)\,\bigl(1 - p_i(\theta)\bigr)
 \qquad \text{(3)}
 $$
+
+For Rasch/2PL this sum expands to
+$\sum_i \lambda_i^2p_i(\theta)\{1-p_i(\theta)\}$; for 3PL it uses the
+3PL item-information expression above.
 
 Test information measures the precision of ability estimation at a given
 $\theta$. Higher information means smaller standard errors and more precise
@@ -122,7 +161,24 @@ leading to distinct reliability definitions.
 Let $\sigma^2_\theta = \text{Var}_G(\theta)$ denote the latent trait variance
 under the population distribution $G$.
 
-### Average-Information Reliability ($\tilde{\rho}$)
+### Population target and finite approximation
+
+The equations below define population functionals. Package computations use a
+finite set of ability nodes (and optional normalized weights) to approximate
+those functionals. EQC fixes one Monte Carlo quadrature draw; SAC uses fresh
+iteration draws plus an independent post-calibration evaluation. Consequently,
+an achieved value is conditional on a finite integration design even when the
+scientific target is population reliability. The result metadata records this
+distinction through `estimand_signature$theta_measure` and
+`estimand_signature$approximation_method`.
+
+If `theta_var` is not supplied to a low-level reliability function, the
+unweighted sample variance (or weighted population variance when weights are
+provided) is used. Calibration results store the variance actually used. A
+generator that is population-standardized does not make every realized sample
+have exactly the requested mean and variance.
+
+### Average-Information Reliability (rho-tilde) {#average-information-reliability-tilderho}
 
 **Definition 4 (Average-Information Reliability).** The average-information
 marginal reliability is defined as:
@@ -145,7 +201,7 @@ In the package, this metric is selected with `reliability_metric = "info"` (or
 the synonym `"tilde"`).
 In returned utility objects, this quantity is named `rho_tilde`.
 
-### MSEM-Based Reliability ($\bar{w}$)
+### MSEM-Based Reliability (w-bar) {#msem-based-reliability-barw}
 
 **Definition 5 (MSEM-Based Reliability).** The marginal-standard-error-of-
 measurement (MSEM) based reliability is defined as:
@@ -177,7 +233,7 @@ In returned utility objects, this quantity is named `rho_bar`; this API label
 denotes the manuscript notation $\bar{w}$, not a separate $\bar{\rho}$
 estimand. By contrast, `rho_tilde` corresponds directly to $\tilde{\rho}$.
 
-### Jensen's Inequality: $\tilde{\rho} \geq \bar{w}$
+### Jensen's Inequality: rho-tilde >= w-bar {#jensens-inequality-tilderho-geq-barw}
 
 The relationship between the two metrics is governed by Jensen's inequality.
 The comparison assumes that both metrics are evaluated on the same population
@@ -220,18 +276,19 @@ $$
 &= \frac{\sigma^2_\theta}
   {\sigma^2_\theta + B}
 \leq \frac{\sigma^2_\theta}
-  {\sigma^2_\theta + 1/A} \\[6pt]
+  {\sigma^2_\theta + 1/A} \\
 &= \frac{\sigma^2_\theta\, \bar{\mathcal{J}}(c)}
   {\sigma^2_\theta\, \bar{\mathcal{J}}(c) + 1}
 = \tilde{\rho}(c)
 \end{aligned}
 $$
 
-Equality holds iff information does not vary across $\theta$. In the
-implementation, `compute_rho_bar()` floors very small test information at
-`1e-10` for reciprocal stability; the Jensen statement is exact for positive
-unmodified information, while the reported finite-grid gap at numerical
-saturation extremes should be read as a stabilized diagnostic. $\square$
+Equality holds iff information does not vary across $\theta$. The
+implementation evaluates log test information and uses stable log-sum-exp
+reductions; it does not replace small information by an arbitrary positive
+floor. Non-finite reciprocal-information expectations are therefore an
+estimand failure rather than a finite value manufactured by clipping.
+$\square$
 
 ### Numerical Verification of Jensen's Inequality
 
@@ -327,12 +384,23 @@ eqc_info <- eqc_calibrate(
   M = 5000L, seed = 42
 )
 
-# Calibrate the msem metric with SAC, using EQC as a warm start
+# Calibrate MSEM on the same realized item form. Because an EQC object carries
+# an info-metric contract, pass only its numeric scale as the initializer.
+fixed_rasch <- list(
+  custom_params = list(
+    beta = eqc_info$beta_vec,
+    lambda = eqc_info$lambda_base
+  ),
+  center_difficulties = FALSE
+)
 sac_msem <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "msem",
-  c_init = eqc_info, n_iter = 200L, M_per_iter = 500L,
-  M_pre = 5000L, seed = 42, verbose = FALSE
+  item_source = "custom", item_params = fixed_rasch,
+  reliability_metric = "msem", resample_items = FALSE,
+  c_init = eqc_info$c_star, n_iter = 200L, M_per_iter = 500L,
+  M_pre = 5000L, seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 cat(sprintf("Target rho* = 0.80\n"))
@@ -369,22 +437,34 @@ This scaling has several desirable properties:
 2. **Dimensionality reduction**: The multi-dimensional item parameter space is
    collapsed to a single scalar control variable $c$.
 
-3. **Smooth dependence**: Both $\tilde{\rho}(c)$ and $\bar{w}(c)$ are smooth
-   (infinitely differentiable) functions of $c$ for $c > 0$.
+3. **Smooth dependence on a finite design**: For fixed finite theta nodes and
+   a valid item bank, both empirical coefficients are smooth functions of $c$
+   for $c > 0$. Extending differentiability through a population expectation
+   requires the corresponding domination and integrability conditions; these
+   fail for some heavy-tail MSEM settings.
 
-### Monotonicity of $\tilde{\rho}(c)$ on Regular Calibration Intervals
+For a 3PL bank, $\boldsymbol{\beta}$ and $\boldsymbol{g}$ remain fixed while
+only $\boldsymbol{\lambda}^{(0)}$ is multiplied. Thus the calibration scale
+$c$ is not an item guessing parameter. Internally the model is normalized to
+the $D=1$ logistic convention.
+
+### Rasch/2PL monotonicity on regular calibration intervals
 
 **Proposition 1 (Monotonicity; cf. Proposition A.1, Lee 2026).** Under the
-regularity and coverage conditions stated in the manuscript, the
+Rasch/2PL regularity and coverage conditions stated in the manuscript, the
 average-information reliability $\tilde{\rho}(c)$ is strictly monotonically
 increasing on the population calibration interval.
 
-**Finite-grid caveat.** This is a population/practical-interval statement. It
-is not a claim that every finite empirical quadrature grid is monotone over
-arbitrarily wide scaling ranges. At extreme $c$, logistic saturation can
-concentrate information into narrow neighborhoods of item difficulties, which
-is why IRTsimrel checks the empirical bracket and an interior maximum before
-declaring an EQC target infeasible.
+**Branch-qualified caveat.** This is a population/practical-interval
+statement, not a global shape guarantee. A finite empirical quadrature curve
+can have several extrema and several target crossings, even for a 2PL bank;
+3PL tail attenuation makes global monotonicity still less defensible. Version
+0.3.0 therefore scans the complete user-supplied interval on $\log(c)$,
+refines detected features, enumerates roots, and selects a branch explicitly.
+The default `root_policy = "lowest_increasing"` chooses the smallest detected
+crossing with positive local slope. The configured scan has a finite
+resolution, so its topology diagnostics are evidence within that resolution,
+not a proof that an arbitrarily narrow unobserved feature cannot exist.
 
 **Proof sketch.** A full proof is given in Proposition A.1 of the manuscript.
 From Eq. (5), by the chain rule and the fact that
@@ -393,7 +473,7 @@ that the population average information
 $\bar{\mathcal{J}}(c) = \mathbb{E}_G[\mathcal{J}(\theta; c)]$ increases on the
 regular target interval.
 
-For a single item, direct differentiation gives
+For a Rasch/2PL item, direct differentiation gives
 
 $$
 \frac{\partial \mathcal{J}_i(\theta; c)}{\partial c}
@@ -408,10 +488,15 @@ $\bar{\mathcal{J}}(c) = c^2 \sum_i (\lambda_i^{(0)})^2
 \mathbb{E}[p_i(\theta;c)(1-p_i(\theta;c))]$
 with fixed item locations, positive baseline discriminations, and regular
 population mass around the item locations. Under these conditions, increasing
-$c$ raises the population-average information over the calibration interval,
-and therefore increases $\tilde{\rho}(c)$. IRTsimrel separately guards the
-finite empirical quadrature case by checking the bracket and an interior
-maximum before EQC declares a target infeasible. $\square$
+$c$ raises the population-average information over the stated calibration
+interval, and therefore increases $\tilde{\rho}(c)$. Outside that interval the
+package relies on the observed root topology rather than extending the theorem
+globally. $\square$
+
+This proof representation is not the derivative of the 3PL information
+function when $g_i>0$. Version 0.3.0 makes no corresponding global 3PL
+monotonicity claim; 3PL calibration uses the same numerical topology scan and
+requires the selected root's local direction to be admissible.
 
 ### Existence and Uniqueness
 
@@ -437,25 +522,43 @@ coverage, expanding the interval can approach the familiar range from near-zero
 to near-one reliability; the package nevertheless reports feasibility for the
 user-supplied finite interval. $\square$
 
-### Non-Monotonicity of $\bar{w}(c)$
+### Non-Monotonicity of MSEM Reliability {#non-monotonicity-of-barwc}
 
 **Proposition 2 (Non-Monotonicity of MSEM; cf. Proposition A.5, Lee 2026).**
 The MSEM-based reliability $\bar{w}(c)$ is *not* necessarily monotone in $c$
 over the entire positive real line. In particular, for sufficiently large $c$,
 $\bar{w}(c)$ can decrease.
 
-**Intuition.** As $c \to \infty$, for most $\theta$ values far from any
-$\beta_i$, the item response probabilities $p_i(\theta)$ approach 0 or 1,
-causing item information $\mathcal{J}_i(\theta) = \lambda_i^2 p_i(1-p_i) \to 0$.
+**Intuition.** Under Rasch/2PL, as $c \to \infty$, for most $\theta$ values far
+from any $\beta_i$, the item response probabilities $p_i(\theta)$ approach 0
+or 1, causing item information
+$\mathcal{J}_i(\theta)=\lambda_i^2p_i(1-p_i)\to0$. Under 3PL the low tail
+probability approaches $g_i$, but its derivative and information still vanish;
+positive guessing makes that low-tail information attenuation faster.
 Only $\theta$ values very close to some $\beta_i$ retain high information. The
 harmonic mean (used in $\bar{w}$) is dominated by the low-information regions,
 causing $\mathbb{E}[1/\mathcal{J}]$ to grow and $\bar{w}$ to decrease.
 
-The arithmetic mean (used in $\tilde{\rho}$) is not as sensitive to these low-
-information tails, which is why $\tilde{\rho}$ remains monotone.
+The arithmetic mean (used in $\tilde{\rho}$) is less sensitive to these low-
+information tails, but that fact alone does not imply global monotonicity on a
+finite grid.
 
 This is why the `c_bounds` parameter matters in practice, especially when using
 the `"msem"` metric.
+
+### Tail integrability is part of the estimand
+
+For any finite logistic item bank, $1/\mathcal{J}(\theta;c)$ grows at least
+exponentially in a sufficiently remote tail. A Student-$t$ population has only
+polynomial tail decay, so
+$\mathbb{E}_G[1/\mathcal{J}(\theta;c)]=\infty$ for every $c>0$. Positive 3PL
+guessing makes the low-ability divergence faster. It follows that population
+MSEM reliability is zero/undefined for the built-in `heavy_tail` population;
+a finite Monte Carlo prefix is an empirical truncated approximation and must
+not be reported as that population estimand. `sac_calibrate()` rejects the
+combination `latent_shape = "heavy_tail"` and
+`reliability_metric = "msem"` before iteration. Average-information
+reliability remains a separate, potentially finite target.
 
 ```{r non-monotone-msem, fig.cap = "Non-monotonicity of the MSEM metric at extreme scaling factors (heavy-tailed latent distribution, df = 3).", fig.alt = "Line plot showing MSEM reliability becoming non-monotone at extreme scaling values under a heavy-tailed latent distribution."}
 # Demonstrate non-monotonicity with a heavy-tailed distribution.
@@ -492,7 +595,7 @@ idx_max <- which.max(rho_b)
 points(c_wide[idx_max], rho_b[idx_max], pch = 19, col = "coral", cex = 1.5)
 
 legend("right",
-       legend = c(expression(tilde(rho) ~ "(population monotone)"),
+       legend = c(expression(tilde(rho) ~ "(empirical info curve)"),
                   expression(bar(w) ~ "(non-monotone at extreme c)")),
        col = c("steelblue", "coral"), lty = c(1, 2), lwd = 2, cex = 0.85)
 
@@ -509,7 +612,7 @@ Not every target reliability is achievable for a given test configuration.
 The feasible range depends on the number of items, the item parameter
 distribution, and the latent trait distribution.
 
-### Upper Bound from the Logistic Kernel
+### A 2PL Upper Bound from the Logistic Kernel
 
 **Proposition 3 (Information Upper Bound).** Under the 2PL model, the maximum
 item information is:
@@ -519,45 +622,58 @@ $$
 \qquad \text{(11)}
 $$
 
-achieved when $\theta = \beta_i$ (i.e., $p_i = 1/2$). Therefore, the maximum
-test information is:
+achieved when $\theta = \beta_i$ (i.e., $p_i = 1/2$). Therefore, test
+information satisfies:
 
 $$
-\sup_{\theta}\, \mathcal{J}(\theta; c) = \frac{c^2}{4} \sum_{i=1}^{I} (\lambda_i^{(0)})^2
+\sup_{\theta}\, \mathcal{J}(\theta; c)
+\;\leq\; \frac{c^2}{4} \sum_{i=1}^{I} (\lambda_i^{(0)})^2
 \qquad \text{(12)}
 $$
 
-For the Rasch model with $\lambda_i^{(0)} = 1$, this simplifies to
-$c^2 I / 4$.
+Equality in (12) requires the itemwise maxima to occur at the same ability
+value---in particular, all relevant difficulties must coincide. For the Rasch
+model with $\lambda_i^{(0)} = 1$, the right-hand upper bound simplifies to
+$c^2 I / 4$; it is not generally the attained maximum when difficulties vary.
+
+This $1/4$ bound is a Rasch/2PL result. With 3PL guessing, the information
+maximum is shifted and reduced, so IRTsimrel evaluates the realized 3PL bank
+directly instead of substituting the 2PL bound.
 
 **Proof.** The function $p(1-p)$ on $[0,1]$ has a unique maximum of $1/4$ at
 $p = 1/2$. Under the 2PL model, $p_i(\theta) = 1/2$ when
-$\theta = \beta_i$. $\square$
+$\theta = \beta_i$. Summing the itemwise bounds gives (12), while simultaneous
+equality requires a common maximizing $\theta$. $\square$
 
-### Feasibility Conditions
+### A 2PL analytic feasibility bound
 
-The average test information is bounded above by the maximum:
+For Rasch/2PL, the average test information is bounded above by the maximum:
 
 $$
 \bar{\mathcal{J}}(c) = \mathbb{E}_G\!\left[\sum_{i=1}^{I} \lambda_i(c)^2\, p_i(1-p_i)\right]
 \leq \frac{c^2}{4} \sum_{i=1}^{I} (\lambda_i^{(0)})^2
 $$
 
-Therefore the maximum achievable average-information reliability for a given $c$
-is:
+Therefore an analytic upper bound on average-information reliability for a
+given $c$ is:
 
 $$
 \tilde{\rho}_{\max}(c) = \frac{\sigma^2_\theta \cdot (c^2/4) \sum_i (\lambda_i^{(0)})^2}
   {\sigma^2_\theta \cdot (c^2/4) \sum_i (\lambda_i^{(0)})^2 + 1}
 $$
 
-As $c \to \infty$, this approaches 1, but in practice we work within
-$c \in [c_{\min}, c_{\max}]$ and the achievable range is finite.
+This upper bound approaches 1 as $c\to\infty$; that does not imply the actual
+finite-form reliability curve is monotone or attains 1. For 3PL and for actual
+feasibility decisions, the package evaluates the realized curve on the
+configured interval.
 
 ### Connection to `check_feasibility()`
 
-The `check_feasibility()` function computes the achievable reliability range
-via Monte Carlo evaluation at the boundary scaling factors.
+The `check_feasibility()` function uses a shared adaptive log-scale topology
+scan. The achievable range combines boundaries with polished detected extrema;
+the result includes root counts, target status, best-achievable points, and the
+scanner diagnostics. Endpoint values alone are retained as legacy diagnostics
+and are not assumed to determine the global range.
 
 ```{r feasibility}
 # Check feasibility for a 25-item Rasch test
@@ -630,14 +746,24 @@ EQC proceeds in three steps:
    \qquad \text{(13)}
    $$
 
-3. **Root-finding**: Solve $g_M(c) = \hat{\tilde{\rho}}_M(c) - \rho^* = 0$ using
-   Brent's method on $[c_{\min}, c_{\max}]$.
+3. **Topology and root selection**: Evaluate an adaptive grid on
+   $\log(c)$, refine detected extrema and target crossings, polish each
+   sign-changing bracket with Brent's method, and select an admissible root
+   according to `root_policy`. The default is the lowest increasing crossing.
+
+The scanner never expands `c_bounds`. Its root table distinguishes crossings,
+tangencies, boundaries, and plateaus and records local slope direction. If a
+target is outside the detected range, EQC returns the best-achievable point
+with an explicit infeasibility status; if topology is unresolved or a feasible
+target has no root admissible under the requested policy, it raises a classed
+error rather than silently choosing another branch.
 
 ### Consistency
 
-**Theorem 2 (Consistency of EQC; cf. Theorem A.1, Lee 2026).** Let $c^*$ be
-the true population solution and $\hat{c}^*_M$ be the EQC solution with
-quadrature size $M$. Then:
+**Theorem 2 (Branch-conditional consistency of EQC; cf. Theorem A.1, Lee
+2026).** Let $c^*$ be an isolated population root on a specified increasing
+branch, and let $\hat{c}^*_M$ be the corresponding EQC root with quadrature
+size $M$. Under uniform convergence and local root-separation conditions:
 
 $$
 \hat{c}^*_M \xrightarrow{\text{a.s.}} c^* \quad \text{as } M \to \infty
@@ -647,10 +773,10 @@ $$
 **Proof sketch.** The empirical reliability $\hat{\tilde{\rho}}_M(c)$
 converges uniformly to $\tilde{\rho}(c)$ over the compact interval
 $[c_{\min}, c_{\max}]$ by the Uniform Law of Large Numbers (ULLN). Since
-$\tilde{\rho}(c)$ is continuous and strictly monotone on the population target
-interval, and the root of the limit function is unique (Corollary 2), uniform
-convergence of the objective implies convergence of the root (by the continuous
-mapping theorem for M-estimators). $\square$
+$\tilde{\rho}(c)$ is continuous and strictly monotone on that population
+branch, and the selected root is isolated, uniform convergence of the objective
+implies convergence of the matching empirical root. This is not a theorem that
+the whole configured interval has a unique root. $\square$
 
 ### Asymptotic Normality
 
@@ -665,7 +791,9 @@ $$
 
 where $g(c) = \rho(c) - \rho^*$, $g'(c^*)$ is the derivative of the
 reliability function at the solution, and $\sigma^2_g$ is the asymptotic
-variance of the empirical gradient.
+variance of the empirical estimating-function value
+$\hat{\rho}_M(c^*)-\rho^*$ (the root residual), not a variance of the
+derivative $g'(c^*)$.
 
 **Proof sketch.** Apply the delta method to the implicit function
 $\hat{c}^*_M = g^{-1}_M(\rho^*)$. The Central Limit Theorem gives
@@ -688,13 +816,10 @@ $$
 |\hat{\rho}_M(c) - \rho(c)| = O_p\!\left(\frac{1}{\sqrt{M}}\right)
 $$
 
-| Quadrature size $M$ | Approx. MC std. error |
-|---------------------:|:---------------------:|
-| 1,000               | ~0.03                 |
-| 5,000               | ~0.014                |
-| 10,000              | ~0.01                 |
-| 50,000              | ~0.004                |
-| 100,000             | ~0.003                |
+The constants depend on the latent distribution, item bank, target, and local
+slope; $1/\sqrt{M}$ is a rate statement, not a universal numerical error table.
+Independent holdout evaluation is needed because evaluating the selected root
+on the same quadrature grid partly verifies the equation by construction.
 
 
 ## SAC Theory: Stochastic Approximation
@@ -702,6 +827,15 @@ $$
 The Stochastic Approximation Calibration (SAC) algorithm provides an
 independent solution path using the Robbins-Monro framework. Full algorithmic
 details are in `vignette("algorithm-sac")`.
+
+SAC has two distinct item measures. With `resample_items = FALSE`, it targets
+reliability conditional on one fixed item form. With
+`resample_items = TRUE`, it targets the mean of form-level reliabilities over
+the specified item generator; pooling information across forms would define a
+different estimand and is not used. The final `achieved_rho` comes from an
+independent evaluation bank. `compare_eqc_sac()` reports agreement only when
+metric, latent measure, model, item scope, and realized/generator design are
+comparable; otherwise `agreement` is `NA` with reasons.
 
 ### The Stochastic Root-Finding Problem
 
@@ -715,6 +849,16 @@ $$
 At each iteration $n$, only a noisy observation
 $\hat{\rho}_n(c_n) = \rho^* + g(c_n) + \varepsilon_n$ is available, where
 $\varepsilon_n$ is zero-mean Monte Carlo noise.
+
+Before iteration, version 0.3.0 uses common random numbers to scan the
+configured interval and identify a stable interior increasing branch. For an
+item-superpopulation target, split banks must select compatible roots and
+overlapping branch intervals. The Robbins--Monro projection is then narrowed
+to that branch. Non-finite topology, an infeasible target, a decreasing or
+boundary-only solution, or unstable splits produce classed preflight errors.
+Repeated projection hits can instead return a `branch_lost` non-convergence
+status. These guards are part of the implemented algorithm, not merely plotting
+diagnostics.
 
 ### Robbins-Monro Update
 
@@ -747,16 +891,19 @@ $$
 \qquad \text{(20)}
 $$
 
-where $B$ is the burn-in period. This averaging achieves the optimal
-convergence rate.
+where $B$ is the burn-in period. Under the standard regular
+stochastic-approximation conditions used below, this averaging attains the
+usual root-$n$ rate.
 
 ### Convergence
 
-**Theorem 4 (SAC Convergence; cf. Theorem A.3, Lee 2026).** Under the
-Robbins-Monro conditions (Eq. 19) and standard local regularity assumptions
-near the selected root (boundedness of $g$, Lipschitz continuity, nonzero
-stable slope, and bounded noise variance), the SAC iterates converge almost
-surely:
+**Theorem 4 (Branch-conditional SAC Convergence; cf. Theorem A.3, Lee
+2026).** Suppose the Robbins--Monro step conditions (Eq. 19) hold; $c^*$ is
+an interior isolated root of the projected selected branch; $g$ is Lipschitz
+there and satisfies the branch-wide stability condition
+$(c-c^*)g(c)>0$ for every $c\ne c^*$ in that projection interval; and the
+Monte Carlo error is a martingale difference with bounded conditional
+variance. Then the projected SAC iterates converge almost surely:
 
 $$
 c_n \xrightarrow{\text{a.s.}} c^* \quad \text{as } n \to \infty
@@ -771,17 +918,22 @@ N\!\left(0,\, \frac{\sigma^2_\varepsilon}{g'(c^*)^2}\right)
 \qquad \text{(22)}
 $$
 
-achieving the optimal $O(n^{-1/2})$ rate, compared to $O(n^{-\gamma})$ for
-the final iterate.
+giving root error $O_p(n^{-1/2})$ under the additional CLT regularity
+conditions, compared with the typical $O_p(n^{-\gamma/2})$ last-iterate error
+for a step sequence of order $n^{-\gamma}$.
 
 **Proof sketch.** Almost sure convergence follows from the classical
 Robbins-Monro theorem (Robbins and Monro, 1951), extended to the projected
 case by Kushner and Yin (2003). The key conditions are: (i) $g(c^*) = 0$,
-(ii) $g'(c^*) > 0$ locally at the selected root, (iii) the step size
-conditions in Eq. (19), and (iv) bounded conditional variance
+(ii) the branch-wide stability condition above together with
+$g'(c^*) > 0$ locally, (iii) the step-size conditions in Eq. (19), and
+(iv) bounded conditional variance
 $\text{Var}(\varepsilon_n \mid c_n) \leq \sigma^2_\varepsilon$. Asymptotic
 normality of the Polyak-Ruppert average follows from Polyak and Juditsky
-(1992). $\square$
+(1992). The theorem is conditional on the selected branch and does not rescue
+a run whose branch is absent, non-integrable, or lost. A finite configured
+preflight scan is diagnostic evidence, not a proof of the branch-wide drift
+assumption. $\square$
 
 
 ## Numerical Demonstrations
@@ -898,9 +1050,11 @@ eqc_demo <- eqc_calibrate(
 
 sac_demo <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  reliability_metric = "info", resample_items = FALSE,
   c_init = eqc_demo, n_iter = 300L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 cat("EQC vs SAC comparison (target = 0.80, info metric):\n")
@@ -971,7 +1125,7 @@ $$
 
 where $\rho$ denotes either $\tilde{\rho}$ (average-information) or $\bar{w}$
 (MSEM-based), depending on the chosen metric. In IRTsimrel, EQC solves the
-monotone $\tilde{\rho}$ inverse problem, while SAC can solve either
+branch-qualified $\tilde{\rho}$ inverse problem, while SAC can solve either
 same-estimand validation problems (`"info"`) or direct MSEM problems
 (`"msem"`).
 
@@ -992,6 +1146,10 @@ Several factors make this inverse problem non-trivial:
 
 4. **Practical constraints**: The scaling factor must lie within bounds that
    produce realistic item parameters.
+
+5. **Root and item scope**: A finite curve may have several roots, and a
+   fixed-form coefficient is not the same estimand as an average across random
+   item forms. Both must be specified before a scale can be interpreted.
 
 ### The APC Approximation
 
@@ -1031,6 +1189,7 @@ and its documentation.
 | $\beta_i$ | Difficulty parameter for item $i$ | $\mathbb{R}$ |
 | $\lambda_i$ | Discrimination parameter for item $i$ | $(0, \infty)$ |
 | $\lambda_i^{(0)}$ | Baseline (unscaled) discrimination | $(0, \infty)$ |
+| $g_i$ | 3PL lower asymptote (`guessing`) | $[0, 1)$ |
 | $c$ | Global discrimination scaling factor | $(0, \infty)$ |
 | $c^*$ | Calibrated scaling factor | $(0, \infty)$ |
 | $I$ | Number of items | $\mathbb{N}$ |
@@ -1066,10 +1225,10 @@ and its documentation.
 | **Proposition 1** | $\tilde{\rho}(c)$ is strictly increasing on regular calibration intervals | Existence and uniqueness for bracketed info targets |
 | **Corollary 2** | Unique $c^*$ exists for $\rho^* \in (\rho_L,\rho_U)$ on such an interval | EQC root-finding is well-defined after feasibility checks |
 | **Proposition 2** | $\bar{w}(c)$ is not always monotone | `c_bounds` critical for MSEM metric |
-| **Proposition 3** | $\max \mathcal{J}_i = \lambda_i^2/4$ | Upper bound on achievable reliability |
-| **Theorem 2** | EQC consistent ($\hat{c}^*_M \to c^*$ a.s.) | Arbitrarily precise via larger $M$ |
+| **Proposition 3** | $\max \mathcal{J}_i = \lambda_i^2/4$ for 2PL | 2PL-only analytic upper bound |
+| **Theorem 2** | EQC consistent for an isolated selected branch ($\hat{c}^*_M \to c^*$ a.s.) | Precision increases with $M$ under the stated conditions |
 | **Theorem 3** | EQC asymptotically normal ($\sqrt{M}$ rate) | Quantifiable uncertainty |
-| **Theorem 4** | SAC converges a.s., optimal rate with PR avg | Independent validation pathway |
+| **Theorem 4** | SAC converges locally on an admissible selected branch, with PR averaging | Preflight and branch diagnostics are required |
 
 
 ## References

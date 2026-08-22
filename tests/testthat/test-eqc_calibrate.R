@@ -218,7 +218,7 @@ test_that("EQC: target_rho=0.99 with n_items=5 triggers upper bound warning", {
     "exceeds the maximum achievable"
   )
   expect_equal(eqc$misc$root_status, "above_upper")
-  expect_equal(eqc$misc$target_status, "above_upper")
+  expect_equal(eqc$misc$target_status, "infeasible_above_range")
   expect_equal(eqc$c_star, eqc$misc$c_bounds[2])
   expect_null(eqc$misc$uniroot_result)
 })
@@ -243,7 +243,7 @@ test_that("EQC: very low target_rho triggers below-lower warning", {
     "below the minimum achievable"
   )
   expect_equal(eqc$misc$root_status, "below_lower")
-  expect_equal(eqc$misc$target_status, "below_lower")
+  expect_equal(eqc$misc$target_status, "infeasible_below_range")
   expect_equal(eqc$c_star, eqc$misc$c_bounds[1])
   expect_null(eqc$misc$uniroot_result)
 })
@@ -274,7 +274,7 @@ test_that("EQC exact endpoint targets return boundary status without warning", {
     verbose = FALSE
   )))
   expect_equal(eqc_lower$misc$root_status, "boundary_lower")
-  expect_equal(eqc_lower$misc$target_status, "boundary_lower")
+  expect_equal(eqc_lower$misc$target_status, "feasible")
   expect_equal(eqc_lower$c_star, 0.3)
   expect_equal(eqc_lower$achieved_rho, lower_target, tolerance = 1e-12)
   expect_null(eqc_lower$misc$uniroot_result)
@@ -290,7 +290,7 @@ test_that("EQC exact endpoint targets return boundary status without warning", {
     verbose = FALSE
   )))
   expect_equal(eqc_upper$misc$root_status, "boundary_upper")
-  expect_equal(eqc_upper$misc$target_status, "boundary_upper")
+  expect_equal(eqc_upper$misc$target_status, "feasible")
   expect_equal(eqc_upper$c_star, 3)
   expect_equal(eqc_upper$achieved_rho, upper_target, tolerance = 1e-12)
   expect_null(eqc_upper$misc$uniroot_result)
@@ -355,7 +355,7 @@ test_that("EQC finds an interior root when a very wide upper bound saturates", {
 
   expect_equal(eqc$misc$root_status, "uniroot_success")
   expect_equal(eqc$misc$target_status, "feasible")
-  expect_equal(eqc$misc$bracket_method, "interior_max")
+  expect_equal(eqc$misc$bracket_method, "adaptive_log_grid")
   expect_lt(unname(eqc$misc$rho_bounds_named["upper"]), eqc$target_rho)
   expect_gt(eqc$misc$rho_max, eqc$target_rho)
   expect_lt(eqc$c_star, 10)

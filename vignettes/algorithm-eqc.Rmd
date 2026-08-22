@@ -4,9 +4,8 @@ author: "JoonHo Lee (jlee296@ua.edu)"
 date: "`r Sys.Date()`"
 description: >
   Detailed treatment of the EQC algorithm for reliability-targeted IRT
-  simulation, including formal algorithm statement, Brent's root-finding
-  method, convergence theory, Monte Carlo error analysis, numerical stability
-  considerations, and diagnostic examples.
+  simulation, including adaptive root-topology discovery, branch selection,
+  Monte Carlo approximation, numerical stability, and diagnostics.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Algorithm 1: Empirical Quadrature Calibration (EQC)}
@@ -32,7 +31,8 @@ set.seed(42)
 Empirical Quadrature Calibration (EQC) is the primary algorithm in IRTsimrel
 for solving the inverse reliability problem. Given a target marginal
 reliability $\rho^*$, EQC finds a global discrimination scaling factor $c^*$
-such that the population reliability equals the target.
+such that a fixed-form empirical approximation to population
+average-information reliability equals the target.
 
 **Reading time**: approximately 25 minutes.
 
@@ -48,10 +48,10 @@ Brent (1973).
 | Property | Benefit |
 |:---------|:--------|
 | Deterministic | Same inputs always produce same output (given seed) |
-| Superlinear convergence | Brent's method converges faster than bisection |
+| Explicit topology | Detects multiple roots and local extrema before selection |
 | No tuning parameters | No step sizes, learning rates, or burn-in to configure |
-| Verified bracketing | Convergence on intervals with a verified sign change |
-| Fast execution | Typically < 1 second for $M = 10{,}000$ |
+| Verified bracketing | Ordinary sign-changing crossings are locally polished when the bracket solver succeeds |
+| Reproducible | Fixed theta nodes and item form for a given seed |
 
 
 ## Algorithm Statement
@@ -83,9 +83,11 @@ a three-step procedure.
 >   using the bracket-checked average-information reliability
 >   $\tilde{\rho}$ (`reliability_metric = "info"` / `"tilde"`).
 >
-> **Step 3** (Brent Root-Finding).
->   Solve $g_M(c) = \hat{\rho}_M(c) - \rho^* = 0$ on $[c_L, c_U]$ using
->   Brent's method (`stats::uniroot()` in R) with tolerance $\varepsilon$.
+> **Step 3** (Topology, Polishing, and Selection).
+>   Scan $x=\log(c)$ adaptively on the exact interval $[c_L,c_U]$, refine
+>   detected extrema and target features, polish every sign-changing bracket
+>   with Brent's method, and select a root with `root_policy`. The default
+>   selects the lowest increasing crossing.
 >
 > **Output**: Calibrated scaling factor $\hat{c}^*_M$, achieved reliability
 >   $\hat{\rho}_M(\hat{c}^*_M)$, calibrated item parameters.
@@ -97,7 +99,7 @@ $\{\theta_m\}$ and $\{(\beta_i, \lambda_i^{(0)})\}$ are used for every
 evaluation of $\hat{\rho}_M(c)$ during the root-finding iteration. This makes
 $\hat{\rho}_M(c)$ a _deterministic_ function of $c$ for a given draw, which:
 
-1. Guarantees that Brent's method converges (no stochastic oscillation).
+1. Makes every scanner and root-polishing evaluation reproducible.
 2. Eliminates the need for step size tuning.
 3. Produces reproducible results for a given seed.
 
@@ -105,10 +107,19 @@ The trade-off is that the solution $\hat{c}^*_M$ depends on the particular
 quadrature draw, introducing Monte Carlo error of order $O(1/\sqrt{M})$.
 
 
-## Brent's Root-Finding Method
+## Adaptive Topology Scan and Brent Polishing
 
-EQC uses Brent's method (Brent, 1973), which combines the safety of
-bisection with the speed of superlinear methods.
+EQC does not call one global root solver and assume monotonicity. It first
+constructs an adaptive log-scale map of the configured interval. Boundaries,
+detected extrema, crossings, tangencies, and plateaus are stored in
+`result$misc$topology`. Brent's method (Brent, 1973) is then attempted
+locally for each sign-changing bracket. Successfully polished ordinary
+crossings retain their solver diagnostic; a near-target grid fallback is
+recorded separately when polishing fails.
+
+The interval is never expanded automatically. Topology is described as
+"detected at the configured resolution" because no finite grid can guarantee
+detection of an arbitrarily narrow feature between all sampled points.
 
 ### Components of Brent's Method
 
@@ -122,8 +133,10 @@ Brent's method adaptively selects among three strategies at each iteration:
    (the golden ratio), but not guaranteed to stay within bounds.
 
 3. **Inverse quadratic interpolation (IQI)**: Fits a quadratic through the
-   three most recent points (in the inverse direction). Achieves faster
-   convergence when the function is smooth, with order approximately $2$.
+   three most recent points (in the inverse direction). Under the usual
+   smoothness and simple-root conditions, pure IQI has asymptotic order
+   $p \approx 1.8393$, the positive root of
+   $p^3 = p^2 + p + 1$.
 
 At each step, Brent's method:
 
@@ -133,35 +146,35 @@ At each step, Brent's method:
 
 ### Convergence Properties
 
-**Proposition (Convergence of Brent's Method).** Given a continuous function
-$g$ on $[a, b]$ with $g(a) \cdot g(b) < 0$ (sign change), Brent's method
-converges to a root $c^*$ satisfying $|g(c^*)| < \varepsilon$ in at most:
+**Proposition (Bracket contraction).** Given a continuous function $g$ on
+$[a,b]$ with $g(a)g(b)<0$, the bisection safeguard can reduce the
+root-containing bracket to a requested scale-width tolerance in:
 
 $$
-O\!\left(\log_2\!\left(\frac{b - a}{\varepsilon}\right)\right)
-\text{ iterations (worst case, bisection)}
+O\!\left(\log_2\!\left(\frac{b-a}{\varepsilon_c}\right)\right)
+\text{ iterations (worst-case bracket contraction)}
 $$
 
-In practice, superlinear convergence typically achieves machine precision in
-fewer than 50 function evaluations. The convergence order when IQI succeeds
-is approximately:
+Here $\varepsilon_c$ is a tolerance on root location or bracket width, not an
+automatic bound on $|g(c)|$. Continuity implies the residual tends to zero as
+the bracket contracts around a root, but a finite residual guarantee requires
+additional information such as a modulus of continuity or a local Lipschitz
+bound.
 
-$$
-|c_n - c^*| \approx O\!\left(2^{-2^n}\right)
-$$
+In practice, accepted interpolation steps often converge much faster than
+pure bisection. For pure IQI, the local error follows a three-step product
+recurrence under regularity conditions, yielding the superlinear order
+$p \approx 1.8393$ above. Brent's hybrid retains the bisection safeguard; it
+does not have quadratic or doubly exponential convergence as a general
+guarantee.
 
-which is doubly exponential --- vastly faster than the linearly convergent
-$|c_n - c^*| \approx O(2^{-n})$ of pure bisection.
-
-### Why Brent's Method is Ideal for EQC
+### Why Brent's Method is Used Locally
 
 Several properties of the reliability function make Brent's method
 particularly well-suited:
 
-1. **Bracketed root**: For the `"info"` metric, EQC verifies a sign-changing
-   bracket before calling `uniroot()`. If a very wide finite quadrature
-   interval causes the upper endpoint to saturate, EQC checks for an interior
-   maximum before declaring the target infeasible.
+1. **Bracketed root**: Every ordinary crossing passed to `uniroot()` already
+   has a verified local sign change. Several brackets may coexist.
 
 2. **Smooth function**: $\hat{\rho}_M(c)$ is infinitely differentiable in $c$,
    enabling fast superlinear convergence.
@@ -173,6 +186,22 @@ particularly well-suited:
 4. **Robustness**: The bisection fallback prevents divergence even when the
    function has near-zero slope (high or low reliability regions).
 
+### Root policies and statuses
+
+`root_policy = "lowest_increasing"` is the scientific default: among detected
+positive-slope crossings it chooses the smallest scale, avoiding an implicit
+switch to a high-scale saturation branch. `"nearest_increasing"` uses $c=1$
+as its reference. `"lowest_any"` and `"highest_any"` are expert policies that
+can select decreasing crossings; tangencies and plateaus require separate
+explicit opt-in.
+
+Feasibility, topology quality, root kind/direction, and calibration outcome
+are stored as separate fields. A boundary hit is not mislabeled as an interior
+root. If the target is outside the detected reliability range, EQC returns the
+best-achievable scale with an infeasibility warning. If a feasible target has
+no root admissible under the policy, or the topology is non-finite/unresolved,
+EQC raises a classed error.
+
 
 ## Convergence Theory
 
@@ -182,9 +211,10 @@ definitions, see `vignette("theory-reliability")`.
 
 ### Consistency (Theorem A.1)
 
-**Theorem (Consistency of EQC).** Let $c^*$ be the unique population solution
-$\tilde{\rho}(c^*) = \rho^*$ and let $\hat{c}^*_M$ be the EQC solution with
-quadrature size $M$. Then:
+**Theorem (Branch-conditional consistency of EQC).** Let $c^*$ be an isolated
+population solution $\tilde{\rho}(c^*) = \rho^*$ on a specified increasing
+branch, and let $\hat{c}^*_M$ be the matching EQC root with quadrature size
+$M$. Then, under the regularity and root-separation conditions below:
 
 $$
 \hat{c}^*_M \xrightarrow{\text{a.s.}} c^* \quad \text{as } M \to \infty
@@ -203,11 +233,11 @@ $$
    satisfies a Lipschitz or bounded variation condition in $c$, which follows
    from the smoothness of the logistic function.
 
-2. **Uniqueness of the root**: On the population target interval described in
+2. **Local uniqueness of the root**: On the population target branch described in
    Proposition 1 in `vignette("theory-reliability")`, the equation
-   $\rho(c) = \rho^*$ has a unique solution $c^*$ when
-   $\rho(c_L) < \rho^* < \rho(c_U)$. The finite empirical implementation also
-   verifies the bracket actually used by `uniroot()`.
+   $\rho(c) = \rho^*$ has one isolated solution $c^*$. Other branches may
+   contain other roots. The finite empirical implementation enumerates local
+   brackets and applies the stated selection rule.
 
 3. **Root convergence**: Combining uniform convergence of the objective with
    uniqueness of the root, the Argmax Continuous Mapping Theorem (or its
@@ -240,8 +270,8 @@ $$
 $$
 
 Solving for $\hat{c}^*_M - c^*$ and scaling by $\sqrt{M}$ yields the result.
-The key requirement is $g'(c^*) \neq 0$, which follows from strict
-monotonicity.
+The key requirement is $g'(c^*) \neq 0$, supplied by strict local
+monotonicity on the selected branch.
 
 ### Monte Carlo Error Analysis
 
@@ -266,29 +296,25 @@ $$
 
 ## Numerical Stability
 
-### Information Floor
+### Stable log-information reductions
 
-When computing the MSEM metric, the reciprocal $1/\mathcal{J}(\theta; c)$ can
-become numerically unstable when test information is very small. The package
-applies a floor:
-
-$$
-\mathcal{J}_{\text{safe}}(\theta; c) = \max\!\bigl(\mathcal{J}(\theta; c),\, 10^{-10}\bigr)
-$$
-
-This prevents division-by-zero while introducing negligible bias (the floor is
-activated only at extreme ability values where the logistic probabilities are
-near 0 or 1).
+The probability and information kernels are evaluated with stable logistic
+identities, including extreme linear predictors. Test information is reduced
+on the log scale and MSEM uses log-sum-exp arithmetic. The implementation does
+not impose a `1e-10` information floor: clipping would turn a divergent or
+under-resolved reciprocal-information estimand into a plausible-looking finite
+number. Non-finite diagnostics are surfaced instead.
 
 ### Search Bound Sensitivity
 
 The choice of $[c_L, c_U]$ affects both feasibility and numerical behavior:
 
-- **Too narrow**: The target $\rho^*$ may fall outside the achievable range
-  on $[c_L, c_U]$, causing EQC to return a boundary solution with a warning.
-- **Too wide**: For the MSEM metric, non-monotonicity at extreme $c$
-  (Proposition 2 in `vignette("theory-reliability")`) can cause multiple roots,
-  and Brent's method may find the wrong one.
+- **Too narrow**: The target $\rho^*$ may fall outside the detected achievable
+  range on $[c_L, c_U]`; EQC returns the best-achievable point with an explicit
+  status and warning.
+- **Too wide**: Finite-grid saturation can create additional extrema and
+  crossings even for the information metric. The scanner enumerates them, but
+  a wider interval costs more evaluations and makes the root policy important.
 
 **Default recommendation**: `c_bounds = c(0.3, 3)` works well for most
 applications. Extend to `c(0.1, 5)` or `c(0.1, 10)` for high-reliability
@@ -298,9 +324,10 @@ targets ($\rho^* > 0.90$) or unusual item/latent configurations.
 
 | Scenario | Behavior | Recommendation |
 |:---------|:---------|:---------------|
-| $\hat{\rho}_M(c_U) < \rho^*$ | Returns $c_U$ with warning | Increase `c_bounds[2]` or `n_items` |
-| $\hat{\rho}_M(c_L) > \rho^*$ | Returns $c_L$ with warning | Decrease `c_bounds[1]` |
-| $\rho^* \approx \hat{\rho}_M(c_U)$ | Convergence may be slow | Increase `c_bounds[2]` slightly |
+| Target outside detected range | Returns best-achievable $c$ with warning/status | Inspect `misc$topology`; revise design or bounds |
+| Several admissible roots | Selects by `root_policy` and records all roots | Report policy and selected direction |
+| Tangency or plateau only | No default admissible root | Opt in only with a scientific justification |
+| Scan budget/non-finite gap | Classed topology error | Inspect controls and estimand integrability |
 | `n_items = 1` | Very flat reliability curve | Use larger `M` for precision |
 
 
@@ -311,19 +338,22 @@ is still important for interpretation and cross-evaluation, but direct
 `"msem"` / `"bar"` targeting is handled by SAC because the MSEM objective can
 be non-monotone under scalar root finding.
 
-### Average-Information ($\tilde{\rho}$): `reliability_metric = "info"`
+### Average-Information (rho-tilde): `reliability_metric = "info"` {#average-information-tilderho-reliability_metric-info}
 
 **Advantages**:
 
-- Stable on practical EQC search intervals; for very wide finite empirical
-  quadrature bounds, EQC checks an interior maximum before declaring infeasibility.
+- Stable on practical EQC search intervals; on wider finite empirical bounds,
+  EQC scans and refines all detected extrema before declaring infeasibility.
 - Faster convergence of Brent's method (steeper slope in typical range).
 - Recommended by Lee (2026) as the default.
 
-**Interpretation**: The reliability if measurement precision were uniform at the
-average level. Slightly optimistic (overestimates true marginal reliability).
+**Interpretation**: The coefficient obtained by applying the reliability
+transform to average test information. On the same finite information grid,
+Jensen's inequality makes it an upper bound on the MSEM-based coefficient.
+The two are distinct estimands; this ordering is not a bias claim that one is
+the universal `"true"` reliability.
 
-### MSEM-Based ($\bar{w}$): cross-evaluation, not EQC targeting
+### MSEM-Based (w-bar): cross-evaluation, not EQC targeting {#msem-based-barw-cross-evaluation-not-eqc-targeting}
 
 **Advantages**:
 
@@ -364,6 +394,21 @@ cat(sprintf("  At c*_info = %.4f: rho_tilde = %.4f, rho_bar = %.4f\n",
             eqc_info$c_star, both_at_info$rho_tilde, both_at_info$rho_bar))
 cat(sprintf("  Jensen gap: %.4f\n", both_at_info$rho_tilde - both_at_info$rho_bar))
 ```
+
+### 3PL calibration contract
+
+For `model = "3pl"`, specify lower asymptotes through
+`item_params$guessing_params` (or `custom_params$guessing` for a custom bank).
+At every candidate scale EQC holds difficulty and guessing fixed and replaces
+$\lambda_i^{(0)}$ by $c\lambda_i^{(0)}$. Setting every guessing value to zero
+reproduces the 2PL kernel and reliability calculation exactly. Positive
+guessing generally requires a larger selected discrimination scale for the
+same fixed-form target, but this is an empirical design comparison rather than
+a universal root-ordering theorem.
+
+The symbol `c` in results and plots always denotes this global scale. It never
+denotes the conventional 3PL lower asymptote; documentation and output use
+`guessing` for the latter.
 
 
 ## Diagnostic Examples
@@ -540,8 +585,9 @@ eqc_v <- eqc_calibrate(
 
 Key information from verbose output:
 
-- **Pre-calibration**: Shows APC initialization and feasibility bounds.
-- **Root status**: Brent's convergence status from `uniroot()`.
+- **Observed range**: Reports the scanned reliability range inside `c_bounds`.
+- **Root topology**: Reports detected root count, selected kind/direction, and
+  scanner resolution status.
 - **Achieved reliability**: Final reliability at the calibrated $c^*$.
 
 
@@ -600,9 +646,11 @@ See `vignette("algorithm-sac")` for the SAC algorithm details and
 # Quick cross-validation example
 sac_check <- sac_calibrate(
   target_rho = 0.80, n_items = 25, model = "rasch",
-  item_source = "parametric", reliability_metric = "info",
+  reliability_metric = "info", resample_items = FALSE,
   c_init = eqc_v, n_iter = 200L, M_per_iter = 1000L,
-  seed = 42, verbose = FALSE
+  seed = 42, verbose = FALSE,
+  preflight_controls = list(M = 500L),
+  evaluation_controls = list(n_forms = 3L, M = 1000L)
 )
 
 comparison <- compare_eqc_sac(eqc_v, sac_check, verbose = FALSE)
@@ -617,12 +665,12 @@ simulation:
 
 | Aspect | Summary |
 |:-------|:--------|
-| **Method** | Brent's root-finding on empirical reliability function |
-| **Convergence** | Superlinear; consistent as $M \to \infty$ (Theorem A.1) |
+| **Method** | Adaptive log-scale topology scan plus local Brent polishing |
+| **Convergence** | Root polishing is superlinear; statistical consistency is branch-conditional |
 | **Asymptotic rate** | $\sqrt{M}$-normal (Theorem A.2) |
 | **Supported target metric** | Average-information (`"info"` / `"tilde"`) |
-| **Typical accuracy** | $|\hat{\rho} - \rho^*| < 0.001$ with $M \geq 5{,}000$ |
-| **Recommended $M$** | 10,000 (routine); 50,000+ (high precision) |
+| **Accuracy** | Depends on quadrature size and local slope; use independent holdout evaluation |
+| **Recommended $M$** | 10,000 default; justify changes with sensitivity evidence |
 | **Validation** | Cross-check with SAC via `compare_eqc_sac()` |
 
 

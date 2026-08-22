@@ -35,7 +35,8 @@ By the end of this vignette you will be able to:
 3. Screen all cells for feasibility before committing to calibration.
 4. Visualize reliability curves across design conditions.
 5. Execute batch calibration and batch data generation across all cells.
-6. Verify that achieved reliability matches the target in every cell.
+6. Verify calibration residuals in every cell and distinguish them from
+   independent holdout or response-estimator evidence.
 7. Apply recommended practices for seed management, reporting, and parallelization.
 
 **Prerequisites**: familiarity with `eqc_calibrate()` and the basics of IRT
@@ -138,10 +139,11 @@ reliabilities conflates model structure with data quality.
 
 IRTsimrel enables this control by solving the **inverse design problem**:
 given a target reliability $\rho^*$, find the global discrimination
-scaling factor $c^*$ such that the population reliability equals $\rho^*$.
-This is achieved through the `eqc_calibrate()` function, which uses
-deterministic root-finding (Brent's method) on the bracket-checked reliability
-curve.
+scaling factor $c^*$ such that a selected empirical reliability objective
+matches $\rho^*$. `eqc_calibrate()` maps the requested log-scale interval,
+then uses Brent polishing on detected local crossings and an explicit branch
+policy. Population agreement is assessed separately with larger or independent
+Monte Carlo draws.
 
 
 # The Factorial Design Framework
@@ -193,8 +195,10 @@ When selecting factor levels, consider these guidelines:
   `"skew_pos"` (selective admissions) and `"bimodal"` (heterogeneous
   populations).
 
-- **Model**: include both `"rasch"` and `"2pl"` if your study involves model
-  comparison or robustness analysis.
+- **Model**: include `"rasch"` and `"2pl"` if your study involves that model
+  comparison. Add `"3pl"` when a plausible lower asymptote is scientifically
+  relevant, and report its `guessing_params`. The example below intentionally
+  remains a Rasch-versus-2PL design.
 
 
 # Feasibility Screening
@@ -228,8 +232,9 @@ for (i in seq_len(nrow(design))) {
   )
   design$rho_min[i]  <- feas$rho_range_info[1]
   design$rho_max[i]  <- feas$rho_range_info[2]
-  design$feasible[i] <- feas$target_status_info %in%
-                         c("feasible", "boundary_lower", "boundary_upper")
+  design$feasible[i] <-
+    identical(feas$target_status_info_canonical, "feasible") &&
+    feas$admissible_root_count_info > 0L
 }
 
 # Display summary
@@ -292,9 +297,10 @@ The `rho_curve()` function computes reliability at a grid of $c$ values
 using Monte Carlo integration with the same quadrature approach used by
 `eqc_calibrate()`. This visualization serves three purposes:
 
-1. **Confirms monotonicity**: the info metric $\tilde{\rho}(c)$ should be
-   strictly increasing in $c$.
-2. **Shows the achievable range**: the vertical extent of the curve.
+1. **Maps topology**: crossings, saturation, or an interior maximum may be
+   visible; do not assume the curve is globally monotone.
+2. **Shows the displayed finite-grid range**: use the adaptive topology from
+   `check_feasibility()` rather than the display grid to classify a target.
 3. **Identifies where calibration occurs**: the horizontal position where
    the curve crosses the target reliability.
 
@@ -353,8 +359,10 @@ Key observations from the reliability curves:
   distribution places more mass in regions of lower information, the
   reliability curve is lower.
 
-- All curves are **monotonically increasing** in $c$, confirming that the
-  info metric is well-suited for bracketed root-finding via `uniroot()`.
+- These representative Rasch/2PL curves rise over the displayed grid. That is
+  an observation about these draws and bounds, not a global theorem. EQC still
+  scans the full requested interval and polishes each detected crossing
+  locally.
 
 
 # Batch Calibration
@@ -407,8 +415,9 @@ cat(sprintf("Mean absolute error: %.6f\n", mean(design_feasible$abs_error)))
 cat(sprintf("Max  absolute error: %.6f\n", max(design_feasible$abs_error)))
 ```
 
-The calibration errors are typically on the order of $10^{-5}$ to $10^{-4}$,
-confirming that EQC achieves the target with excellent precision.
+These residuals describe the fixed calibration quadrature. They can be much
+smaller than the Monte Carlo discrepancy on an independent theta draw; use a
+holdout evaluation when making population-level accuracy claims.
 
 ## Examining the calibrated scaling factors
 
@@ -494,11 +503,11 @@ for (i in seq_len(nrow(design_feasible))) {
 
 # Verification
 
-The critical step: verify that the finite-sample data actually exhibit
-reliability close to the target. Without external TAM validation
-(which requires the TAM package), we use the population-level achieved
-reliability from the calibration object. The achieved reliability from
-EQC is the population value conditioned on the quadrature sample.
+The critical step is to distinguish three quantities: the target, the
+calibration-quadrature value, and a finite-sample estimator from response
+data. The table below checks only the first two. EQC's `achieved_rho` is an
+empirical value conditional on the stored quadrature and fixed form; it is not
+a response-sample reliability estimate or an exact population value.
 
 ## Verification table
 
@@ -542,14 +551,16 @@ legend("topleft",
        bty = "n", cex = 0.8)
 ```
 
-All points lie essentially on the diagonal, confirming that the
-calibration is precise to within the Monte Carlo tolerance of the
-quadrature sample.
+Points near the diagonal confirm a small numerical residual on the calibration
+quadrature. They do not replace an independent Monte Carlo holdout or an
+estimator-based response-data check.
 
 ## External validation with TAM
 
-For rigorous validation, you can additionally compute reliability
-using the TAM package. This requires TAM to be installed:
+For an estimator-based external diagnostic in Rasch/2PL cells, you can also
+use the TAM helper. WLE and EAP use different estimators and variance bases
+from IRTsimrel's analytic target, so finite-sample differences are expected.
+The helper requires TAM to be installed:
 
 ```{r tam-verify, eval = FALSE}
 if (requireNamespace("TAM", quietly = TRUE)) {
@@ -570,6 +581,11 @@ if (requireNamespace("TAM", quietly = TRUE)) {
 See `vignette("validation")` for guidance on interpreting WLE vs. EAP
 reliability from TAM.
 
+`compute_reliability_tam()` intentionally accepts Rasch/2PL only. For a 3PL
+diagnostic, the validated workflow fits `TAM::tam.mml.3pl()` directly and uses
+EAP output; `tam.wle()` was unsupported for that fitted object in the tested
+TAM version. Do not coerce the object to manufacture a 3PL WLE result.
+
 
 # Practical Considerations
 
@@ -578,9 +594,10 @@ reliability from TAM.
 A reproducible simulation study requires two levels of seed management:
 
 1. **Calibration seed**: controls the quadrature sample and item parameters.
-   Use a fixed seed (e.g., `seed = 42`) that is the same across all cells.
-   This does *not* mean the cells get the same items; the seed interacts
-   with cell-specific parameters (model, latent shape, etc.).
+   Reusing a seed across cells deliberately creates common random-number
+   coupling where generators share a draw sequence; using a deterministic
+   cell-specific seed instead makes each realized design distinct. State which
+   strategy you use.
 
 2. **Replication seeds**: for each replication $r = 1, \ldots, R$, pass
    `seed = r` (or another deterministic mapping) to
@@ -634,24 +651,13 @@ output <- data.frame(
 
 ## Computational scaling
 
-Calibration cost is dominated by the $M \times I$ matrix computation
-inside `eqc_calibrate()`. As a rough guide:
-
-| M      | n_items | Approx. time per cell |
-|:-------|:--------|:----------------------|
-| 5,000  | 20      | < 0.5 s               |
-| 10,000 | 30      | ~1 s                  |
-| 50,000 | 50      | ~5 s                  |
-
-Data generation via `simulate_response_data()` is fast (< 0.1 s for
-N = 1,000, I = 30).
-
-For a typical study with 24 cells, $M = 10{,}000$, and $R = 500$
-replications of $N = 1{,}000$:
-
-- Calibration: ~24 seconds total (one-time cost).
-- Data generation: ~24 x 500 x 0.05 = ~600 seconds (~10 minutes).
-- Analysis time depends on your estimator.
+Reliability-kernel work scales approximately with $M \times I$, but complete
+calibration time also depends on the number of topology evaluations and local
+roots. The analytic reducers automatically chunk large node-by-item products,
+bounding transient memory without changing the result. Response generation
+scales with $N \times I$. Because hardware and root topology matter, benchmark
+one representative cell on the machine used for production before projecting
+the full study runtime.
 
 ## Parallelization
 
@@ -708,12 +714,12 @@ A simulation study using IRTsimrel should report, at minimum:
 
 | Element                   | Example value                           |
 |:--------------------------|:----------------------------------------|
-| Package and version       | IRTsimrel v0.2.0                        |
+| Package and version       | IRTsimrel v0.3.0                        |
 | Calibration algorithm     | EQC                                     |
 | Reliability metric        | Average-information ($\tilde{\rho}$)    |
 | Target reliabilities      | 0.60, 0.70, 0.80                        |
 | Test lengths              | 15, 30 items                            |
-| IRT model                 | Rasch, 2PL                              |
+| IRT model                 | Rasch, 2PL (or 3PL with guessing specification) |
 | Latent distribution       | Normal, positively skewed               |
 | Item source               | Parametric (Normal difficulties)        |
 | Quadrature size (M)       | 10,000                                  |
@@ -721,19 +727,25 @@ A simulation study using IRTsimrel should report, at minimum:
 | Persons per replication   | 1,000                                   |
 | Seed management           | Calibration seed = 42; replication seeds 1:500 |
 | Feasibility screening     | All cells screened; N infeasible = 0    |
-| Verification              | Max |target - achieved| < 0.001         |
+| Root/scope contract       | `lowest_increasing`; fixed form          |
+| Verification              | Calibration residual plus independent holdout summary |
 
 ## Reporting checklist
 
 1. State the target reliability levels and the metric used (info vs. msem).
 2. Report the calibration algorithm and its key parameters (M, c_bounds, tol).
 3. Document feasibility screening results.
-4. Report the maximum absolute calibration error across all cells.
+4. Report the root policy, selected-root status, item scope, and maximum
+   calibration residual across cells.
 5. Describe the item parameter source and generation method.
 6. State the latent distribution(s) and any shape parameters.
 7. Report the number of replications and persons per replication.
 8. Describe seed management for reproducibility.
-9. Cite Lee (2026) and the IRTsimrel package.
+9. For 3PL, report the lower-asymptote generator or fixed values and the
+   `D = 1` convention.
+10. Distinguish calibration-quadrature, holdout, and estimator-based
+    reliability results.
+11. Cite Lee (2026) and the IRTsimrel package.
 
 ## Results table template
 
@@ -759,10 +771,11 @@ for your manuscript. Replace bracketed placeholders with your study's values.
 > crossed factorial design, yielding [24] conditions. Item response data
 > were generated using the IRTsimrel R package (Lee, 2026). For each
 > condition, the Empirical Quadrature Calibration (EQC) algorithm was used
-> to find a global discrimination scaling factor $c^*$ such that the
-> population average-information reliability matched the target. Quadrature
-> integration used $M = 10{,}000$ Monte Carlo samples from the latent and
-> item parameter distributions. All conditions were screened for feasibility
+> to select the lowest positive-slope crossing (`root_policy =
+> "lowest_increasing"`) at which the fixed-form empirical
+> average-information reliability matched the target. Quadrature integration
+> used $M = 10{,}000$ Monte Carlo abilities with one realized item form. All
+> conditions were screened for feasibility
 > prior to calibration; [0] conditions were infeasible and excluded. Item
 > difficulties were drawn from $N(0, 1)$; for the 2PL model, baseline
 > discriminations were drawn from $\text{LogNormal}(0, 0.3)$ with a Gaussian
@@ -770,8 +783,9 @@ for your manuscript. Replace bracketed placeholders with your study's values.
 > correlation ($\rho_S = -0.3$). For each of [500] replications per
 > condition, $N = [1{,}000]$ simulees were drawn from the specified latent
 > distribution and binary responses were generated according to the IRT
-> model. The maximum absolute calibration error across all conditions was
-> [< 0.001]. All seeds were recorded for reproducibility.
+> model. The maximum absolute residual on the calibration quadratures was
+> [value], and independent holdout error was summarized as [value/interval].
+> All seeds were recorded for reproducibility.
 
 
 # Common Pitfalls and Solutions
@@ -822,22 +836,25 @@ cat(sprintf("Gap (Jensen):     %.4f\n", both$rho_tilde - both$rho_bar))
 
 ## Pitfall 3: Insufficient quadrature size (M)
 
-**Problem**: Monte Carlo noise causes calibration results to vary across
-runs even with the same seed.
+**Problem**: changing the seed or quadrature size changes the empirical root
+enough to affect conclusions.
 
-**Solution**: use $M \geq 10{,}000$ for routine work and $M \geq 50{,}000$
-for high-precision studies. With a fixed seed, results are deterministic
-for a given $M$.
+**Solution**: increase $M$ and evaluate the calibrated design on independent
+theta draws. A fixed seed makes a given configuration exactly reproducible,
+but does not remove Monte Carlo approximation error. Choose $M$ through a
+problem-specific sensitivity check rather than a universal cutoff.
 
 ## Pitfall 4: c_bounds too narrow
 
-**Problem**: the root is outside the default `c_bounds = c(0.3, 3)`, causing
-EQC to return a boundary solution.
+**Problem**: no admissible root is detected within the configured
+`c_bounds`. An infeasible EQC result reports the closest resolved point,
+which can be a boundary or an interior extremum; endpoint values alone do not
+define the attainable range.
 
-**Solution**: for very high targets (> 0.85), try `c_bounds = c(0.1, 10)`.
-For very low targets (< 0.50), try `c_bounds = c(0.01, 3)`. You can
-always check the achievable range using the `misc$rho_bounds` field of
-the calibration result.
+**Solution**: inspect `misc$rho_range`, `misc$topology`, its root and
+extremum tables, and `calibration_status`. Expand `c_bounds` only when a
+wider discrimination scale is substantively defensible, then rerun the
+topology scan; do not infer feasibility merely from `misc$rho_bounds`.
 
 ## Pitfall 5: Latent shape effects on reliability
 
@@ -847,17 +864,18 @@ the calibration result.
 **Solution**: the calibration and data generation must use the **same**
 latent distribution. If you intentionally mismatch them (e.g., to study
 robustness as in Case Study 2 of `vignette("case-studies")`), document
-and report the actual reliability under the mismatched distribution.
+   and report an independently evaluated reliability estimate under the
+   mismatched distribution.
 
 ## Pitfall 6: Finite-sample deviation
 
 **Problem**: with $N = 100$ persons, the sample reliability (e.g., from TAM)
 deviates substantially from the population target.
 
-**Solution**: finite-sample deviation is expected and follows a
-$O(1/\sqrt{N})$ decay. Use $N \geq 500$ to keep sampling variability
-manageable. Report both the population-level target and the empirical
-reliability estimate.
+**Solution**: finite-sample deviation is expected and often shrinks at a
+root-$N$ scale under regular conditions, but estimator bias, priors, and model
+fit also matter. Choose $N$ through replication-based precision analysis and
+report the analytic target separately from empirical WLE/EAP diagnostics.
 
 
 # Publication-Ready Methods Text
@@ -865,19 +883,21 @@ reliability estimate.
 Below is a second example methods paragraph, this time for a simpler
 two-factor design. Adapt the template by filling in your study's values.
 
-> Item response data were generated using the IRTsimrel R package (v0.2.0;
+> Item response data were generated using the IRTsimrel R package (v0.3.0;
 > Lee, 2026). A 3 (target reliability: 0.60, 0.70, 0.80) x 2 (model:
 > Rasch, 2PL) factorial design was employed with $I = 20$ items and a
 > standard normal latent distribution. For each of the six conditions, the
 > Empirical Quadrature Calibration (EQC) algorithm was used with
-> $M = 10{,}000$ quadrature points to find the global discrimination
-> scaling factor $c^*$ matching the target average-information reliability
-> $\tilde{\rho}^*$. Item difficulties were drawn from $N(0, 1)$; for the
+> $M = 10{,}000$ quadrature points and `root_policy = "lowest_increasing"`
+> to select a discrimination scaling factor $c^*$ matching the target
+> fixed-form empirical average-information reliability $\tilde{\rho}^*$.
+> Item difficulties were drawn from $N(0, 1)$; for the
 > 2PL model, baseline discriminations from $\text{LogNormal}(0, 0.3)$. All
 > conditions were verified feasible prior to calibration. For each of
 > $R = 500$ replications per condition, $N = 1{,}000$ persons were drawn
 > from $N(0, 1)$ and binary responses generated according to the IRT model.
-> Maximum calibration error was $< 10^{-4}$.
+> The maximum calibration-quadrature residual was [value]; an independent
+> holdout evaluation gave [summary].
 
 
 # Summary and Cross-References

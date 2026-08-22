@@ -1,3 +1,78 @@
+# IRTsimrel 0.3.0
+
+## 3PL support
+
+* Added end-to-end support for the unidimensional three-parameter logistic
+  model with logistic scaling constant `D = 1`. The shared model engine,
+  reliability reducers, item generation, EQC, SAC, response simulation, and S3
+  result methods now carry item lower asymptotes.
+* Added fixed, beta, and uniform guessing generators through
+  `guessing_params`; custom forms use `custom_params$guessing`. Values must
+  satisfy `0 <= guessing < 1`.
+* Clarified parameter names: item guessing is stored as `guessing` (mathematical
+  `g_i`), while `c`/`c_star` is the global discrimination scale. Calibration
+  applies `lambda_i(c) = c * lambda_i0` and never rescales guessing.
+* The `guessing = 0` 3PL path is computationally identical to the 2PL path.
+  Probability and Fisher-information calculations use stable log-domain
+  kernels for extreme linear predictors.
+
+## Calibration and estimand contracts
+
+* EQC now scans the complete user-supplied interval on `log(c)`, records all
+  resolved roots and local extrema, and applies an explicit root policy. EQC
+  remains a fixed-form, average-information (`info`/`tilde`) calibrator.
+* SAC now runs a topology preflight before Robbins--Monro updates, constrains
+  the trajectory to the selected branch, and performs an independent final
+  evaluation. New controls are appended after the historical argument prefix:
+  `root_policy`, `preflight_controls`, and `evaluation_controls`.
+* SAC explicitly distinguishes `resample_items = FALSE` (fixed-form estimand)
+  from `resample_items = TRUE` (item-superpopulation estimand). Results store
+  calibration/evaluation design metadata, achieved distributions and standard
+  errors, branch diagnostics, and RNG provenance.
+* EQC result warm starts are accepted only for matching metric/model/item count
+  and the same fixed-form contract. Same-seed SAC replay and caller RNG
+  restoration are enforced by independent random-number streams.
+* `check_feasibility()` and `rho_curve()` use the shared topology scanner rather
+  than assuming global monotonicity. Multiple roots remain possible for
+  adversarial or poorly covered designs.
+
+## Reliability, migration, and performance
+
+* Reliability utilities now accept 3PL guessing vectors and optional quadrature
+  weights, and return numerical/estimand diagnostics on request. The default
+  scalar/list shapes remain backward compatible.
+* New result schema fields include `guessing_vec`, `schema_version`,
+  `item_scope`, `estimand_signature`, and `design_signature`. Legacy Rasch/2PL
+  results without guessing are interpreted lazily as zero-guessing designs and
+  are not mutated. Incomplete legacy `spc_result` objects now fail with an
+  actionable instruction to rerun `sac_calibrate()`.
+* `spc_calibrate()` and `compare_eqc_spc()` remain deprecated forwarding aliases.
+  The historical 18-argument prefix of `sac_calibrate()` is unchanged; new
+  controls were appended to preserve positional calls.
+* Reliability reduction automatically chunks transient item-information
+  matrices while preserving exact scalar results. Matrix-returning internal
+  kernels retain their previous full-output contract.
+
+## Validation boundaries and known limitations
+
+* Analytic identities, finite-difference derivatives, extreme-predictor cases,
+  independent holdouts, stochastic sensitivity runs, and external TAM
+  probability/information calculations were used to validate the D = 1 3PL
+  implementation.
+* TAM 3PL validation is an EAP-only diagnostic in the validated environment.
+  `TAM::tam.wle()` did not support the fitted `tam.mml.3pl` object, so IRTsimrel
+  does not claim 3PL WLE support. The public `compute_reliability_tam()` helper
+  continues to provide WLE and EAP output for its documented Rasch/2PL paths.
+* Analytic information/MSEM reliability and fitted-score EAP reliability are
+  different estimands; equality is neither assumed nor used as an acceptance
+  criterion.
+* Population MSEM reliability is non-integrable for the package's built-in
+  Student-t heavy-tail distribution. SAC raises a classed error for that
+  combination; use information reliability or explicitly define a finite,
+  truncated empirical estimand.
+* The 3PL release remains unidimensional. Multidimensional models are outside
+  the 0.3.0 scope.
+
 # IRTsimrel 0.2.0
 
 ## Breaking Changes
@@ -34,7 +109,6 @@
   `as.data.frame.item_params()` now include required `...` parameter.
 * Seed handling now saves and restores `.Random.seed` through an internal helper.
 * Fixed `par()` side effects in base R plot methods.
-* Fixed non-ASCII characters (μ, σ) in `sim_latentG.R`.
 
 ## Documentation
 * Completed a vignette overhaul, expanding from 6 vignettes (~3,400 lines) to

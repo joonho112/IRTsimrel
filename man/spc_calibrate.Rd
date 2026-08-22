@@ -6,16 +6,16 @@
 spc_calibrate(...)
 }
 \arguments{
-\item{...}{Arguments passed to \code{sac_calibrate()}.}
+\item{...}{Arguments passed to \code{\link[=sac_calibrate]{sac_calibrate()}}.}
 }
 \value{
-The result of \code{\link{sac_calibrate}}.
+The result of \code{\link[=sac_calibrate]{sac_calibrate()}}.
 }
 \description{
-\code{spc_calibrate()} is a deprecated backward-compatible alias for
-\code{sac_calibrate()}. It is retained for scripts written against the v0.1.x
-naming convention and will issue a deprecation warning when called.
+\code{spc_calibrate()} is the deprecated v0.1.x name for
+\code{\link[=sac_calibrate]{sac_calibrate()}}. It forwards all arguments unchanged and returns the
+resulting \code{sac_result} after issuing R's standard deprecation warning.
 }
 \seealso{
-\code{\link{sac_calibrate}}
+\code{\link[=sac_calibrate]{sac_calibrate()}}
 }

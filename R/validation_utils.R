@@ -18,10 +18,14 @@
 #'
 #' @description
 #' Fits a Rasch or 2PL model using \pkg{TAM} and computes WLE and EAP
-#' reliability using the official \code{WLErel()} and \code{EAPrel()} functions.
+#' reliability using `TAM::WLErel()` and `TAM::EAPrel()`. This helper does not
+#' fit or score a 3PL model.
 #'
 #' @param resp Matrix or data.frame of item responses (0/1).
-#' @param model Character. \code{"rasch"} or \code{"2pl"}.
+#' @param model Character. `"rasch"` or `"2pl"`. A 3PL value is deliberately
+#'   unsupported because the package's validated TAM contract requires both
+#'   WLE and EAP reliability, while the tested TAM 3PL path does not provide
+#'   the required WLE workflow.
 #' @param verbose Logical. If TRUE, print fitting messages.
 #' @param ... Additional arguments passed to TAM fitting functions.
 #'
@@ -41,10 +45,17 @@
 #' - **WLE reliability**: \eqn{1 - \bar{s}^2 / V_{WLE}}, based on design effect
 #' - **EAP reliability**: \eqn{V_{EAP} / (V_{EAP} + \bar{\sigma}^2)}, based on posterior variance
 #'
-#' In many practical TAM fits, EAP reliability is greater than or equal to WLE
-#' reliability, but the two coefficients use different estimators and variance
-#' bases. EAP reliability more closely corresponds to MSEM-based population
-#' reliability. For conservative inference, inspect WLE alongside EAP.
+#' WLE and EAP use different estimators and variance bases, so neither is a
+#' universal upper or lower bound for the other. EAP is the closer external
+#' analogue to the MSEM-based population estimand, but it is not identical to
+#' the information-based EQC estimand.
+#'
+#' ## 3PL limitation
+#'
+#' `compute_reliability_tam()` intentionally rejects `model = "3pl"`. The
+#' package's Phase 7 external 3PL oracle used a direct TAM EAP-only fit; TAM 3PL
+#' WLE was unavailable in that validated path. That oracle is evidence about
+#' the probability/information implementation, not a public 3PL WLE API.
 #'
 #' @examples
 #' \dontrun{
@@ -188,14 +199,324 @@ compute_reliability_tam <- function(resp,
   NA_character_
 }
 
+.irtsimrel_validate_item_design_vector <- function(value,
+                                                    label,
+                                                    n_items,
+                                                    kind = c("beta", "lambda", "guessing")) {
+  kind <- match.arg(kind)
+  if (!is.numeric(value) || length(value) != n_items ||
+      anyNA(value) || any(!is.finite(value))) {
+    stop(
+      "`", label, "` must be a finite numeric vector of length ",
+      n_items, "."
+    )
+  }
+  value <- as.numeric(value)
+
+  if (kind == "lambda" && any(value <= 0)) {
+    stop("`", label, "` must contain positive values.")
+  }
+  if (kind == "guessing" && any(value < 0 | value >= 1)) {
+    stop("`", label, "` values must satisfy 0 <= guessing < 1.")
+  }
+
+  value
+}
+
+.irtsimrel_assert_item_design_match <- function(reference,
+                                                 candidate,
+                                                 reference_label,
+                                                 candidate_label) {
+  if (!isTRUE(all.equal(
+    as.numeric(reference),
+    as.numeric(candidate),
+    tolerance = 1e-10
+  ))) {
+    stop(
+      "`", candidate_label, "` must match `", reference_label,
+      "` for response simulation."
+    )
+  }
+  invisible(NULL)
+}
+
+# Normalize new and legacy stored item designs without modifying the input.
+# Rasch/2PL objects written before guessing was stored receive an implicit
+# zero vector. A 3PL result must carry guessing in at least one authoritative
+# location, and all locations that are present must agree.
+.irtsimrel_normalize_result_item_design <- function(result,
+                                                     arg_name = "result",
+                                                     operation = "response simulation") {
+  result_class <- .irtsimrel_primary_result_class(result)
+  if (!is.null(result$schema_version)) {
+    if (!is.numeric(result$schema_version) ||
+        length(result$schema_version) != 1L ||
+        is.na(result$schema_version) ||
+        !is.finite(result$schema_version) ||
+        result$schema_version != floor(result$schema_version) ||
+        result$schema_version < 1L) {
+      stop("`", arg_name, "$schema_version` must be a positive integer.")
+    }
+    if (result$schema_version > 1L) {
+      stop(
+        "`", arg_name, "$schema_version` is newer than this IRTsimrel ",
+        "version supports. Upgrade IRTsimrel before using this object."
+      )
+    }
+  }
+  design_fields <- c(
+    "beta_vec", "lambda_base", "lambda_scaled", "items_calib"
+  )
+
+  if (identical(result_class, "spc_result") &&
+      any(!design_fields %in% names(result))) {
+    stop(
+      "`", arg_name,
+      "` is a legacy 'spc_result' without the stored item design required for ",
+      operation, ". Rerun calibration with `sac_calibrate()` using the ",
+      "current IRTsimrel version."
+    )
+  }
+
+  .irtsimrel_missing_required_fields(
+    result,
+    design_fields,
+    arg_name,
+    operation
+  )
+
+  n_items <- .irtsimrel_validate_positive_integer_scalar(
+    result$n_items,
+    paste0(arg_name, "$n_items")
+  )
+  if (is.numeric(result$beta_vec) && is.numeric(result$lambda_scaled) &&
+      length(result$beta_vec) != length(result$lambda_scaled)) {
+    stop(
+      "`", arg_name, "$beta_vec` and `", arg_name,
+      "$lambda_scaled` must have the same length."
+    )
+  }
+  if (is.numeric(result$beta_vec) && is.numeric(result$lambda_scaled) &&
+      (n_items != length(result$beta_vec) ||
+       n_items != length(result$lambda_scaled))) {
+    stop(
+      "`", arg_name, "$n_items` must match the length of `",
+      arg_name, "$beta_vec` and `", arg_name, "$lambda_scaled`."
+    )
+  }
+  beta <- .irtsimrel_validate_item_design_vector(
+    result$beta_vec,
+    paste0(arg_name, "$beta_vec"),
+    n_items,
+    "beta"
+  )
+  lambda <- .irtsimrel_validate_item_design_vector(
+    result$lambda_scaled,
+    paste0(arg_name, "$lambda_scaled"),
+    n_items,
+    "lambda"
+  )
+  lambda_base <- .irtsimrel_validate_item_design_vector(
+    result$lambda_base,
+    paste0(arg_name, "$lambda_base"),
+    n_items,
+    "lambda"
+  )
+
+  .irtsimrel_assert_item_design_match(
+    lambda_base * result$c_star,
+    lambda,
+    paste0(arg_name, "$lambda_base * ", arg_name, "$c_star"),
+    paste0(arg_name, "$lambda_scaled")
+  )
+
+  if (!is.list(result$items_calib) ||
+      !is.data.frame(result$items_calib$data)) {
+    stop(
+      "`", arg_name,
+      "$items_calib$data` must be a data frame containing calibrated item ",
+      "parameters for response simulation."
+    )
+  }
+  item_data <- result$items_calib$data
+  if (!all(c("beta", "lambda") %in% names(item_data))) {
+    stop(
+      "`", arg_name,
+      "$items_calib$data` must contain `beta` and `lambda` for response ",
+      "simulation provenance."
+    )
+  }
+  item_beta <- .irtsimrel_validate_item_design_vector(
+    item_data$beta,
+    paste0(arg_name, "$items_calib$data$beta"),
+    n_items,
+    "beta"
+  )
+  item_lambda <- .irtsimrel_validate_item_design_vector(
+    item_data$lambda,
+    paste0(arg_name, "$items_calib$data$lambda"),
+    n_items,
+    "lambda"
+  )
+  .irtsimrel_assert_item_design_match(
+    beta,
+    item_beta,
+    paste0(arg_name, "$beta_vec"),
+    paste0(arg_name, "$items_calib$data$beta")
+  )
+  .irtsimrel_assert_item_design_match(
+    lambda,
+    item_lambda,
+    paste0(arg_name, "$lambda_scaled"),
+    paste0(arg_name, "$items_calib$data$lambda")
+  )
+
+  beta_sources <- c("beta_vec", "items_calib$data$beta")
+  lambda_sources <- c(
+    "lambda_scaled", "lambda_base * c_star", "items_calib$data$lambda"
+  )
+
+  if (!is.null(result$items_base)) {
+    if (!is.list(result$items_base) ||
+        !is.data.frame(result$items_base$data)) {
+      stop("`", arg_name, "$items_base$data` must be a data frame when present.")
+    }
+    base_data <- result$items_base$data
+    if ("beta" %in% names(base_data)) {
+      base_beta <- .irtsimrel_validate_item_design_vector(
+        base_data$beta,
+        paste0(arg_name, "$items_base$data$beta"),
+        n_items,
+        "beta"
+      )
+      .irtsimrel_assert_item_design_match(
+        beta,
+        base_beta,
+        paste0(arg_name, "$beta_vec"),
+        paste0(arg_name, "$items_base$data$beta")
+      )
+      beta_sources <- c(beta_sources, "items_base$data$beta")
+    }
+    base_lambda_name <- if ("lambda_unscaled" %in% names(base_data)) {
+      "lambda_unscaled"
+    } else if ("lambda" %in% names(base_data)) {
+      "lambda"
+    } else {
+      NULL
+    }
+    if (!is.null(base_lambda_name)) {
+      base_lambda <- .irtsimrel_validate_item_design_vector(
+        base_data[[base_lambda_name]],
+        paste0(arg_name, "$items_base$data$", base_lambda_name),
+        n_items,
+        "lambda"
+      )
+      .irtsimrel_assert_item_design_match(
+        lambda_base,
+        base_lambda,
+        paste0(arg_name, "$lambda_base"),
+        paste0(arg_name, "$items_base$data$", base_lambda_name)
+      )
+      lambda_sources <- c(
+        lambda_sources,
+        paste0("items_base$data$", base_lambda_name)
+      )
+    }
+  }
+
+  guessing_candidates <- list()
+  if (!is.null(result$guessing_vec)) {
+    guessing_candidates[["guessing_vec"]] <- result$guessing_vec
+  }
+  if ("guessing" %in% names(item_data)) {
+    guessing_candidates[["items_calib$data$guessing"]] <- item_data$guessing
+  }
+  if (!is.null(result$items_base) &&
+      is.data.frame(result$items_base$data) &&
+      "guessing" %in% names(result$items_base$data)) {
+    guessing_candidates[["items_base$data$guessing"]] <-
+      result$items_base$data$guessing
+  }
+
+  if (length(guessing_candidates) == 0L) {
+    if (identical(result$model, "3pl")) {
+      stop(
+        "`", arg_name,
+        "` is a 3PL result but has no stored guessing parameters. Provide ",
+        "`", arg_name, "$guessing_vec` or `", arg_name,
+        "$items_calib$data$guessing`, or rerun calibration."
+      )
+    }
+    guessing <- rep(0, n_items)
+    guessing_sources <- "implicit_zero_for_legacy_rasch_2pl"
+  } else {
+    candidate_names <- names(guessing_candidates)
+    guessing_candidates <- lapply(
+      candidate_names,
+      function(source_name) {
+        .irtsimrel_validate_item_design_vector(
+          guessing_candidates[[source_name]],
+          paste0(arg_name, "$", source_name),
+          n_items,
+          "guessing"
+        )
+      }
+    )
+    names(guessing_candidates) <- candidate_names
+    guessing <- guessing_candidates[[1L]]
+    if (length(guessing_candidates) > 1L) {
+      for (source_name in names(guessing_candidates)[-1L]) {
+        .irtsimrel_assert_item_design_match(
+          guessing,
+          guessing_candidates[[source_name]],
+          paste0(arg_name, "$", names(guessing_candidates)[1L]),
+          paste0(arg_name, "$", source_name)
+        )
+      }
+    }
+    guessing_sources <- names(guessing_candidates)
+  }
+
+  if (!identical(result$model, "3pl") && any(guessing != 0)) {
+    stop(
+      "`", arg_name,
+      "` stores nonzero guessing parameters but model is '", result$model,
+      "'. Rasch and 2PL designs require zero guessing."
+    )
+  }
+
+  # The response bank stores already-calibrated slopes and therefore uses
+  # scale = 1. A calibrated Rasch form is represented internally as a 2PL bank
+  # with a common effective discrimination.
+  bank_model <- if (identical(result$model, "3pl")) "3pl" else "2pl"
+  bank <- .irtsimrel_item_bank(
+    beta = beta,
+    lambda_base = lambda,
+    guessing = guessing,
+    model = bank_model
+  )
+
+  list(
+    beta = beta,
+    lambda = lambda,
+    guessing = guessing,
+    n_items = n_items,
+    bank = bank,
+    parameter_provenance = list(
+      beta = beta_sources,
+      lambda = lambda_sources,
+      guessing = guessing_sources
+    )
+  )
+}
+
 .irtsimrel_validate_result_design <- function(result, arg_name, operation) {
   result_class <- .irtsimrel_primary_result_class(result)
   .irtsimrel_missing_required_fields(
     result,
     c(
       "c_star", "target_rho", "achieved_rho", "metric", "model", "n_items",
-      "theta_var", "beta_vec", "lambda_base", "lambda_scaled", "items_calib",
-      "call"
+      "theta_var", "call"
     ),
     arg_name,
     operation
@@ -211,13 +532,18 @@ compute_reliability_tam <- function(resp,
   .irtsimrel_validate_canonical_metric(result$metric, paste0(arg_name, "$metric"))
 
   if (!is.character(result$model) || length(result$model) != 1L ||
-      is.na(result$model) || !result$model %in% c("rasch", "2pl")) {
-    stop("`", arg_name, "$model` must be either 'rasch' or '2pl'.")
+      is.na(result$model) || !result$model %in% c("rasch", "2pl", "3pl")) {
+    stop("`", arg_name, "$model` must be 'rasch', '2pl', or '3pl'.")
   }
   n_items <- .irtsimrel_validate_positive_integer_scalar(
     result$n_items,
     paste0(arg_name, "$n_items")
   )
+
+  # Normalize the item design before status provenance so literal v0.1 SPC
+  # objects receive the actionable rerun-calibration diagnostic even though
+  # they also predate the current calibration-status schema.
+  design <- .irtsimrel_normalize_result_item_design(result, arg_name, operation)
 
   if (result_class == "eqc_result") {
     if (is.null(result$misc) || is.null(result$misc$root_status)) {
@@ -237,75 +563,7 @@ compute_reliability_tam <- function(resp,
     }
   }
 
-  beta <- result$beta_vec
-  lambda <- result$lambda_scaled
-
-  if (!is.numeric(beta) || length(beta) == 0L || any(!is.finite(beta))) {
-    stop("`", arg_name, "$beta_vec` must be a non-empty finite numeric vector.")
-  }
-  if (!is.numeric(lambda) || length(lambda) == 0L || any(!is.finite(lambda))) {
-    stop("`", arg_name, "$lambda_scaled` must be a non-empty finite numeric vector.")
-  }
-  if (length(beta) != length(lambda)) {
-    stop(
-      "`", arg_name, "$beta_vec` and `", arg_name,
-      "$lambda_scaled` must have the same length."
-    )
-  }
-  if (any(lambda <= 0)) {
-    stop("`", arg_name, "$lambda_scaled` must contain positive values.")
-  }
-
-  if (n_items != length(beta)) {
-    stop(
-      "`", arg_name, "$n_items` must match the length of `",
-      arg_name, "$beta_vec` and `", arg_name, "$lambda_scaled`."
-    )
-  }
-
-  lambda_base <- result$lambda_base
-  if (!is.numeric(lambda_base) || length(lambda_base) != length(lambda) ||
-      any(!is.finite(lambda_base)) || any(lambda_base <= 0)) {
-    stop(
-      "`", arg_name,
-      "$lambda_base` must be a positive finite numeric vector matching ",
-      "`", arg_name, "$lambda_scaled`."
-    )
-  }
-  if (!isTRUE(all.equal(lambda_base * result$c_star, lambda, tolerance = 1e-10))) {
-    stop(
-      "`", arg_name,
-      "$lambda_scaled` must match `", arg_name,
-      "$lambda_base * ", arg_name, "$c_star` for response simulation."
-    )
-  }
-
-  if (is.null(result$items_calib$data) ||
-      !"lambda" %in% names(result$items_calib$data)) {
-    stop(
-      "`", arg_name,
-      "$items_calib$data$lambda` is required for response simulation provenance."
-    )
-  }
-  item_lambda <- result$items_calib$data$lambda
-  if (!is.numeric(item_lambda) || length(item_lambda) != length(lambda) ||
-      any(!is.finite(item_lambda))) {
-    stop(
-      "`", arg_name,
-      "$items_calib$data$lambda` must be a finite numeric vector matching ",
-      "`", arg_name, "$lambda_scaled`."
-    )
-  }
-  if (!isTRUE(all.equal(item_lambda, lambda, tolerance = 1e-10))) {
-    stop(
-      "`", arg_name,
-      "$items_calib$data$lambda` must match `",
-      arg_name,
-      "$lambda_scaled` for response simulation."
-    )
-  }
-
-  list(beta = beta, lambda = lambda, n_items = length(beta))
+  design
 }
 
 .irtsimrel_validate_comparison_result <- function(result,
@@ -334,12 +592,444 @@ compute_reliability_tam <- function(resp,
 
   .irtsimrel_validate_canonical_metric(result$metric, paste0(arg_name, "$metric"))
   if (!is.character(result$model) || length(result$model) != 1L ||
-      is.na(result$model) || !result$model %in% c("rasch", "2pl")) {
-    stop("`", arg_name, "$model` must be either 'rasch' or '2pl'.")
+      is.na(result$model) || !result$model %in% c("rasch", "2pl", "3pl")) {
+    stop("`", arg_name, "$model` must be 'rasch', '2pl', or '3pl'.")
   }
   .irtsimrel_validate_positive_integer_scalar(result$n_items, paste0(arg_name, "$n_items"))
 
   invisible(result)
+}
+
+# Comparison-contract helpers -------------------------------------------------
+
+# Comparability is deliberately based on a small, versioned semantic contract
+# instead of an opaque object hash.  This keeps result objects readable and
+# lets us explain precisely why two calibrations do (or do not) target the same
+# design.  Named-list order is cosmetic, while functions and environments are
+# intentionally treated as unstable signatures.
+.irtsimrel_signature_value <- function(x) {
+  if (is.null(x)) {
+    return(list(value = NULL, stable = TRUE))
+  }
+  if (is.function(x) || is.environment(x) ||
+      typeof(x) %in% c("externalptr", "weakref")) {
+    return(list(value = NULL, stable = FALSE))
+  }
+  if (is.language(x)) {
+    return(list(value = paste(deparse(x), collapse = " "), stable = TRUE))
+  }
+  if (is.list(x)) {
+    values <- lapply(x, .irtsimrel_signature_value)
+    if (any(!vapply(values, `[[`, logical(1), "stable"))) {
+      return(list(value = NULL, stable = FALSE))
+    }
+    out <- lapply(values, `[[`, "value")
+    if (!is.null(names(out)) && all(nzchar(names(out)))) {
+      out <- out[order(names(out))]
+    }
+    return(list(value = out, stable = TRUE))
+  }
+  if (is.atomic(x)) {
+    return(list(value = x, stable = TRUE))
+  }
+  list(value = NULL, stable = FALSE)
+}
+
+.irtsimrel_signature_equal <- function(x, y) {
+  x_norm <- .irtsimrel_signature_value(x)
+  y_norm <- .irtsimrel_signature_value(y)
+  isTRUE(x_norm$stable) && isTRUE(y_norm$stable) &&
+    identical(x_norm$value, y_norm$value)
+}
+
+.irtsimrel_first_contract_value <- function(...) {
+  candidates <- list(...)
+  for (candidate in candidates) {
+    if (!is.null(candidate)) return(candidate)
+  }
+  NULL
+}
+
+.irtsimrel_call_argument <- function(result, argument) {
+  result_call <- result$call
+  if (is.null(result_call) || !is.call(result_call)) return(NULL)
+  call_list <- as.list(result_call)
+  if (!argument %in% names(call_list)) return(NULL)
+  call_list[[argument]]
+}
+
+.irtsimrel_literal_call_value <- function(x) {
+  if (is.null(x)) return(list(value = NULL, stable = FALSE))
+  if (is.atomic(x)) return(list(value = x, stable = TRUE))
+  if (is.call(x) && identical(x[[1L]], quote(list))) {
+    values <- as.list(x)[-1L]
+    normalized <- lapply(values, .irtsimrel_literal_call_value)
+    if (any(!vapply(normalized, `[[`, logical(1), "stable"))) {
+      return(list(value = NULL, stable = FALSE))
+    }
+    out <- lapply(normalized, `[[`, "value")
+    names(out) <- names(values)
+    return(list(value = out, stable = TRUE))
+  }
+  list(value = NULL, stable = FALSE)
+}
+
+.irtsimrel_contract_item_scope <- function(result, design_signature) {
+  scope <- .irtsimrel_first_contract_value(
+    result$item_scope,
+    design_signature$item_scope,
+    if (is.list(result$calibration_design)) result$calibration_design$item_scope else NULL
+  )
+  if (!is.null(scope)) return(scope)
+
+  # Safe adapters for schema-complete pre-v0.3 SAC objects.  A literal v0.1
+  # SPC object has neither stored item parameters nor this provenance and is
+  # therefore left unresolved rather than guessed.
+  if (inherits(result, "eqc_result")) return("fixed_form")
+  if (identical(result$item_design, "fixed_iteration_items")) {
+    return("fixed_form")
+  }
+  if (identical(result$item_design, "post_calibration_draw")) {
+    return("item_superpopulation")
+  }
+  resample_arg <- .irtsimrel_literal_call_value(
+    .irtsimrel_call_argument(result, "resample_items")
+  )
+  if (isTRUE(resample_arg$stable) && is.logical(resample_arg$value) &&
+      length(resample_arg$value) == 1L && !is.na(resample_arg$value)) {
+    return(if (resample_arg$value) "item_superpopulation" else "fixed_form")
+  }
+  NULL
+}
+
+.irtsimrel_contract_latent_spec <- function(result, design_signature) {
+  canonicalize <- function(specification) {
+    if (!is.list(specification) || is.null(specification$shape)) {
+      return(specification)
+    }
+    shape <- tryCatch(
+      .irtsimrel_match_latent_shape(specification$shape),
+      error = function(e) NULL
+    )
+    if (is.null(shape)) return(NULL)
+    specification$shape <- shape
+    specification
+  }
+
+  embedded <- .irtsimrel_first_contract_value(
+    design_signature$latent_specification,
+    design_signature$latent_spec,
+    if (is.list(result$calibration_design)) {
+      result$calibration_design$latent_specification
+    } else NULL
+  )
+  if (!is.null(embedded)) return(canonicalize(embedded))
+
+  shape <- .irtsimrel_first_contract_value(
+    design_signature$latent_shape,
+    result$latent_shape,
+    if (is.list(result$calibration_design)) result$calibration_design$latent_shape else NULL
+  )
+  params <- .irtsimrel_first_contract_value(
+    design_signature$latent_params,
+    result$latent_params,
+    if (is.list(result$calibration_design)) result$calibration_design$latent_params else NULL
+  )
+
+  # match.call() stores only supplied arguments.  Omission is safe to map to
+  # the public defaults; a symbol or other unevaluated expression is not.
+  if (is.null(shape) && !is.null(result$call) && is.call(result$call)) {
+    shape_call <- .irtsimrel_call_argument(result, "latent_shape")
+    if (is.null(shape_call)) {
+      shape <- "normal"
+    } else {
+      shape_literal <- .irtsimrel_literal_call_value(shape_call)
+      if (isTRUE(shape_literal$stable)) shape <- shape_literal$value
+    }
+  }
+  if (is.null(params) && !is.null(result$call) && is.call(result$call)) {
+    params_call <- .irtsimrel_call_argument(result, "latent_params")
+    if (is.null(params_call)) {
+      params <- list()
+    } else {
+      params_literal <- .irtsimrel_literal_call_value(params_call)
+      if (isTRUE(params_literal$stable)) params <- params_literal$value
+    }
+  }
+
+  if (is.null(shape) || is.null(params)) return(NULL)
+  canonicalize(list(shape = shape, params = params))
+}
+
+.irtsimrel_contract_scale_convention <- function(result, design_signature) {
+  explicit <- .irtsimrel_first_contract_value(
+    design_signature$scale_convention,
+    result$scale_convention,
+    if (is.list(result$calibration_design)) {
+      result$calibration_design$scale_convention
+    } else NULL
+  )
+  if (!is.null(explicit)) {
+    # Accept the canonical string directly.  A structured representation with
+    # the same semantics is normalized so signature format does not determine
+    # comparability.
+    if (identical(explicit, "global_discrimination_multiplier_D1")) {
+      return(explicit)
+    }
+    if (is.list(explicit)) {
+      d_value <- .irtsimrel_first_contract_value(explicit$D, explicit$d)
+      target <- .irtsimrel_first_contract_value(
+        explicit$target,
+        explicit$scaling_target,
+        explicit$parameter
+      )
+      if (is.numeric(d_value) && length(d_value) == 1L && d_value == 1 &&
+          is.character(target) && length(target) == 1L &&
+          target %in% c("lambda", "discrimination")) {
+        return("global_discrimination_multiplier_D1")
+      }
+    }
+    return(explicit)
+  }
+
+  # All package-produced EQC/SAC objects use D = 1 and multiply only the base
+  # discrimination by c.  This is a safe compatibility inference from the
+  # stored lambda_base/lambda_scaled relationship, not a guess about custom
+  # calibration code.
+  if (inherits(result, c("eqc_result", "sac_result", "spc_result")) &&
+      is.numeric(result$lambda_base) && is.numeric(result$lambda_scaled) &&
+      is.numeric(result$c_star) && length(result$c_star) == 1L &&
+      isTRUE(all.equal(
+        as.numeric(result$lambda_scaled),
+        as.numeric(result$lambda_base) * result$c_star,
+        tolerance = 1e-10
+      ))) {
+    return("global_discrimination_multiplier_D1")
+  }
+  NULL
+}
+
+.irtsimrel_contract_fixed_bank <- function(result, design_signature) {
+  beta <- .irtsimrel_first_contract_value(
+    design_signature$beta,
+    design_signature$beta_vec,
+    result$beta_vec
+  )
+  lambda <- .irtsimrel_first_contract_value(
+    design_signature$lambda_base,
+    result$lambda_base
+  )
+  guessing <- .irtsimrel_first_contract_value(
+    design_signature$guessing,
+    design_signature$guessing_vec,
+    result$guessing_vec
+  )
+  if (is.null(guessing) && !identical(result$model, "3pl") &&
+      !is.null(result$n_items)) {
+    guessing <- rep(0, as.integer(result$n_items))
+  }
+  if (is.null(beta) || is.null(lambda) || is.null(guessing)) return(NULL)
+  list(
+    beta = as.numeric(beta),
+    lambda_base = as.numeric(lambda),
+    guessing = as.numeric(guessing)
+  )
+}
+
+.irtsimrel_contract_generator <- function(result, design_signature) {
+  nested <- .irtsimrel_first_contract_value(
+    design_signature$item_generator,
+    design_signature$generator_spec,
+    design_signature$item_generator_spec,
+    if (is.list(result$calibration_design)) result$calibration_design$item_generator else NULL,
+    if (is.list(result$calibration_design)) result$calibration_design$generator_spec else NULL,
+    result$item_generator_spec
+  )
+  if (!is.null(nested)) return(nested)
+
+  item_source <- .irtsimrel_first_contract_value(
+    design_signature$item_source,
+    result$item_source,
+    if (is.list(result$calibration_design)) result$calibration_design$item_source else NULL
+  )
+  item_params <- .irtsimrel_first_contract_value(
+    design_signature$item_params,
+    result$item_params,
+    if (is.list(result$calibration_design)) result$calibration_design$item_params else NULL
+  )
+  if (is.null(item_source) || is.null(item_params)) return(NULL)
+  list(item_source = item_source, item_params = item_params)
+}
+
+.irtsimrel_comparison_contract <- function(result) {
+  design_signature <- if (is.list(result$design_signature)) {
+    result$design_signature
+  } else {
+    list()
+  }
+  estimand_signature <- if (is.list(result$estimand_signature)) {
+    result$estimand_signature
+  } else {
+    list()
+  }
+  item_scope <- .irtsimrel_contract_item_scope(result, design_signature)
+  theta_measure <- .irtsimrel_first_contract_value(
+    estimand_signature$theta_measure,
+    design_signature$theta_measure,
+    if (is.list(result$calibration_design)) result$calibration_design$theta_measure else NULL
+  )
+  if (is.null(theta_measure) && !is.null(result$theta_quad) &&
+      !is.null(result$theta_var)) {
+    theta_measure <- "population"
+  }
+
+  signature_state <- .irtsimrel_signature_value(result$design_signature)
+  generator <- if (identical(item_scope, "item_superpopulation")) {
+    .irtsimrel_contract_generator(result, design_signature)
+  } else {
+    NULL
+  }
+  generator_state <- .irtsimrel_signature_value(generator)
+
+  list(
+    model = result$model,
+    metric = result$metric,
+    n_items = as.integer(result$n_items),
+    scale_convention = .irtsimrel_contract_scale_convention(result, design_signature),
+    theta_measure = theta_measure,
+    latent_specification = .irtsimrel_contract_latent_spec(result, design_signature),
+    item_scope = item_scope,
+    fixed_bank = if (identical(item_scope, "fixed_form")) {
+      .irtsimrel_contract_fixed_bank(result, design_signature)
+    } else NULL,
+    generator = generator,
+    generator_stable = isTRUE(generator_state$stable),
+    signature_present = is.list(result$design_signature),
+    signature_stable = isTRUE(signature_state$stable),
+    signature_schema = .irtsimrel_first_contract_value(
+      design_signature$schema_version,
+      result$schema_version
+    ),
+    signature_inconsistent = any(c(
+      !is.null(estimand_signature$metric) &&
+        !identical(estimand_signature$metric, result$metric),
+      !is.null(design_signature$model) &&
+        !identical(design_signature$model, result$model),
+      !is.null(design_signature$metric) &&
+        !identical(design_signature$metric, result$metric),
+      !is.null(design_signature$n_items) &&
+        !identical(as.integer(design_signature$n_items), as.integer(result$n_items)),
+      !is.null(design_signature$item_scope) && !is.null(result$item_scope) &&
+        !identical(design_signature$item_scope, result$item_scope),
+      !is.null(design_signature$beta) && !is.null(result$beta_vec) &&
+        !identical(as.numeric(design_signature$beta), as.numeric(result$beta_vec)),
+      !is.null(design_signature$lambda_base) && !is.null(result$lambda_base) &&
+        !identical(
+          as.numeric(design_signature$lambda_base),
+          as.numeric(result$lambda_base)
+        ),
+      !is.null(design_signature$guessing) && !is.null(result$guessing_vec) &&
+        !identical(
+          as.numeric(design_signature$guessing),
+          as.numeric(result$guessing_vec)
+        ),
+      !is.null(design_signature$scale_convention) &&
+        !is.null(result$scale_convention) &&
+        !.irtsimrel_signature_equal(
+          design_signature$scale_convention,
+          result$scale_convention
+        )
+    ))
+  )
+}
+
+.irtsimrel_comparability_reasons <- function(eqc, sac) {
+  reasons <- character()
+  add_reason <- function(reason) {
+    if (!reason %in% reasons) reasons <<- c(reasons, reason)
+  }
+
+  compare_required <- function(field, missing_code, mismatch_code) {
+    if (is.null(eqc[[field]]) || is.null(sac[[field]])) {
+      add_reason(missing_code)
+    } else if (!.irtsimrel_signature_equal(eqc[[field]], sac[[field]])) {
+      add_reason(mismatch_code)
+    }
+  }
+
+  if (!identical(eqc$model, sac$model)) add_reason("model_mismatch")
+  if (!identical(eqc$metric, sac$metric)) add_reason("metric_mismatch")
+  if (!identical(eqc$n_items, sac$n_items)) add_reason("n_items_mismatch")
+  compare_required(
+    "scale_convention", "scale_convention_missing",
+    "scale_convention_mismatch"
+  )
+  compare_required(
+    "theta_measure", "theta_measure_missing", "theta_measure_mismatch"
+  )
+  compare_required(
+    "latent_specification", "latent_specification_missing",
+    "latent_specification_mismatch"
+  )
+  compare_required("item_scope", "item_scope_missing", "item_scope_mismatch")
+
+  if (isTRUE(eqc$signature_inconsistent)) {
+    add_reason("eqc_design_signature_inconsistent")
+  }
+  if (isTRUE(sac$signature_inconsistent)) {
+    add_reason("sac_design_signature_inconsistent")
+  }
+  if (!isTRUE(eqc$signature_stable)) add_reason("eqc_design_signature_unstable")
+  if (!isTRUE(sac$signature_stable)) add_reason("sac_design_signature_unstable")
+  if (!is.null(eqc$signature_schema) && !is.null(sac$signature_schema) &&
+      !identical(as.integer(eqc$signature_schema), as.integer(sac$signature_schema))) {
+    add_reason("design_signature_schema_mismatch")
+  }
+
+  if (!is.null(eqc$item_scope) && identical(eqc$item_scope, sac$item_scope)) {
+    if (identical(eqc$item_scope, "fixed_form")) {
+      if (is.null(eqc$fixed_bank) || is.null(sac$fixed_bank)) {
+        add_reason("fixed_bank_signature_missing")
+      } else {
+        if (!identical(eqc$fixed_bank$beta, sac$fixed_bank$beta)) {
+          add_reason("fixed_bank_beta_mismatch")
+        }
+        if (!identical(eqc$fixed_bank$lambda_base, sac$fixed_bank$lambda_base)) {
+          add_reason("fixed_bank_lambda_mismatch")
+        }
+        if (!identical(eqc$fixed_bank$guessing, sac$fixed_bank$guessing)) {
+          add_reason("fixed_bank_guessing_mismatch")
+        }
+      }
+    } else if (identical(eqc$item_scope, "item_superpopulation")) {
+      if (is.null(eqc$generator) || is.null(sac$generator)) {
+        add_reason("generator_signature_missing")
+      } else if (!isTRUE(eqc$generator_stable) || !isTRUE(sac$generator_stable)) {
+        add_reason("generator_signature_unstable")
+      } else if (!.irtsimrel_signature_equal(eqc$generator, sac$generator)) {
+        add_reason("generator_signature_mismatch")
+      }
+    } else {
+      add_reason("item_scope_unknown")
+    }
+  }
+
+  # An absent explicit signature is acceptable only when every required
+  # semantic component above was safely reconstructed from stored provenance.
+  if (!isTRUE(eqc$signature_present) &&
+      (is.null(eqc$latent_specification) || is.null(eqc$item_scope) ||
+       (identical(eqc$item_scope, "fixed_form") && is.null(eqc$fixed_bank)) ||
+       (identical(eqc$item_scope, "item_superpopulation") && is.null(eqc$generator)))) {
+    add_reason("eqc_design_signature_missing")
+  }
+  if (!isTRUE(sac$signature_present) &&
+      (is.null(sac$latent_specification) || is.null(sac$item_scope) ||
+       (identical(sac$item_scope, "fixed_form") && is.null(sac$fixed_bank)) ||
+       (identical(sac$item_scope, "item_superpopulation") && is.null(sac$generator)))) {
+    add_reason("sac_design_signature_missing")
+  }
+
+  reasons
 }
 
 .irtsimrel_result_status <- function(result, kind) {
@@ -564,7 +1254,8 @@ compute_reliability_tam <- function(resp,
       is.na(object$calibration_status) ||
       !object$calibration_status %in% c(
         "ok", "not_converged", "hit_lower_bound",
-        "hit_upper_bound", "hit_both_bounds"
+        "hit_upper_bound", "hit_both_bounds", "branch_lost",
+        "topology_unresolved", "topology_uncertain"
       )) {
     stop("`", arg_name, "$calibration_status` must be a known SAC status.")
   }
@@ -584,6 +1275,107 @@ compute_reliability_tam <- function(resp,
       "`", arg_name,
       "$convergence` is missing required field(s) for ", operation, ": ",
       .irtsimrel_backtick_collapse(convergence_missing), "."
+    )
+  }
+
+  # v0.3 schema fields are additive.  Pre-schema Rasch/2PL objects retain the
+  # lazy zero-guessing adapter in .irtsimrel_normalize_result_item_design(),
+  # while objects that opt into the versioned schema must carry the complete
+  # comparison contract.
+  if (!is.null(object$schema_version)) {
+    .irtsimrel_missing_required_fields(
+      object,
+      c(
+        "guessing_vec", "item_scope", "estimand_signature",
+        "design_signature"
+      ),
+      arg_name,
+      operation
+    )
+    if (!is.character(object$item_scope) || length(object$item_scope) != 1L ||
+        is.na(object$item_scope) ||
+        !object$item_scope %in% c("fixed_form", "item_superpopulation")) {
+      stop(
+        "`", arg_name,
+        "$item_scope` must be 'fixed_form' or 'item_superpopulation'."
+      )
+    }
+    if (!is.list(object$estimand_signature)) {
+      stop("`", arg_name, "$estimand_signature` must be a list.")
+    }
+    if (!is.list(object$design_signature)) {
+      stop("`", arg_name, "$design_signature` must be a list.")
+    }
+    .irtsimrel_missing_required_fields(
+      object$estimand_signature,
+      c("metric", "theta_measure", "item_measure"),
+      paste0(arg_name, "$estimand_signature"),
+      operation
+    )
+    .irtsimrel_missing_required_fields(
+      object$design_signature,
+      c("schema_version", "model", "metric", "n_items", "item_scope"),
+      paste0(arg_name, "$design_signature"),
+      operation
+    )
+    if (!identical(object$estimand_signature$metric, object$metric) ||
+        !identical(object$design_signature$metric, object$metric) ||
+        !identical(object$design_signature$model, object$model) ||
+        !identical(
+          as.integer(object$design_signature$n_items),
+          as.integer(object$n_items)
+        ) ||
+        !identical(object$design_signature$item_scope, object$item_scope)) {
+      stop(
+        "`", arg_name,
+        "` has inconsistent top-level and signature design fields."
+      )
+    }
+  }
+
+  if (!is.null(object$rho_scale_trajectory) &&
+      (!is.numeric(object$rho_scale_trajectory) ||
+       length(object$rho_scale_trajectory) != n_iter ||
+       any(!is.finite(object$rho_scale_trajectory)) ||
+       any(object$rho_scale_trajectory <= 0))) {
+    stop(
+      "`", arg_name,
+      "$rho_scale_trajectory` must be a positive finite numeric vector of ",
+      "length `", arg_name, "$n_iter`."
+    )
+  }
+  if (!is.null(object$rho_update_trajectory) &&
+      (!is.numeric(object$rho_update_trajectory) ||
+       length(object$rho_update_trajectory) != n_iter ||
+       any(!is.finite(object$rho_update_trajectory)) ||
+       any(object$rho_update_trajectory < 0 | object$rho_update_trajectory > 1))) {
+    stop(
+      "`", arg_name,
+      "$rho_update_trajectory` must be a finite numeric vector in [0, 1] ",
+      "with length `", arg_name, "$n_iter`."
+    )
+  }
+  if (!is.null(object$evaluation_trajectory)) {
+    evaluation_n <- if (is.data.frame(object$evaluation_trajectory) ||
+                        is.matrix(object$evaluation_trajectory)) {
+      nrow(object$evaluation_trajectory)
+    } else {
+      length(object$evaluation_trajectory)
+    }
+    if (!identical(as.integer(evaluation_n), as.integer(n_iter))) {
+      stop(
+        "`", arg_name,
+        "$evaluation_trajectory` must contain one entry per SAC iteration."
+      )
+    }
+  }
+  if (!is.null(object$iteration_trace) &&
+      (!is.data.frame(object$iteration_trace) ||
+       nrow(object$iteration_trace) != n_iter)) {
+    stop(
+      "`", arg_name,
+      "$iteration_trace` must be a data frame with `", arg_name,
+      "$n_iter` rows."
     )
   }
 
@@ -610,6 +1402,12 @@ compute_reliability_tam <- function(resp,
 #' \code{eqc_calibrate()} or \code{sac_calibrate()} (formerly
 #' \code{spc_calibrate()}).
 #'
+#' The function uses the normalized item design stored in the calibration
+#' result. For a fixed-form result this is the calibrated fixed form. For a
+#' SAC result with \code{item_scope = "item_superpopulation"}, it is one stored
+#' representative evaluation form; this function does not redraw a new item
+#' form or simulate the aggregate item-superpopulation estimand.
+#'
 #' @param result A calibration result object of class \code{"eqc_result"},
 #'   \code{"sac_result"}, or \code{"spc_result"} (for backward compatibility),
 #'   as returned by \code{eqc_calibrate()} or \code{sac_calibrate()}.
@@ -630,6 +1428,8 @@ compute_reliability_tam <- function(resp,
 #'     length, scalar \code{calibration_status}, character-vector
 #'     \code{status_flags}, item source/design, calibration call, simulation
 #'     seed, sample size, latent shape, and latent parameters.}
+#'   \item{\code{guessing}}{Item lower asymptotes (I x 1). This additive
+#'     component is a zero vector for Rasch and 2PL designs.}
 #' }
 #'
 #' @examples
@@ -656,6 +1456,7 @@ compute_reliability_tam <- function(resp,
 #'   model = "rasch",
 #'   reliability_metric = "info",
 #'   c_init = eqc_result,
+#'   resample_items = FALSE,
 #'   n_iter = 200,
 #'   seed = 42
 #' )
@@ -688,6 +1489,7 @@ simulate_response_data <- function(result,
     stop("'result' must be an 'eqc_result', 'sac_result', or legacy 'spc_result' object from eqc_calibrate() or sac_calibrate().")
   }
   n_persons <- .irtsimrel_validate_positive_integer_scalar(n_persons, "n_persons")
+  latent_shape <- .irtsimrel_match_latent_shape(latent_shape)
   design <- .irtsimrel_validate_result_design(
     result,
     "result",
@@ -708,17 +1510,41 @@ simulate_response_data <- function(result,
 
   beta   <- design$beta
   lambda <- design$lambda
+  guessing <- design$guessing
   I <- design$n_items
 
-  # Generate responses (vectorized)
-  lin_pred <- outer(theta, beta, "-")
-  lin_pred <- sweep(lin_pred, 2, lambda, "*")
-  prob_mat <- plogis(lin_pred)
-
-  response_matrix <- matrix(
-    rbinom(n_persons * I, size = 1, prob = as.vector(prob_mat)),
-    nrow = n_persons, ncol = I
+  # Generate responses through the common IRT kernel. Item-column chunks keep
+  # the same column-major RNG order as one vectorized rbinom() call while
+  # bounding the temporary probability matrix for large simulations.
+  max_probability_cells <- 1000000L
+  items_per_chunk <- max(
+    1L,
+    min(I, as.integer(floor(max_probability_cells / n_persons)))
   )
+  response_matrix <- matrix(NA_integer_, nrow = n_persons, ncol = I)
+  item_starts <- seq.int(1L, I, by = items_per_chunk)
+
+  for (item_start in item_starts) {
+    item_end <- min(I, item_start + items_per_chunk - 1L)
+    item_rows <- item_start:item_end
+    response_bank <- .irtsimrel_item_bank(
+      beta = beta[item_rows],
+      lambda_base = lambda[item_rows],
+      guessing = guessing[item_rows],
+      model = if (identical(result$model, "3pl")) "3pl" else "2pl"
+    )
+    prob_mat <- .irtsimrel_probability(
+      theta = theta,
+      bank = response_bank,
+      scale = 1,
+      chunk_size = min(n_persons, max_probability_cells)
+    )
+    response_matrix[, item_rows] <- matrix(
+      rbinom(length(prob_mat), size = 1, prob = as.vector(prob_mat)),
+      nrow = n_persons,
+      ncol = length(item_rows)
+    )
+  }
 
   colnames(response_matrix) <- paste0("item", 1:I)
 
@@ -750,8 +1576,25 @@ simulate_response_data <- function(result,
       simulation_seed = seed,
       n_persons = n_persons,
       latent_shape = latent_shape,
-      latent_params = latent_params
-    )
+      latent_params = latent_params,
+      schema_version = if (!is.null(result$schema_version)) {
+        result$schema_version
+      } else {
+        0L
+      },
+      item_scope = if (!is.null(result$item_scope)) {
+        result$item_scope
+      } else {
+        NA_character_
+      },
+      design_signature = if (!is.null(result$design_signature)) {
+        result$design_signature
+      } else {
+        NULL
+      },
+      item_parameter_provenance = design$parameter_provenance
+    ),
+    guessing = guessing
   )
 }
 
@@ -763,10 +1606,12 @@ simulate_response_data <- function(result,
 #' Compare EQC and SAC Calibration Results
 #'
 #' @description
-#' Compares the calibration results from EQC and SAC algorithms.
-#' The target reliability must match exactly. Differences in model, test
-#' length, or stored reliability metric are reported as warnings because they
-#' make \code{c*} agreement a weaker diagnostic.
+#' Compares the calibration results from EQC and SAC algorithms. The target
+#' reliability must match exactly. Numeric estimates are always shown side by
+#' side, but agreement is evaluated only when the stored estimand and design
+#' contracts match: model, reliability metric, theta population, latent
+#' specification, item scope, test length, scale convention, and either the
+#' complete fixed item bank or normalized superpopulation generator.
 #'
 #' \code{compare_eqc_spc()} is a deprecated backward-compatible alias for
 #' \code{compare_eqc_sac()}.
@@ -782,7 +1627,10 @@ simulate_response_data <- function(result,
 #'   \item{\code{c_sac}}{Calibrated c* from SAC.}
 #'   \item{\code{diff_abs}}{Absolute difference between c* values.}
 #'   \item{\code{diff_pct}}{Percent difference relative to EQC.}
-#'   \item{\code{agreement}}{Logical. TRUE if difference is < 5%.}
+#'   \item{\code{agreement}}{Logical. \code{TRUE} if the objects are comparable,
+#'     both calibrations are valid for agreement, and the difference is below
+#'     5 percent; \code{FALSE} if evaluated and above threshold; \code{NA} when
+#'     agreement is withheld.}
 #'   \item{\code{target_rho}}{Target reliability.}
 #'   \item{\code{achieved_eqc}}{Achieved reliability from EQC.}
 #'   \item{\code{achieved_sac}}{Achieved reliability from SAC.}
@@ -795,6 +1643,14 @@ simulate_response_data <- function(result,
 #'   \item{\code{sac_status}}{SAC canonical calibration status when available.}
 #'   \item{\code{sac_status_flags}}{SAC multi-condition status flags when
 #'     available.}
+#'   \item{\code{comparable}}{Logical indicating whether both objects target
+#'     the same estimand and design.}
+#'   \item{\code{comparability_reasons}}{Stable reason codes explaining a
+#'     non-comparable result.}
+#'   \item{\code{agreement_status}, \code{agreement_reasons}}{Whether agreement
+#'     was evaluated, and why it was withheld when it was not.}
+#'   \item{\code{eqc_contract}, \code{sac_contract}}{Normalized estimand and
+#'     design contracts used for the comparability decision.}
 #' }
 #'
 #' @examples
@@ -803,7 +1659,9 @@ simulate_response_data <- function(result,
 #' eqc_result <- eqc_calibrate(target_rho = 0.80, n_items = 25, seed = 42)
 #' sac_result <- sac_calibrate(target_rho = 0.80, n_items = 25,
 #'                             reliability_metric = "info",
-#'                             c_init = eqc_result, seed = 42)
+#'                             c_init = eqc_result,
+#'                             resample_items = FALSE,
+#'                             seed = 42)
 #'
 #' # Compare results
 #' compare_eqc_sac(eqc_result, sac_result)
@@ -835,7 +1693,9 @@ compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
     "EQC/SAC comparison"
   )
 
-  # Configuration validation
+  # Target equality remains a hard precondition: unlike the other design
+  # dimensions, comparing calibrations for different requested targets has no
+  # useful side-by-side interpretation.
   if (!isTRUE(all.equal(eqc_result$target_rho, sac_result$target_rho))) {
     stop(sprintf(
       "target_rho differs between EQC (%.4f) and SAC (%.4f). Results are not comparable.",
@@ -878,7 +1738,24 @@ compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
     ))
   }
 
-  # Extract key values
+  eqc_contract <- .irtsimrel_comparison_contract(eqc_result)
+  sac_contract <- .irtsimrel_comparison_contract(sac_result)
+  comparability_reasons <- .irtsimrel_comparability_reasons(
+    eqc_contract,
+    sac_contract
+  )
+  comparable <- length(comparability_reasons) == 0L
+
+  if (!comparable) {
+    warning(
+      "EQC and SAC designs are not comparable (",
+      paste(comparability_reasons, collapse = ", "),
+      "). Numeric estimates are returned, but agreement is NA."
+    )
+  }
+
+  # Extract key values.  These legacy scalar fields remain available even
+  # when design comparison fails.
   c_eqc <- eqc_result$c_star
   c_sac <- sac_result$c_star
 
@@ -886,7 +1763,33 @@ compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
   diff_pct <- 100 * diff_abs / c_eqc
   achieved_diff_abs <- abs(eqc_result$achieved_rho - sac_result$achieved_rho)
 
-  agreement <- diff_pct < 5  # Within 5%
+  eqc_success <- !is.na(eqc_status) &&
+    eqc_status %in% c("ok", "uniroot_success")
+  sac_success <- !is.na(sac_status) && identical(sac_status, "ok")
+  agreement_reasons <- character()
+  if (!comparable) {
+    agreement_status <- "not_comparable"
+    agreement_reasons <- comparability_reasons
+    agreement <- NA
+  } else if (!eqc_success || !sac_success) {
+    agreement_status <- "calibration_unsuccessful"
+    if (!eqc_success) {
+      agreement_reasons <- c(
+        agreement_reasons,
+        "eqc_calibration_unsuccessful"
+      )
+    }
+    if (!sac_success) {
+      agreement_reasons <- c(
+        agreement_reasons,
+        "sac_calibration_unsuccessful"
+      )
+    }
+    agreement <- NA
+  } else {
+    agreement_status <- "evaluated"
+    agreement <- diff_pct < 5
+  }
 
   comparison <- list(
     c_eqc = c_eqc,
@@ -906,7 +1809,13 @@ compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
     n_items_sac = sac_result$n_items,
     eqc_status = eqc_status,
     sac_status = sac_status,
-    sac_status_flags = sac_status_flags
+    sac_status_flags = sac_status_flags,
+    comparable = comparable,
+    comparability_reasons = comparability_reasons,
+    agreement_status = agreement_status,
+    agreement_reasons = agreement_reasons,
+    eqc_contract = eqc_contract,
+    sac_contract = sac_contract
   )
 
   if (verbose) {
@@ -922,7 +1831,18 @@ compare_eqc_sac <- function(eqc_result, sac_result, verbose = TRUE) {
     message(sprintf("  Percent difference  : %.2f%%", diff_pct))
     message(sprintf("  EQC achieved rho    : %.4f", comparison$achieved_eqc))
     message(sprintf("  SAC achieved rho    : %.4f", comparison$achieved_sac))
-    message(sprintf("  Agreement (< 5%%)    : %s", ifelse(agreement, "YES", "NO")))
+    message(sprintf("  Comparable           : %s", ifelse(comparable, "YES", "NO")))
+    if (!comparable) {
+      message(sprintf(
+        "  Comparability reason : %s",
+        paste(comparability_reasons, collapse = ", ")
+      ))
+    }
+    message(sprintf(
+      "  Agreement (< 5%%)    : %s",
+      if (is.na(agreement)) "NOT EVALUATED" else if (agreement) "YES" else "NO"
+    ))
+    message(sprintf("  Agreement status     : %s", agreement_status))
     message(sprintf("  EQC status          : %s", comparison$eqc_status))
     message(sprintf("  SAC status          : %s", comparison$sac_status))
     message(sprintf("  SAC status flags    : %s",

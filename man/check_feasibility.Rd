@@ -6,7 +6,7 @@
 \usage{
 check_feasibility(
   n_items,
-  model = c("rasch", "2pl"),
+  model = c("rasch", "2pl", "3pl"),
   latent_shape = "normal",
   item_source = "parametric",
   c_bounds = c(0.1, 10),
@@ -23,7 +23,9 @@ check_feasibility(
 \arguments{
 \item{n_items}{Integer. Number of items in the test form.}
 
-\item{model}{Character. Measurement model: \code{"rasch"} or \code{"2pl"}.}
+\item{model}{Character. Measurement model: \code{"rasch"}, \code{"2pl"},
+or \code{"3pl"}. For 3PL, supply lower-asymptote generation controls in
+\code{item_params}; discrimination alone is varied under \code{D = 1}.}
 
 \item{latent_shape}{Character. Shape argument passed to \code{sim_latentG()}.}
 
@@ -55,22 +57,41 @@ above the achievable range for each metric.}
 \value{
 An object of class \code{"feasibility_check"} (a list) with:
 \describe{
-\item{\code{rho_range_info}}{Numeric length-2 vector: achievable range of
-average-information reliability (\eqn{\tilde{\rho}}).}
-\item{\code{rho_range_msem}}{Numeric length-2 vector: achievable range of
-MSEM-based reliability (\eqn{\bar{w}}).}
+\item{\code{rho_range_info}}{Numeric length-2 vector: empirical range of
+average-information reliability (\eqn{\tilde{\rho}}) computed by the
+configured finite scan; provisional when topology is unresolved.}
+\item{\code{rho_range_msem}}{Numeric length-2 vector: empirical range of
+MSEM-based reliability (\eqn{\bar{w}}) computed by the configured finite
+scan; provisional when topology is unresolved.}
 \item{\code{rho_bounds_info}}{Endpoint reliabilities for
 average-information reliability.}
 \item{\code{rho_bounds_msem}}{Endpoint reliabilities for MSEM-based
 reliability.}
-\item{\code{rho_info_max_c}}{Scaling factor at the maximum sampled info
-reliability within \code{c_bounds}.}
-\item{\code{rho_msem_max_c}}{Scaling factor at the maximum sampled MSEM
-reliability within \code{c_bounds}.}
+\item{\code{rho_info_max_c}}{Scaling factor at the maximum information
+reliability detected by the configured scan within \code{c_bounds};
+provisional when topology is unresolved.}
+\item{\code{rho_msem_max_c}}{Scaling factor at the maximum MSEM
+reliability detected by the configured scan within \code{c_bounds};
+provisional when topology is unresolved.}
 \item{\code{target_status_info}}{If \code{target_rho} is supplied, one of
 \code{"below_lower"}, \code{"boundary_lower"}, \code{"feasible"},
 \code{"boundary_upper"}, or \code{"above_upper"} for \eqn{\tilde{\rho}}.}
 \item{\code{target_status_msem}}{Analogous status for \eqn{\bar{w}}.}
+\item{\code{topology_info}, \code{topology_msem}}{Complete configured
+log-grid scans, polished extrema, detected roots, monotone branches,
+evaluation counts, and resolution status for each metric.}
+\item{\code{target_status_info_canonical},
+\code{target_status_msem_canonical}}{Canonical feasibility status:
+\code{"feasible"}, \code{"infeasible_below_range"},
+\code{"infeasible_above_range"}, or \code{"uncertain"}.}
+\item{\code{root_count_info}, \code{root_count_msem},
+\code{admissible_root_count_info},
+\code{admissible_root_count_msem}}{Detected roots and roots on
+increasing crossing/boundary branches.}
+\item{\code{best_achievable_info},
+\code{best_achievable_msem}}{Closest detected point to
+\code{target_rho}, including scale, reliability, residual, absolute
+error, and location type.}
 \item{\code{n_items}}{Number of items.}
 \item{\code{model}}{Model used.}
 \item{\code{latent_shape}}{Latent distribution shape.}
@@ -82,26 +103,28 @@ reliability within \code{c_bounds}.}
 The input object, invisibly.
 }
 \description{
-Screens whether a given target reliability is achievable for a particular
-test design (number of items, model, latent distribution, item source)
-by computing the range of achievable reliabilities across a range of
-scaling factors.
+Screens whether a given target reliability is attainable in the generated
+finite Monte Carlo design for a particular test design (number of items,
+model, latent distribution, item source) by computing the range of
+empirical reliabilities across a range of scaling factors.
 
 This function is useful for determining whether a planned simulation
 study is feasible before running the (potentially expensive) calibration
 algorithms.
 }
 \details{
-For the average-information metric (\eqn{\tilde{\rho}}), practical EQC
-search intervals are usually monotone. With very wide finite empirical
-quadrature bounds, however, logistic probabilities can saturate numerically.
-The function therefore reports endpoint reliabilities separately and uses an
-interior maximization pass for the feasible upper range.
+Either reliability metric can be non-monotone over a sufficiently broad
+finite empirical integration interval. Both metrics therefore use the same
+adaptive log-scale topology scan as the calibrators. Endpoint values remain
+available in \code{rho_bounds_*}, while \code{rho_range_*} includes all
+resolved interior extrema within the user-supplied bounds.
 
-For the MSEM-based metric (\eqn{\bar{w}}), the reliability can be
-non-monotone at extreme scaling factors. The function uses
-\code{\link[stats]{optimize}} to find the maximum within the bounds, and
-the range is \eqn{[\min(\bar{w}(c_{min}), \bar{w}(c_{max})), \bar{w}_{max}]}.
+These ranges and target classifications are conditional on the generated
+finite theta sample. In particular, for the built-in
+\code{latent_shape = "heavy_tail"}, the population MSEM functional can be
+non-integrable even though a finite Monte Carlo sample yields a numeric
+\code{rho_range_msem}. Treat that MSEM range as finite-grid sensitivity
+evidence, not as a population feasibility guarantee.
 }
 \examples{
 # Check feasibility for 25-item Rasch test
