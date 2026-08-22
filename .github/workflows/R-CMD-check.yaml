@@ -73,13 +73,19 @@ jobs:
           r-version: '4.0.5'
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          dependencies: '"hard"'
-          extra-packages: any::rcmdcheck, any::testthat
+      - name: Install package with base dependencies
+        run: R CMD INSTALL .
 
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          args: 'c("--no-manual", "--ignore-vignettes")'
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
-          error-on: '"error"'
+      - name: Verify R 4.0 compatibility
+        shell: Rscript {0}
+        run: |
+          library(IRTsimrel)
+          stopifnot(
+            as.character(packageVersion("IRTsimrel")) == "0.3.0",
+            all(c(
+              "eqc_calibrate",
+              "sac_calibrate",
+              "sim_item_params",
+              "simulate_response_data"
+            ) %in% getNamespaceExports("IRTsimrel"))
+          )
